@@ -83,6 +83,22 @@
   .skeleton {
     @apply animate-pulse bg-orange-50 rounded-xl;
   }
+
+  .form-label {
+    @apply text-xs font-semibold text-brand-dark mb-1.5 block;
+  }
+
+  .input-icon {
+    @apply absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted pointer-events-none;
+  }
+
+  .btn-icon {
+    @apply w-9 h-9 rounded-xl flex items-center justify-center text-brand-muted hover:text-brand-dark hover:bg-brand-bg transition-colors;
+  }
+
+  .btn-ghost {
+    @apply text-sm font-medium text-brand-muted hover:text-primary transition-colors;
+  }
 }
 
 @layer utilities {
@@ -144,6 +160,36 @@
   to {
     transform: translateX(-50%);
   }
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toast-leave {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(12px) scale(0.96);
+  }
+}
+
+.animate-enter {
+  animation: toast-enter 0.22s ease-out forwards;
+}
+
+.animate-leave {
+  animation: toast-leave 0.18s ease-in forwards;
 }
 
 /* Custom scrollbar */

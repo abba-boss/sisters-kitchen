@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Plus, Edit, Trash2, Eye, EyeOff, Package } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import EmptyState from '../../components/common/EmptyState';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { productService } from '../../services/productService';
 import { formatPrice } from '../../utils/formatters';
 import toast from 'react-hot-toast';
@@ -11,6 +12,8 @@ import toast from 'react-hot-toast';
 export default function VendorProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -22,13 +25,19 @@ export default function VendorProducts() {
       .finally(() => setLoading(false));
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this product?')) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await productService.delete(id);
+      await productService.delete(deleteTarget.id);
       toast.success('Product deleted');
+      setDeleteTarget(null);
       fetchProducts();
-    } catch { toast.error('Failed to delete product'); }
+    } catch {
+      toast.error('Failed to delete product');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleToggleAvailable = async (product) => {
@@ -43,6 +52,16 @@ export default function VendorProducts() {
 
   return (
     <DashboardLayout>
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete product?"
+        message={deleteTarget ? `"${deleteTarget.name}" will be permanently removed from your menu.` : ''}
+        confirmLabel="Delete"
+        loading={deleting}
+      />
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-poppins font-bold text-xl text-brand-dark">My Products</h1>
@@ -86,8 +105,12 @@ export default function VendorProducts() {
                       {product.isAvailable ? <EyeOff size={13} /> : <Eye size={13} />}
                       {product.isAvailable ? 'Hide' : 'Show'}
                     </button>
-                    <button onClick={() => handleDelete(product.id)}
-                      className="p-2 rounded-xl bg-red-50 text-red-400 hover:bg-red-100 transition-all">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(product)}
+                      className="p-2 rounded-xl bg-red-50 text-red-400 hover:bg-red-100 transition-all"
+                      aria-label={`Delete ${product.name}`}
+                    >
                       <Trash2 size={14} />
                     </button>
                   </div>

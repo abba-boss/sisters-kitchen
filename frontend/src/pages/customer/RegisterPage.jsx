@@ -165,7 +165,7 @@ export default function RegisterPage() {
                   <div>
                     <p className="text-sm font-semibold text-yellow-800">Vendor accounts need approval</p>
                     <p className="text-xs text-yellow-700 mt-0.5 leading-relaxed">
-                      After registering, your account will be reviewed by our team within 24–48 hrs before you can start selling.
+                      After registering, your account will be reviewed by our team within 24–48 hrs
                     </p>
                   </div>
                 </div>

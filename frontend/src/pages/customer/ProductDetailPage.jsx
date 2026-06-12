@@ -13,6 +13,7 @@ import { reviewService } from '../../services/reviewService';
 import { useCart } from '../../hooks/useCart';
 import { useWishlistStore } from '../../store/wishlistStore';
 import { useAuthStore } from '../../store/authStore';
+import { useAuthModalStore } from '../../store/authModalStore';
 import { formatPrice, formatDate } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
@@ -30,6 +31,7 @@ export default function ProductDetailPage() {
   const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
+  const openAuth = useAuthModalStore((s) => s.open);
 
   useEffect(() => {
     productService.getById(id)
@@ -73,9 +75,15 @@ export default function ProductDetailPage() {
   };
 
   const handleWishlist = () => {
-    if (!isAuthenticated) { toast.error('Please login to save to wishlist'); return; }
+    if (!isAuthenticated) {
+      openAuth('Sign in to save items to your wishlist', () => {
+        toggle(product);
+        toast.success('Added to wishlist');
+      });
+      return;
+    }
     toggle(product);
-    toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist ❤️');
+    toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist');
   };
 
   const handleShare = () => {
@@ -85,7 +93,10 @@ export default function ProductDetailPage() {
 
   const handleReview = async (e) => {
     e.preventDefault();
-    if (!isAuthenticated) { toast.error('Please login to review'); return; }
+    if (!isAuthenticated) {
+      openAuth('Sign in to leave a review for this dish');
+      return;
+    }
     if (!review.comment.trim()) { toast.error('Please write a comment'); return; }
     setSubmitting(true);
     try {

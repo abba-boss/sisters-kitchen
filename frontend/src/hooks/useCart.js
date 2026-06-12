@@ -6,7 +6,7 @@ export const useCart = () => {
 
   const addToCart = (product, quantity = 1) => {
     store.addItem(product, quantity);
-    toast.success('Added to cart! 🛒', { id: `cart-${product.id}` });
+    toast.success('Added to cart', { id: `cart-${product.id}` });
     return true;
   };
 

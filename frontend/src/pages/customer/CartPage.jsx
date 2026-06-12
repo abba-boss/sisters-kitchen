@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -7,9 +7,9 @@ import {
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import EmptyState from '../../components/common/EmptyState';
-import AuthModal from '../../components/common/AuthModal';
 import { useCart } from '../../hooks/useCart';
 import { useAuthStore } from '../../store/authStore';
+import { useAuthModalStore } from '../../store/authModalStore';
 import { formatPrice } from '../../utils/formatters';
 
 export default function CartPage() {
@@ -18,36 +18,25 @@ export default function CartPage() {
     updateQuantity, removeFromCart, clearCart,
   } = useCart();
   const { isAuthenticated } = useAuthStore();
+  const openAuth = useAuthModalStore((s) => s.open);
   const navigate = useNavigate();
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [checkoutVendorId, setCheckoutVendorId] = useState(null);
+  const checkoutVendorRef = useRef(null);
 
-  // Single-vendor checkout or all-cart checkout
   const handleCheckout = (vendorId = null) => {
-    setCheckoutVendorId(vendorId);
+    checkoutVendorRef.current = vendorId;
     if (isAuthenticated) {
       navigate('/checkout', { state: { vendorId } });
-    } else {
-      setAuthModalOpen(true);
+      return;
     }
-  };
-
-  const handleAuthSuccess = () => {
-    setAuthModalOpen(false);
-    setTimeout(() => navigate('/checkout', { state: { vendorId: checkoutVendorId } }), 200);
+    openAuth('Sign in to place your order — your cart is saved!', () => {
+      navigate('/checkout', { state: { vendorId: checkoutVendorRef.current } });
+    });
   };
 
   const grandTotal = vendorGroups.reduce((s, g) => s + g.total, 0);
 
   return (
     <MainLayout>
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onSuccess={handleAuthSuccess}
-        redirectMessage="Sign in to place your order — your cart is saved!"
-      />
-
       <div className="page-container py-10">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
           <h1 className="section-title">Your Cart</h1>

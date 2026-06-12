@@ -109,6 +109,17 @@ export default function HeroSection() {
                 Become a Vendor
               </button>
             </div>
+
+            {/* Live stats — visible on mobile/tablet */}
+            <div className="lg:hidden mt-8 grid grid-cols-3 gap-3">
+              {statCards.map(({ icon: Icon, value, label }) => (
+                <div key={label} className="bg-white rounded-2xl shadow-card px-3 py-3 text-center">
+                  <Icon size={16} className="text-primary mx-auto mb-1" />
+                  <p className="font-poppins font-bold text-brand-dark text-sm">{value}</p>
+                  <p className="text-[10px] text-brand-muted leading-tight">{label}</p>
+                </div>
+              ))}
+            </div>
           </motion.div>
 
           {/* ── Right image collage ──────────────────── */}

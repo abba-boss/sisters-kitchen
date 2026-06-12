@@ -4,6 +4,7 @@ import { Heart, ShoppingCart, Star, Clock, Flame } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
 import { useWishlistStore } from '../../store/wishlistStore';
 import { useAuthStore } from '../../store/authStore';
+import { useAuthModalStore } from '../../store/authModalStore';
 import { formatPrice } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
@@ -11,6 +12,7 @@ export default function ProductCard({ product }) {
   const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
+  const openAuth = useAuthModalStore((s) => s.open);
 
   const wishlisted = isWishlisted(product.id);
   const price = product.discountPrice || product.price;
@@ -26,9 +28,15 @@ export default function ProductCard({ product }) {
   const handleWishlist = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isAuthenticated) { toast.error('Please login to save favourites'); return; }
+    if (!isAuthenticated) {
+      openAuth('Sign in to save items to your wishlist', () => {
+        toggle(product);
+        toast.success('Added to wishlist');
+      });
+      return;
+    }
     toggle(product);
-    toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist ❤️');
+    toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist');
   };
 
   return (

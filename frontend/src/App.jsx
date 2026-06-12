@@ -44,6 +44,7 @@ import AdminAnalytics from './pages/admin/AdminAnalytics';
 
 // Common
 import ProtectedRoute from './components/common/ProtectedRoute';
+import AuthModal from './components/common/AuthModal';
 
 // ─── Socket + Notification wiring ────────────────────────────
 function AppProviders() {
@@ -56,16 +57,20 @@ function AppProviders() {
   useSocketEvent('notification:new', (notification) => {
     addNotification(notification);
     toast.custom((t) => (
-      <div className={`flex items-center gap-3 bg-brand-dark text-white px-4 py-3 rounded-2xl shadow-card-hover max-w-sm ${t.visible ? 'animate-enter' : 'animate-leave'}`}>
-        <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
-          <Bell size={15} className="text-primary" />
+      <div
+        className={`flex items-center gap-3 bg-white border border-orange-100 px-4 py-3 rounded-2xl shadow-card-hover max-w-sm ${
+          t.visible ? 'animate-enter' : 'animate-leave'
+        }`}
+      >
+        <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+          <Bell size={16} className="text-primary" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold truncate">{notification.title}</p>
-          <p className="text-xs text-white/70 truncate">{notification.message}</p>
+          <p className="text-sm font-semibold text-brand-dark truncate">{notification.title}</p>
+          <p className="text-xs text-brand-muted truncate">{notification.message}</p>
         </div>
       </div>
-    ), { duration: 4000 });
+    ), { duration: 4500 });
   });
 
   return null;
@@ -75,20 +80,35 @@ export default function App() {
   return (
     <BrowserRouter>
       <Toaster
-        position="top-right"
+        position="top-center"
+        gutter={10}
+        containerClassName="!top-4"
         toastOptions={{
+          className: 'toast-message',
           style: {
-            borderRadius: '12px',
-            background: '#4A2C2A',
-            color: '#fff',
+            borderRadius: '14px',
+            background: '#fff',
+            color: '#4A2C2A',
+            border: '1px solid #FFE4D6',
+            boxShadow: '0 8px 30px rgba(74, 44, 42, 0.12)',
             fontFamily: 'DM Sans, sans-serif',
             fontSize: '14px',
+            fontWeight: '500',
+            padding: '12px 16px',
+            maxWidth: '420px',
           },
-          success: { iconTheme: { primary: '#5FA36A', secondary: '#fff' } },
-          error: { iconTheme: { primary: '#FF7A59', secondary: '#fff' } },
-          duration: 3500,
+          success: {
+            iconTheme: { primary: '#5FA36A', secondary: '#fff' },
+            style: { borderColor: '#C8E6CA' },
+          },
+          error: {
+            iconTheme: { primary: '#FF7A59', secondary: '#fff' },
+            style: { borderColor: '#FFD4C8' },
+          },
+          duration: 3200,
         }}
       />
+      <AuthModal />
       <AppProviders />
 
       <Routes>
