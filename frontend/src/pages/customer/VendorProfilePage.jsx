@@ -158,7 +158,6 @@ export default function VendorProfilePage() {
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
             { label: 'Products', value: products.length },
-            { label: 'Total Orders', value: vendor.totalOrders },
             { label: 'Reviews', value: vendor.totalReviews },
           ].map(({ label, value }) => (
             <div key={label} className="card p-4 text-center">

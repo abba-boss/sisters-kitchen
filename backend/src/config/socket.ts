@@ -12,11 +12,13 @@ const userSocketMap = new Map<string, Set<string>>();
 export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: [
-        process.env.FRONTEND_URL || "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-      ],
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+          return callback(null, true);
+        }
+        callback(new Error(`Socket CORS blocked: ${origin}`));
+      },
       credentials: true,
       methods: ["GET", "POST"],
     },

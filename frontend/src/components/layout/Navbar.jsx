@@ -109,20 +109,21 @@ export default function Navbar() {
               {searchOpen ? <X size={20} /> : <Search size={20} />}
             </button>
 
+            {/* Cart — visible to everyone (guests + logged in) */}
+            <Link to="/cart" className="relative p-2 rounded-xl hover:bg-brand-bg text-brand-muted hover:text-primary transition-all" aria-label="Cart">
+              <ShoppingCart size={20} />
+              {totalItems > 0 && (
+                <motion.span
+                  key={totalItems}
+                  initial={{ scale: 0 }} animate={{ scale: 1 }}
+                  className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center leading-none">
+                  {totalItems > 9 ? '9+' : totalItems}
+                </motion.span>
+              )}
+            </Link>
+
             {isAuthenticated ? (
               <>
-                {/* Cart */}
-                <Link to="/cart" className="relative p-2 rounded-xl hover:bg-brand-bg text-brand-muted hover:text-primary transition-all" aria-label="Cart">
-                  <ShoppingCart size={20} />
-                  {totalItems > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }} animate={{ scale: 1 }}
-                      className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center leading-none">
-                      {totalItems > 9 ? '9+' : totalItems}
-                    </motion.span>
-                  )}
-                </Link>
-
                 {/* Wishlist */}
                 <Link to="/wishlist" className="hidden sm:flex p-2 rounded-xl hover:bg-brand-bg text-brand-muted hover:text-primary transition-all" aria-label="Wishlist">
                   <Heart size={20} />
@@ -259,6 +260,16 @@ export default function Navbar() {
                   {label}
                 </Link>
               ))}
+              {/* Cart always visible in mobile menu */}
+              <Link to="/cart"
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-brand-dark hover:bg-brand-bg">
+                <span>🛒 Cart</span>
+                {totalItems > 0 && (
+                  <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {totalItems}
+                  </span>
+                )}
+              </Link>
               {isAuthenticated ? (
                 <>
                   <Link to="/wishlist"      className="block px-3 py-2.5 rounded-xl text-sm font-medium text-brand-dark hover:bg-brand-bg">❤️ Wishlist</Link>

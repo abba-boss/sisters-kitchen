@@ -19,14 +19,14 @@ export default function ProductCard({ product }) {
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isAuthenticated) { toast.error('Please login to add to cart'); return; }
+    // Guests can add to cart — they'll be asked to login at checkout
     addToCart(product);
   };
 
   const handleWishlist = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isAuthenticated) { toast.error('Please login to save favorites'); return; }
+    if (!isAuthenticated) { toast.error('Please login to save favourites'); return; }
     toggle(product);
     toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist ❤️');
   };

@@ -21,7 +21,7 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "sisters_kitchen",
   synchronize: true,
-  logging: process.env.NODE_ENV === "development",
+  logging: false,  // turn off verbose SQL logging — it causes memory pressure
   entities: [
     User,
     Vendor,

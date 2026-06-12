@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package, ShoppingBag, TrendingUp, Star, Plus,
-  ToggleLeft, ToggleRight, Wifi, ArrowUpRight, Clock
+  ToggleLeft, ToggleRight, Wifi, ArrowUpRight, Clock,
+  AlertTriangle, X
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -18,6 +19,53 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const COLORS = ['#FF7A59', '#5FA36A', '#F59E0B', '#3B82F6', '#8B5CF6'];
+
+// ── Under-review banner ────────────────────────────────────────
+function UnderReviewBanner({ businessName }) {
+  const [dismissed, setDismissed] = useState(
+    () => sessionStorage.getItem('review-banner-dismissed') === '1'
+  );
+  if (dismissed) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -16 }}
+      className="mb-6 bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-start gap-3"
+    >
+      <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center flex-shrink-0">
+        <Clock size={20} className="text-yellow-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-yellow-800 text-sm">
+          ⏳ Your vendor account is under review
+        </p>
+        <p className="text-xs text-yellow-700 mt-0.5 leading-relaxed">
+          <strong>{businessName}</strong> has been registered successfully. Our team is reviewing your account —
+          you'll be approved within <strong>24–48 hours</strong>. You can set up your store in the meantime,
+          but customers won't see your products until you're approved.
+        </p>
+        <div className="flex items-center gap-3 mt-2">
+          <Link to="/vendor/products/new"
+            className="text-xs font-semibold text-yellow-800 underline hover:no-underline">
+            Add products now →
+          </Link>
+          <Link to="/vendor/profile"
+            className="text-xs font-semibold text-yellow-800 underline hover:no-underline">
+            Complete profile →
+          </Link>
+        </div>
+      </div>
+      <button
+        onClick={() => { setDismissed(true); sessionStorage.setItem('review-banner-dismissed', '1'); }}
+        className="p-1.5 rounded-lg hover:bg-yellow-100 text-yellow-600 transition-colors flex-shrink-0"
+      >
+        <X size={15} />
+      </button>
+    </motion.div>
+  );
+}
 
 export default function VendorDashboard() {
   const [analytics, setAnalytics] = useState(null);
@@ -63,7 +111,6 @@ export default function VendorDashboard() {
   const summary = analytics?.summary || {};
   const statCards = [
     { label: 'Total Products', value: summary.totalProducts ?? '—', icon: Package, color: 'bg-blue-50', ic: 'text-blue-500', sub: 'Listed' },
-    { label: 'Total Orders', value: summary.totalOrders ?? '—', icon: ShoppingBag, color: 'bg-primary/10', ic: 'text-primary', sub: `${summary.deliveredOrders ?? 0} delivered` },
     { label: 'Total Earnings', value: summary.totalEarnings !== undefined ? formatPrice(summary.totalEarnings) : '—', icon: TrendingUp, color: 'bg-accent/10', ic: 'text-accent', sub: 'All time' },
     { label: 'Rating', value: summary.rating ? `${Number(summary.rating).toFixed(1)} ★` : '—', icon: Star, color: 'bg-yellow-50', ic: 'text-yellow-500', sub: `${summary.totalReviews ?? 0} reviews` },
   ];
@@ -84,6 +131,11 @@ export default function VendorDashboard() {
 
   return (
     <DashboardLayout>
+      {/* Under-review alert for pending vendors */}
+      {vendor?.status === 'pending' && (
+        <UnderReviewBanner businessName={vendor.businessName} />
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>

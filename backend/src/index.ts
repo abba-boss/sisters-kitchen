@@ -13,6 +13,10 @@ import { initSocket } from "./config/socket";
 import { errorHandler, notFound } from "./middleware/errorHandler";
 import { logger } from "./utils/logger";
 
+// ── Crash guards — keep the process alive ─────────────────────
+process.on("uncaughtException",  (err) => { logger.error("Uncaught Exception:",  err); });
+process.on("unhandledRejection", (err) => { logger.error("Unhandled Rejection:", err); });
+
 // Routes
 import authRoutes from "./routes/authRoutes";
 import vendorRoutes from "./routes/vendorRoutes";
@@ -25,6 +29,7 @@ import notificationRoutes from "./routes/notificationRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import analyticsRoutes from "./routes/analyticsRoutes";
+import statsRoutes from "./routes/statsRoutes";
 
 dotenv.config();
 
@@ -34,17 +39,34 @@ const PORT = process.env.PORT || 5000;
 
 // ── Security & logging middleware ──────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+
+// Dynamic CORS — allow any localhost port + configured FRONTEND_URL
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:5176",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+];
+
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, mobile apps)
+    if (!origin) return callback(null, true);
+    // Allow any localhost / 127.0.0.1 origin dynamically
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
-app.use(morgan("dev"));
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "tiny"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -90,6 +112,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/stats", statsRoutes);
 
 // ── Error handling ─────────────────────────────────────────────
 app.use(notFound);

@@ -18,3 +18,61 @@
 {"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-09 17:18:31"}
 {"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-09 17:18:31"}
 {"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-09 17:18:31"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-09 18:13:30"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-09 18:13:30"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-09 18:13:30"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-09 18:13:30"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-09 18:14:05"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-09 18:14:05"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-09 18:14:05"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-09 18:14:05"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-09 18:18:28"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-09 18:18:28"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-09 18:18:28"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-09 18:18:28"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-10 11:56:09"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-10 11:56:09"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-10 11:56:09"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-10 11:56:09"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-10 14:36:51"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-10 14:36:51"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-10 14:36:51"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-10 14:36:51"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-10 14:37:19"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-10 14:37:19"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-10 14:37:19"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-10 14:37:19"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-10 14:47:12"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-10 14:47:12"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-10 14:47:12"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-10 14:47:12"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-10 14:57:56"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-10 15:22:56"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-10 15:22:56"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-10 15:22:56"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-10 15:22:56"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-12 13:30:17"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-12 13:30:17"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-12 13:30:17"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-12 13:30:17"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-12 13:35:00"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-12 13:35:00"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-12 13:35:00"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-12 13:35:00"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-12 14:02:30"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-12 14:02:30"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-12 14:02:30"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-12 14:02:30"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-12 14:02:41"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-12 14:02:41"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-12 14:02:41"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-12 14:02:41"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-12 15:20:37"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-12 15:20:37"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-12 15:20:37"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-12 15:20:37"}
+{"code":"ER_CANT_DROP_FIELD_OR_KEY","driverError":{"code":"ER_CANT_DROP_FIELD_OR_KEY","errno":1091,"sql":"ALTER TABLE `payments` DROP FOREIGN KEY `FK_af929a5f2a400fdb6913b4967e1`","sqlMessage":"Can't DROP FOREIGN KEY `FK_af929a5f2a400fdb6913b4967e1`; check that it exists","sqlState":"42000"},"errno":1091,"level":"\u001b[31merror\u001b[39m","message":"❌ Database connection failed: Can't DROP FOREIGN KEY `FK_af929a5f2a400fdb6913b4967e1`; check that it exists","query":"ALTER TABLE `payments` DROP FOREIGN KEY `FK_af929a5f2a400fdb6913b4967e1`","sql":"ALTER TABLE `payments` DROP FOREIGN KEY `FK_af929a5f2a400fdb6913b4967e1`","sqlMessage":"Can't DROP FOREIGN KEY `FK_af929a5f2a400fdb6913b4967e1`; check that it exists","sqlState":"42000","stack":"QueryFailedError: Can't DROP FOREIGN KEY `FK_af929a5f2a400fdb6913b4967e1`; check that it exists\n    at Query.onResult (/home/abba-boss/Desktop/sisters kitchen/backend/node_modules/typeorm/src/driver/mysql/MysqlQueryRunner.ts:248:33)\n    at Query.execute (/home/abba-boss/Desktop/sisters kitchen/backend/node_modules/mysql2/lib/commands/command.js:36:14)\n    at PoolConnection.handlePacket (/home/abba-boss/Desktop/sisters kitchen/backend/node_modules/mysql2/lib/base/connection.js:552:34)\n    at PacketParser.onPacket (/home/abba-boss/Desktop/sisters kitchen/backend/node_modules/mysql2/lib/base/connection.js:102:12)\n    at PacketParser.executeStart (/home/abba-boss/Desktop/sisters kitchen/backend/node_modules/mysql2/lib/packet_parser.js:75:16)\n    at Socket.<anonymous> (/home/abba-boss/Desktop/sisters kitchen/backend/node_modules/mysql2/lib/base/connection.js:109:25)\n    at Socket.emit (node:events:524:28)\n    at Socket.emit (node:domain:489:12)\n    at addChunk (node:internal/streams/readable:561:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)","timestamp":"2026-06-12 15:26:45"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Database connected","timestamp":"2026-06-12 15:26:45"}
+{"level":"\u001b[32minfo\u001b[39m","message":"✅ Socket.IO initialized","timestamp":"2026-06-12 15:26:45"}
+{"level":"\u001b[32minfo\u001b[39m","message":"🚀 Sisters Kitchen API → http://localhost:5000","timestamp":"2026-06-12 15:26:45"}
+{"level":"\u001b[32minfo\u001b[39m","message":"📊 Environment: development","timestamp":"2026-06-12 15:26:45"}

@@ -92,7 +92,7 @@ export default function App() {
       <AppProviders />
 
       <Routes>
-        {/* Public */}
+        {/* Public — no login needed to browse or add to cart */}
         <Route path="/" element={<HomePage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
@@ -102,8 +102,10 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/payment/verify" element={<PaymentVerifyPage />} />
 
-        {/* Authenticated Customer */}
-        <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
+        {/* Cart is public — guests can browse and build a cart */}
+        <Route path="/cart" element={<CartPage />} />
+
+        {/* Everything below requires login */}
         <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
         <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />

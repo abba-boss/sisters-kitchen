@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Search, ShoppingCart, Clock, Smile } from 'lucide-react';
 
 const steps = [
-  { icon: Search, title: 'Browse & Discover', desc: 'Explore hundreds of homemade dishes from verified female vendors near you.', color: 'bg-primary/10', iconColor: 'text-primary' },
+  { icon: Search, title: 'Browse & Discover', desc: 'Explore hundreds of homemade dishes from verified  vendors near you.', color: 'bg-primary/10', iconColor: 'text-primary' },
   { icon: ShoppingCart, title: 'Add to Cart', desc: 'Select your favourite meals, customise quantities, and add them to your cart.', color: 'bg-accent/10', iconColor: 'text-accent' },
   { icon: Clock, title: 'Vendor Prepares', desc: 'Your chosen vendor receives the order and freshly prepares it just for you.', color: 'bg-yellow-100', iconColor: 'text-yellow-600' },
   { icon: Smile, title: 'Enjoy your Meal', desc: 'Get your food delivered or pick it up. Eat, rate, and share the love!', color: 'bg-pink-100', iconColor: 'text-pink-500' },

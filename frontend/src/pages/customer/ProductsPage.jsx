@@ -9,6 +9,7 @@ import Pagination from '../../components/common/Pagination';
 import EmptyState from '../../components/common/EmptyState';
 import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
+import CategoryCarousel from '../../components/customer/CategoryCarousel';
 import { ShoppingBag } from 'lucide-react';
 
 const SORT_OPTIONS = [
@@ -151,26 +152,13 @@ export default function ProductsPage() {
           )}
         </AnimatePresence>
 
-        {/* Category Pills (quick filter) */}
-        {categories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-6 pb-1">
-            <button
-              onClick={() => setParam('category', '')}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                !category ? 'bg-primary text-white shadow-soft' : 'bg-white text-brand-muted border border-orange-100 hover:border-primary hover:text-primary'
-              }`}>
-              All
-            </button>
-            {categories.map((c) => (
-              <button key={c.id} onClick={() => setParam('category', c.id === category ? '' : c.id)}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  category === c.id ? 'bg-primary text-white shadow-soft' : 'bg-white text-brand-muted border border-orange-100 hover:border-primary hover:text-primary'
-                }`}>
-                <span>{c.icon}</span>{c.name}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Category filter — auto-scrolling carousel */}
+        <CategoryCarousel
+          variant="pills"
+          activeId={category}
+          onSelect={(id) => setParam('category', id === category ? '' : id)}
+          className="mb-6"
+        />
 
         {/* Products Grid */}
         {loading ? (

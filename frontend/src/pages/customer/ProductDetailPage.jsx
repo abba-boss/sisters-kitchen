@@ -64,7 +64,7 @@ export default function ProductDetailPage() {
   }));
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) { toast.error('Please login first'); return; }
+    // Guests can add to cart — login is only required at checkout
     const success = addToCart(product, qty);
     if (success) {
       setAddedToCart(true);
@@ -73,7 +73,7 @@ export default function ProductDetailPage() {
   };
 
   const handleWishlist = () => {
-    if (!isAuthenticated) { toast.error('Please login first'); return; }
+    if (!isAuthenticated) { toast.error('Please login to save to wishlist'); return; }
     toggle(product);
     toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist ❤️');
   };
