@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 
 export function ProductSkeleton() {
   return (
-    <div className="card overflow-hidden">
-      <div className="skeleton h-48 rounded-none" />
+    <div className="card overflow-hidden border border-orange-100/70">
+      <div className="skeleton h-56 rounded-none" />
       <div className="p-4 space-y-2.5">
         <div className="skeleton h-3 w-1/3 rounded-full" />
         <div className="skeleton h-4 w-4/5 rounded-full" />
@@ -21,8 +21,8 @@ export function ProductSkeleton() {
 
 export function VendorSkeleton() {
   return (
-    <div className="card overflow-hidden">
-      <div className="skeleton h-36 rounded-none" />
+    <div className="card overflow-hidden border border-orange-100/70">
+      <div className="skeleton h-40 rounded-none" />
       <div className="p-4 space-y-3">
         <div className="flex gap-3 items-center">
           <div className="skeleton w-14 h-14 rounded-2xl flex-shrink-0" />

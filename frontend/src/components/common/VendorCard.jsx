@@ -8,21 +8,21 @@ export default function VendorCard({ vendor }) {
 
   return (
     <motion.div
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -6 }}
       transition={{ duration: 0.2 }}
-      className="card card-hover group overflow-hidden"
+      className="card card-hover group overflow-hidden border border-orange-100/70"
     >
       <Link to={`/vendors/${vendor.id}`}>
         {/* Cover */}
-        <div className="relative h-36 overflow-hidden">
+        <div className="relative h-40 overflow-hidden">
           <img
             src={cover}
             alt={vendor.businessName}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
             loading="lazy"
             onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600'; }}
           />
-          <div className="absolute inset-0 bg-card-gradient" />
+          <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/60 via-brand-dark/10 to-transparent" />
 
           {/* Open/Closed badge */}
           <div className={`absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -34,9 +34,9 @@ export default function VendorCard({ vendor }) {
         </div>
 
         {/* Logo + Info */}
-        <div className="p-4 -mt-8 relative">
+        <div className="p-4 -mt-9 relative">
           <div className="flex items-end gap-3 mb-3">
-            <div className="w-14 h-14 rounded-2xl border-2 border-white shadow-card overflow-hidden bg-brand-bg flex-shrink-0">
+            <div className="w-16 h-16 rounded-[1.25rem] border-[3px] border-white shadow-card overflow-hidden bg-brand-bg flex-shrink-0">
               {logo ? (
                 <img
                   src={logo}
@@ -65,14 +65,14 @@ export default function VendorCard({ vendor }) {
           </div>
 
           {vendor.description && (
-            <p className="text-xs text-brand-muted line-clamp-2 mb-3 leading-relaxed">
+            <p className="text-sm text-brand-muted line-clamp-2 mb-3 leading-relaxed">
               {vendor.description}
             </p>
           )}
 
           {/* Rating + Location — NO order count */}
-          <div className="flex items-center justify-between text-xs text-brand-muted">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center justify-between text-xs text-brand-muted gap-3">
+            <div className="flex items-center gap-1 min-w-0">
               <Star size={12} fill="#FF7A59" className="text-primary" />
               <span className="font-semibold text-brand-dark">
                 {Number(vendor.rating || 0).toFixed(1)}
@@ -80,7 +80,7 @@ export default function VendorCard({ vendor }) {
               <span>({vendor.totalReviews || 0} reviews)</span>
             </div>
             {vendor.address && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 min-w-0">
                 <MapPin size={12} />
                 <span className="truncate max-w-[110px]">{vendor.address}</span>
               </div>
