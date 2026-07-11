@@ -1,10 +1,29 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
 import { Product } from "../entities/Product";
-import { Vendor } from "../entities/Vendor";
+import { Vendor, VendorStatus } from "../entities/Vendor";
 import { Category } from "../entities/Category";
 import { AuthRequest } from "../middleware/auth";
 import { uploadToCloudinary } from "../utils/helpers";
+import { SelectQueryBuilder } from "typeorm";
+
+/** Only products customers should see: available, approved vendor, kitchen open */
+function applyPublicProductFilters(qb: SelectQueryBuilder<Product>) {
+  qb
+    .where("product.isAvailable = :yes", { yes: true })
+    .andWhere("vendor.status = :approved", { approved: VendorStatus.APPROVED })
+    .andWhere("vendor.isOpen = :open", { open: true });
+  return qb;
+}
+
+function isProductPubliclyAvailable(product: Product): boolean {
+  const vendor = product.vendor;
+  return (
+    product.isAvailable &&
+    vendor?.status === VendorStatus.APPROVED &&
+    vendor?.isOpen === true
+  );
+}
 
 // ─── List / Search ─────────────────────────────────────────────
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
@@ -15,9 +34,9 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
     const qb = AppDataSource.getRepository(Product)
       .createQueryBuilder("product")
       .leftJoinAndSelect("product.vendor", "vendor")
-      .leftJoinAndSelect("product.category", "category")
-      .where("product.isAvailable = :yes", { yes: true })
-      .andWhere("vendor.status = :approved", { approved: "approved" });
+      .leftJoinAndSelect("product.category", "category");
+
+    applyPublicProductFilters(qb);
 
     if (search)   qb.andWhere("(product.name LIKE :s OR product.description LIKE :s)", { s: `%${search}%` });
     if (category) qb.andWhere("category.id = :cat", { cat: category });
@@ -46,30 +65,43 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
       relations: ["vendor", "category", "reviews", "reviews.user"],
     });
     if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
+    if (!isProductPubliclyAvailable(product)) {
+      res.status(404).json({
+        success: false,
+        message: product.vendor?.isOpen === false
+          ? "This kitchen is currently closed"
+          : "Product is not available",
+      });
+      return;
+    }
     res.json({ success: true, data: product });
   } catch (e: any) { res.status(500).json({ success: false, message: e.message }); }
 };
 
 export const getFeaturedProducts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const products = await AppDataSource.getRepository(Product).find({
-      where: { isFeatured: true, isAvailable: true },
-      relations: ["vendor", "category"],
-      take: 8,
-      order: { createdAt: "DESC" },
-    });
+    const qb = AppDataSource.getRepository(Product)
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.vendor", "vendor")
+      .leftJoinAndSelect("product.category", "category");
+    applyPublicProductFilters(qb);
+    qb.andWhere("product.isFeatured = :featured", { featured: true });
+
+    const products = await qb.orderBy("product.createdAt", "DESC").take(8).getMany();
     res.json({ success: true, data: products });
   } catch (e: any) { res.status(500).json({ success: false, message: e.message }); }
 };
 
 export const getFreshTodayProducts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const products = await AppDataSource.getRepository(Product).find({
-      where: { isFreshToday: true, isAvailable: true },
-      relations: ["vendor", "category"],
-      take: 8,
-      order: { updatedAt: "DESC" },
-    });
+    const qb = AppDataSource.getRepository(Product)
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.vendor", "vendor")
+      .leftJoinAndSelect("product.category", "category");
+    applyPublicProductFilters(qb);
+    qb.andWhere("product.isFreshToday = :fresh", { fresh: true });
+
+    const products = await qb.orderBy("product.updatedAt", "DESC").take(8).getMany();
     res.json({ success: true, data: products });
   } catch (e: any) { res.status(500).json({ success: false, message: e.message }); }
 };
@@ -121,6 +153,10 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<vo
   try {
     const vendor = await AppDataSource.getRepository(Vendor).findOne({ where: { user: { id: req.user!.id } } });
     if (!vendor) { res.status(404).json({ success: false, message: "Vendor profile not found" }); return; }
+    if (vendor.status !== VendorStatus.APPROVED) {
+      res.status(403).json({ success: false, message: "Your store must be approved before adding products" });
+      return;
+    }
 
     const {
       name, description, price, discountPrice, categoryId,

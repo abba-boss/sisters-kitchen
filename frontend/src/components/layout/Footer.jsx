@@ -33,8 +33,8 @@ export default function Footer() {
           <div>
             <h4 className="font-poppins font-semibold text-white mb-4">Explore</h4>
             <ul className="space-y-2.5">
-              {[['/', 'Home'], ['/products', 'Browse Food'], ['/vendors', 'Our Vendors'], ['/categories', 'Categories'], ['/about', 'About Us']].map(([to, label]) => (
-                <li key={to}>
+              {[['/', 'Home'], ['/feed', '📸 Food Feed'], ['/products', 'Browse Food'], ['/vendors', 'Our Vendors'], ['/rewards', '🪙 Kitchen Coins']].map(([to, label]) => (
+                <li key={label}>
                   <Link to={to} className="text-sm text-white/60 hover:text-primary transition-colors">{label}</Link>
                 </li>
               ))}
@@ -45,8 +45,8 @@ export default function Footer() {
           <div>
             <h4 className="font-poppins font-semibold text-white mb-4">For Vendors</h4>
             <ul className="space-y-2.5">
-              {[['/register?role=vendor', 'Become a Vendor'], ['/vendor/dashboard', 'Vendor Dashboard'], ['/vendor/products', 'Manage Products'], ['/vendor/orders', 'View Orders'], ['/faq', 'FAQ']].map(([to, label]) => (
-                <li key={to}>
+              {[['/register?role=vendor', 'Become a Vendor'], ['/register?role=vendor', 'Vendor Dashboard'], ['/register?role=vendor', 'Manage Products'], ['/register?role=vendor', 'View Orders'], ['/vendors', 'FAQ']].map(([to, label]) => (
+                <li key={label}>
                   <Link to={to} className="text-sm text-white/60 hover:text-primary transition-colors">{label}</Link>
                 </li>
               ))}
@@ -82,10 +82,6 @@ export default function Footer() {
           <p className="text-xs text-white/40 flex items-center gap-1">
             Made with <Heart size={12} className="text-primary" /> for women entrepreneurs
           </p>
-          <div className="flex gap-4">
-            <Link to="/privacy" className="text-xs text-white/40 hover:text-primary transition-colors">Privacy Policy</Link>
-            <Link to="/terms" className="text-xs text-white/40 hover:text-primary transition-colors">Terms of Service</Link>
-          </div>
         </div>
       </div>
     </footer>

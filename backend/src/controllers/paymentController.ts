@@ -32,9 +32,22 @@ export const initializePayment = async (req: AuthRequest, res: Response): Promis
 
     if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
 
-    const reference = `SK-${uuidv4().replace(/-/g, "").substring(0, 12).toUpperCase()}`;
+    if (order.status !== OrderStatus.PENDING) {
+      res.status(400).json({ success: false, message: "This order cannot be paid at its current stage" });
+      return;
+    }
 
     const paymentRepo = AppDataSource.getRepository(Payment);
+    const existingPaid = await paymentRepo.findOne({
+      where: { order: { id: order.id }, status: PaymentStatus.SUCCESS },
+    });
+    if (existingPaid) {
+      res.status(400).json({ success: false, message: "This order has already been paid" });
+      return;
+    }
+
+    const reference = `SK-${uuidv4().replace(/-/g, "").substring(0, 12).toUpperCase()}`;
+
     const payment = paymentRepo.create({
       reference,
       amount: order.total,
@@ -78,7 +91,13 @@ export const initializePayment = async (req: AuthRequest, res: Response): Promis
       let data = "";
       paystackRes.on("data", (chunk) => (data += chunk));
       paystackRes.on("end", () => {
-        const response = JSON.parse(data);
+        let response: any;
+        try {
+          response = JSON.parse(data);
+        } catch {
+          res.status(500).json({ success: false, message: "Invalid payment service response" });
+          return;
+        }
         if (response.status) {
           res.json({
             success: true,
@@ -115,11 +134,17 @@ export const verifyPayment = async (req: AuthRequest, res: Response): Promise<vo
       headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
     };
 
-    https.get(options, (paystackRes) => {
+    const paystackReq = https.get(options, (paystackRes) => {
       let data = "";
       paystackRes.on("data", (chunk) => (data += chunk));
       paystackRes.on("end", async () => {
-        const response = JSON.parse(data);
+        let response: any;
+        try {
+          response = JSON.parse(data);
+        } catch {
+          res.status(500).json({ success: false, message: "Invalid payment service response" });
+          return;
+        }
 
         const paymentRepo = AppDataSource.getRepository(Payment);
         const payment = await paymentRepo.findOne({
@@ -129,7 +154,24 @@ export const verifyPayment = async (req: AuthRequest, res: Response): Promise<vo
 
         if (!payment) { res.status(404).json({ success: false, message: "Payment not found" }); return; }
 
+        if (payment.status === PaymentStatus.SUCCESS) {
+          res.json({
+            success: true,
+            message: "Payment already verified",
+            data: { payment, orderId: payment.order.id },
+          });
+          return;
+        }
+
         if (response.data?.status === "success") {
+          const paidAmount = Number(response.data.amount) / 100;
+          if (Math.abs(paidAmount - Number(payment.amount)) > 0.01) {
+            payment.status = PaymentStatus.FAILED;
+            await paymentRepo.save(payment);
+            res.status(400).json({ success: false, message: "Payment amount mismatch" });
+            return;
+          }
+
           payment.status = PaymentStatus.SUCCESS;
           payment.paystackReference = response.data.reference;
           payment.metadata = response.data;
@@ -157,6 +199,8 @@ export const verifyPayment = async (req: AuthRequest, res: Response): Promise<vo
         }
       });
     });
+
+    paystackReq.on("error", () => res.status(500).json({ success: false, message: "Payment verification failed" }));
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

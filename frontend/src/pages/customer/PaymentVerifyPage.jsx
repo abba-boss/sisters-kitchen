@@ -3,11 +3,15 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
 import { paymentService } from '../../services/paymentService';
+import { useCartStore } from '../../store/cartStore';
+import { consumePendingCheckout } from '../../utils/checkoutStorage';
 
 export default function PaymentVerifyPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('loading'); // loading | success | failed
+  const clearCart = useCartStore((s) => s.clearCart);
+  const clearVendorItems = useCartStore((s) => s.clearVendorItems);
+  const [status, setStatus] = useState('loading');
   const [orderId, setOrderId] = useState(null);
 
   useEffect(() => {
@@ -16,12 +20,20 @@ export default function PaymentVerifyPage() {
 
     paymentService.verify(reference)
       .then(({ data }) => {
-        setOrderId(data.data?.orderId);
+        const verifiedOrderId = data.data?.orderId;
+        setOrderId(verifiedOrderId);
+
+        const pending = consumePendingCheckout();
+        if (pending) {
+          if (pending.clearAll) clearCart();
+          else if (pending.vendorId) clearVendorItems(pending.vendorId);
+        }
+
         setStatus('success');
-        setTimeout(() => navigate(`/orders/${data.data?.orderId}`), 3000);
+        setTimeout(() => navigate(`/orders/${verifiedOrderId}`), 3000);
       })
       .catch(() => setStatus('failed'));
-  }, []);
+  }, [searchParams, navigate, clearCart, clearVendorItems]);
 
   return (
     <div className="min-h-screen bg-hero-pattern flex items-center justify-center p-4">
@@ -66,10 +78,12 @@ export default function PaymentVerifyPage() {
               <XCircle size={40} className="text-red-500" />
             </div>
             <h2 className="font-poppins font-bold text-xl text-brand-dark mb-2">Payment Failed</h2>
-            <p className="text-brand-muted text-sm mb-6">We couldn't verify your payment. Please contact support if you were charged.</p>
+            <p className="text-brand-muted text-sm mb-6">
+              We couldn&apos;t verify your payment. Your cart is still saved — you can try again from your orders or cart.
+            </p>
             <div className="flex gap-3 justify-center">
               <Link to="/orders" className="btn-secondary">My Orders</Link>
-              <Link to="/checkout" className="btn-primary">Try Again</Link>
+              <Link to="/cart" className="btn-primary">Back to Cart</Link>
             </div>
           </>
         )}

@@ -3,12 +3,14 @@ import { AppDataSource } from "../config/database";
 import { Order, OrderStatus } from "../entities/Order";
 import { OrderItem } from "../entities/OrderItem";
 import { Product } from "../entities/Product";
-import { Vendor } from "../entities/Vendor";
+import { Vendor, VendorStatus } from "../entities/Vendor";
 import { Notification, NotificationType } from "../entities/Notification";
 import { AuthRequest } from "../middleware/auth";
 import { generateOrderNumber } from "../utils/helpers";
 import { UserRole } from "../entities/User";
 import { emitOrderUpdate, emitNotification, emitToAdmins } from "../config/socket";
+import { creditCoins, REWARD_RATES } from "./rewardController";
+import { RewardTxType } from "../entities/RewardTransaction";
 
 // ─── Notification helper ──────────────────────────────────────
 async function createAndEmitNotification(
@@ -42,14 +44,48 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
+    if (!vendor.isOpen) {
+      res.status(400).json({ success: false, message: "This kitchen is currently closed and not accepting orders" });
+      return;
+    }
+
+    if (vendor.status !== VendorStatus.APPROVED) {
+      res.status(400).json({ success: false, message: "This vendor is not accepting orders" });
+      return;
+    }
+
     const productRepo = AppDataSource.getRepository(Product);
     let subtotal = 0;
     const orderItems: Partial<OrderItem>[] = [];
 
     for (const item of items) {
-      const product = await productRepo.findOne({ where: { id: item.productId } });
+      const product = await productRepo.findOne({
+        where: { id: item.productId },
+        relations: ["vendor"],
+      });
       if (!product) {
         res.status(404).json({ success: false, message: `Product ${item.productId} not found` });
+        return;
+      }
+      if (product.vendor.id !== vendorId) {
+        res.status(400).json({
+          success: false,
+          message: `"${product.name}" does not belong to this vendor`,
+        });
+        return;
+      }
+      if (!product.isAvailable) {
+        res.status(400).json({
+          success: false,
+          message: `"${product.name}" is no longer available`,
+        });
+        return;
+      }
+      if (product.stock > 0 && item.quantity > product.stock) {
+        res.status(400).json({
+          success: false,
+          message: `Only ${product.stock} of "${product.name}" left in stock`,
+        });
         return;
       }
       const price = Number(product.discountPrice) || Number(product.price);
@@ -191,6 +227,21 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
 
     if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
 
+    const isAdmin = req.user!.role === UserRole.ADMIN;
+    if (!isAdmin) {
+      const vendorRepo = AppDataSource.getRepository(Vendor);
+      const vendor = await vendorRepo.findOne({ where: { user: { id: req.user!.id } } });
+      if (!vendor || order.vendor.id !== vendor.id) {
+        res.status(403).json({ success: false, message: "Not authorized to update this order" });
+        return;
+      }
+    }
+
+    if (!Object.values(OrderStatus).includes(status)) {
+      res.status(400).json({ success: false, message: "Invalid order status" });
+      return;
+    }
+
     const prevStatus = order.status;
     order.status = status;
     if (rejectionReason) order.rejectionReason = rejectionReason;
@@ -198,14 +249,30 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
 
     await orderRepo.save(order);
 
-    // Update vendor earnings on delivery
-    if (status === OrderStatus.DELIVERED) {
+    // Update vendor earnings on delivery (once only)
+    if (prevStatus !== OrderStatus.DELIVERED && status === OrderStatus.DELIVERED) {
       const vendorRepo = AppDataSource.getRepository(Vendor);
       const vendor = await vendorRepo.findOne({ where: { id: order.vendor.id } });
       if (vendor) {
         vendor.totalOrders += 1;
         vendor.totalEarnings = Number(vendor.totalEarnings) + Number(order.total);
         await vendorRepo.save(vendor);
+      }
+
+      // ── Reward customer with Kitchen Coins ────────────────────
+      try {
+        const coins = Math.floor(Number(order.total) / 100) * REWARD_RATES.ORDER_PER_100_NAIRA;
+        if (coins > 0) {
+          await creditCoins(
+            order.user.id,
+            coins,
+            RewardTxType.EARN_ORDER,
+            `Earned ${coins} coins for order #${order.orderNumber}`,
+            order.id
+          );
+        }
+      } catch (rewardErr) {
+        console.error("Reward credit failed (non-fatal):", rewardErr);
       }
     }
 

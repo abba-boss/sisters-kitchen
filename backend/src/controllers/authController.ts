@@ -116,7 +116,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as { userId: string };
     const userRepo = AppDataSource.getRepository(User);
     const user = await userRepo.findOne({
-      where: { id: decoded.userId, refreshToken },
+      where: { id: decoded.userId, refreshToken, isActive: true },
     });
 
     if (!user) {
@@ -154,7 +154,11 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
       where: { id: req.user!.id },
       relations: ["vendor"],
     });
-    const { password: _, refreshToken: __, ...userWithoutSensitive } = user!;
+    if (!user) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
+    }
+    const { password: _, refreshToken: __, ...userWithoutSensitive } = user;
     res.json({ success: true, data: userWithoutSensitive });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

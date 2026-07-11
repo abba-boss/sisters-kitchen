@@ -36,7 +36,7 @@ export default function VendorsPage() {
 
   return (
     <MainLayout>
-      <div className="page-container py-10">
+      <div className="page-container page-shell">
         {/* Header */}
         <div className="text-center mb-10">
           <h1 className="section-title mb-2">Our Vendors</h1>

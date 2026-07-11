@@ -6,15 +6,30 @@ import CategoryCarousel from './CategoryCarousel';
 import { statsService } from '../../services/statsService';
 
 const FOOD_IMAGES = [
-  { src: 'https://images.unsplash.com/photo-1567364347001-01d1d33b9a78?w=500', alt: 'Jollof Rice' },
-  { src: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=500', alt: 'Burger' },
-  { src: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500', alt: 'Cake' },
-  { src: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=500', alt: 'Shawarma' },
-];
+  {
+    src: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=500',
+    alt: 'Burger'
+  }, 
+  
+  {
 
+    src: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500',
+
+    alt: 'Pizza'
+
+  },
+  {
+    src: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500',
+    alt: 'Cake'
+  },
+  {
+    src: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=500',
+    alt: 'Shawarma'
+  }
+];
 export default function HeroSection() {
-  const [query, setQuery]   = useState('');
-  const [stats, setStats]   = useState({ vendors: null, products: null, rating: null });
+  const [query, setQuery] = useState('');
+  const [stats, setStats] = useState({ vendors: null, products: null, rating: null });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,12 +37,12 @@ export default function HeroSection() {
       .then(({ data }) => {
         const d = data.data;
         setStats({
-          vendors:  d.vendors,
+          vendors: d.vendors,
           products: d.products,
-          rating:   d.avgRating > 0 ? d.avgRating.toFixed(1) : null,
+          rating: d.avgRating > 0 ? d.avgRating.toFixed(1) : null,
         });
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleSearch = (e) => {
@@ -36,9 +51,9 @@ export default function HeroSection() {
   };
 
   const statCards = [
-    { icon: Store,       value: stats.vendors  != null ? `${stats.vendors}+`  : '…', label: 'Vendors'    },
-    { icon: ShoppingBag, value: stats.products != null ? `${stats.products}+` : '…', label: 'Dishes'     },
-    { icon: Star,        value: stats.rating   ?? '…',                              label: 'Avg Rating' },
+    { icon: Store, value: stats.vendors != null ? `${stats.vendors}+` : '…', label: 'Vendors' },
+    { icon: ShoppingBag, value: stats.products != null ? `${stats.products}+` : '…', label: 'Dishes' },
+    { icon: Star, value: stats.rating ?? '…', label: 'Avg Rating' },
   ];
 
   return (
@@ -53,12 +68,12 @@ export default function HeroSection() {
           {/* ── Left copy ───────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0  }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55 }}
           >
             <motion.span
               initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1  }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.15 }}
               className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-semibold px-4 py-1.5 rounded-full mb-5"
             >
@@ -125,7 +140,7 @@ export default function HeroSection() {
           {/* ── Right image collage ──────────────────── */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1  }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.65, delay: 0.2 }}
             className="relative hidden lg:block"
           >
@@ -155,7 +170,7 @@ export default function HeroSection() {
             {/* Live stats floating card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0  }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.9 }}
               className="absolute -bottom-4 -left-6 bg-white rounded-2xl shadow-card-hover px-5 py-4 flex gap-5"
             >

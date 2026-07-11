@@ -19,6 +19,9 @@ export const useCartStore = create(
 
       // ── Add item — no single-vendor restriction ──────────────
       addItem: (product, quantity = 1) => {
+        if (product.vendor?.isOpen === false) {
+          return { conflict: false, error: 'closed' };
+        }
         const { items } = get();
         const existing = items.find((i) => i.id === product.id);
         if (existing) {
@@ -67,7 +70,10 @@ export const useCartStore = create(
           return sum + price * i.quantity;
         }, 0),
 
-      getTotal: () => get().getSubtotal() + 500,
+      getTotal: () => {
+        const groups = get().getVendorGroups();
+        return get().getSubtotal() + 500 * groups.length;
+      },
 
       // Group items by vendor
       getVendorGroups: () => {

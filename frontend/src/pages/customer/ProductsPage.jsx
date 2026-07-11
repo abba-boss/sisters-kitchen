@@ -69,7 +69,7 @@ export default function ProductsPage() {
 
   return (
     <MainLayout>
-      <div className="page-container py-10">
+      <div className="page-container page-shell">
         {/* Header */}
         <div className="mb-8">
           <h1 className="section-title mb-1">

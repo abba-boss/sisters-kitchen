@@ -8,6 +8,7 @@ export const useAuthStore = create(
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
+      _hasHydrated: false,
 
       setAuth: (user, accessToken, refreshToken) =>
         set({ user, accessToken, refreshToken, isAuthenticated: true }),
@@ -16,6 +17,8 @@ export const useAuthStore = create(
 
       logout: () =>
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
 
       isAdmin: () => get().user?.role === 'admin',
       isVendor: () => get().user?.role === 'vendor',
@@ -29,6 +32,9 @@ export const useAuthStore = create(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

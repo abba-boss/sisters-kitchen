@@ -5,6 +5,14 @@ import { User, UserRole } from "../entities/User";
 import { AuthRequest } from "../middleware/auth";
 import { uploadToCloudinary } from "../utils/helpers";
 
+function sanitizeVendorPublic(vendor: Vendor) {
+  const { bankName, accountNumber, accountName, user, ...rest } = vendor;
+  const safeUser = user
+    ? { id: user.id, firstName: user.firstName, lastName: user.lastName }
+    : undefined;
+  return { ...rest, user: safeUser };
+}
+
 export const getAllVendors = async (req: Request, res: Response): Promise<void> => {
   try {
     const { page = 1, limit = 12, search, status } = req.query;
@@ -28,7 +36,7 @@ export const getAllVendors = async (req: Request, res: Response): Promise<void> 
 
     res.json({
       success: true,
-      data: vendors,
+      data: vendors.map(sanitizeVendorPublic),
       meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (error: any) {
@@ -49,7 +57,14 @@ export const getVendorById = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    res.json({ success: true, data: vendor });
+    // Hide menu when kitchen is closed; only show available products when open
+    if (vendor.products) {
+      vendor.products = vendor.isOpen
+        ? vendor.products.filter((p) => p.isAvailable)
+        : [];
+    }
+
+    res.json({ success: true, data: sanitizeVendorPublic(vendor) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -111,7 +126,10 @@ export const updateVendorProfile = async (req: AuthRequest, res: Response): Prom
       whatsapp: whatsapp || vendor.whatsapp,
       openingTime: openingTime || vendor.openingTime,
       closingTime: closingTime || vendor.closingTime,
-      availableDays: availableDays ? JSON.parse(availableDays) : vendor.availableDays,
+      availableDays: (() => {
+        if (!availableDays) return vendor.availableDays;
+        try { return JSON.parse(availableDays); } catch { return vendor.availableDays; }
+      })(),
       bankName: bankName || vendor.bankName,
       accountNumber: accountNumber || vendor.accountNumber,
       accountName: accountName || vendor.accountName,
@@ -135,6 +153,14 @@ export const toggleVendorStatus = async (req: AuthRequest, res: Response): Promi
 
     if (!vendor) {
       res.status(404).json({ success: false, message: "Vendor not found" });
+      return;
+    }
+
+    if (vendor.status !== VendorStatus.APPROVED) {
+      res.status(400).json({
+        success: false,
+        message: "Your store must be approved before you can open for business",
+      });
       return;
     }
 
@@ -188,6 +214,11 @@ export const updateVendorApproval = async (req: AuthRequest, res: Response): Pro
 
     if (!vendor) {
       res.status(404).json({ success: false, message: "Vendor not found" });
+      return;
+    }
+
+    if (!Object.values(VendorStatus).includes(status)) {
+      res.status(400).json({ success: false, message: "Invalid vendor status" });
       return;
     }
 

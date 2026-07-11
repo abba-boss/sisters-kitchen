@@ -5,7 +5,11 @@ export const useCart = () => {
   const store = useCartStore();
 
   const addToCart = (product, quantity = 1) => {
-    store.addItem(product, quantity);
+    const result = store.addItem(product, quantity);
+    if (result?.error === 'closed') {
+      toast.error('This kitchen is currently closed');
+      return false;
+    }
     toast.success('Added to cart', { id: `cart-${product.id}` });
     return true;
   };

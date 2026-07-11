@@ -37,7 +37,7 @@ export default function PaymentHistoryPage() {
 
   return (
     <MainLayout>
-      <div className="page-container py-10">
+      <div className="page-container page-shell">
         <h1 className="section-title mb-8">Payment History</h1>
 
         {loading ? (

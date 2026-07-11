@@ -73,7 +73,14 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
       imageUrl = await uploadToCloudinary(req.file.path, "sisters-kitchen/categories");
     }
 
-    Object.assign(category, { ...req.body, image: imageUrl });
+    Object.assign(category, {
+      name: req.body.name ?? category.name,
+      description: req.body.description ?? category.description,
+      icon: req.body.icon ?? category.icon,
+      sortOrder: req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : category.sortOrder,
+      isActive: req.body.isActive !== undefined ? req.body.isActive === "true" || req.body.isActive === true : category.isActive,
+      image: imageUrl,
+    });
     await categoryRepo.save(category);
     res.json({ success: true, message: "Category updated", data: category });
   } catch (error: any) {

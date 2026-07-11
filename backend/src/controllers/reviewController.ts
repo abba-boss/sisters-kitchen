@@ -4,10 +4,17 @@ import { Review } from "../entities/Review";
 import { Product } from "../entities/Product";
 import { Vendor } from "../entities/Vendor";
 import { AuthRequest } from "../middleware/auth";
+import { creditCoins, REWARD_RATES } from "./rewardController";
+import { RewardTxType } from "../entities/RewardTransaction";
 
 export const createReview = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { rating, comment, productId, vendorId } = req.body;
+
+    if (!productId && !vendorId) {
+      res.status(400).json({ success: false, message: "Product or vendor ID is required" });
+      return;
+    }
 
     const reviewRepo = AppDataSource.getRepository(Review);
     const review = reviewRepo.create({
@@ -19,31 +26,46 @@ export const createReview = async (req: AuthRequest, res: Response): Promise<voi
     if (productId) {
       const productRepo = AppDataSource.getRepository(Product);
       const product = await productRepo.findOne({ where: { id: productId } });
-      if (product) {
-        review.product = product;
+      if (!product) {
+        res.status(404).json({ success: false, message: "Product not found" });
+        return;
+      }
+      review.product = product;
         // Update product rating
         const reviews = await reviewRepo.find({ where: { product: { id: productId } } });
         const avgRating = (reviews.reduce((sum, r) => sum + r.rating, 0) + Number(rating)) / (reviews.length + 1);
         product.rating = Math.round(avgRating * 10) / 10;
         product.totalReviews = reviews.length + 1;
         await productRepo.save(product);
-      }
     }
 
     if (vendorId) {
       const vendorRepo = AppDataSource.getRepository(Vendor);
       const vendor = await vendorRepo.findOne({ where: { id: vendorId } });
-      if (vendor) {
-        review.vendor = vendor;
+      if (!vendor) {
+        res.status(404).json({ success: false, message: "Vendor not found" });
+        return;
+      }
+      review.vendor = vendor;
         const reviews = await reviewRepo.find({ where: { vendor: { id: vendorId } } });
         const avgRating = (reviews.reduce((sum, r) => sum + r.rating, 0) + Number(rating)) / (reviews.length + 1);
         vendor.rating = Math.round(avgRating * 10) / 10;
         vendor.totalReviews = reviews.length + 1;
         await vendorRepo.save(vendor);
-      }
     }
 
     await reviewRepo.save(review);
+
+    // ── Reward reviewer ────────────────────────────────────────
+    try {
+      await creditCoins(
+        req.user!.id, REWARD_RATES.REVIEW,
+        RewardTxType.EARN_REVIEW,
+        "Earned coins for writing a review",
+        review.id
+      );
+    } catch {}
+
     res.status(201).json({ success: true, message: "Review submitted", data: review });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

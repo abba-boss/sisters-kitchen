@@ -7,6 +7,11 @@ import { AuthRequest } from "../middleware/auth";
 export const toggleFavorite = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { productId } = req.body;
+    if (!productId) {
+      res.status(400).json({ success: false, message: "Product ID is required" });
+      return;
+    }
+
     const favoriteRepo = AppDataSource.getRepository(Favorite);
 
     const existing = await favoriteRepo.findOne({

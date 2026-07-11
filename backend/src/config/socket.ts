@@ -128,3 +128,34 @@ export const emitOrderUpdate = (order: any) => {
 export const emitNotification = (userId: string, notification: any) => {
   emitToUser(userId, "notification:new", notification);
 };
+
+// ─── V2 Social Commerce emit helpers ───────────────────────────
+
+/** Broadcast a new post to followers (uses a "feed" room per vendor) */
+export const emitNewPost = (vendorId: string, post: any) => {
+  if (!io) return;
+  io.to(`feed:vendor:${vendorId}`).emit("post:new", { post });
+};
+
+/** Like / unlike event on a post (visible to post author + followers) */
+export const emitPostLike = (authorUserId: string, data: any) => {
+  if (!io) return;
+  emitToUser(authorUserId, "post:liked", data);
+};
+
+/** New comment event */
+export const emitPostComment = (authorUserId: string, data: any) => {
+  if (!io) return;
+  emitToUser(authorUserId, "post:commented", data);
+};
+
+/** New follower event */
+export const emitNewFollower = (vendorUserId: string, data: any) => {
+  if (!io) return;
+  emitToUser(vendorUserId, "vendor:new_follower", data);
+};
+
+/** Let a user join the feed room for a vendor they follow */
+export const joinFeedRoom = (socket: any, vendorId: string) => {
+  socket.join(`feed:vendor:${vendorId}`);
+};

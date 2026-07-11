@@ -5,7 +5,9 @@ import { useCart } from '../../hooks/useCart';
 import { useWishlistStore } from '../../store/wishlistStore';
 import { useAuthStore } from '../../store/authStore';
 import { useAuthModalStore } from '../../store/authModalStore';
+import { favoriteService } from '../../services/favoriteService';
 import { formatPrice } from '../../utils/formatters';
+import OptimizedImage from './OptimizedImage';
 import toast from 'react-hot-toast';
 
 export default function ProductCard({ product }) {
@@ -35,8 +37,17 @@ export default function ProductCard({ product }) {
       });
       return;
     }
+    // Optimistic UI; backend is source of truth across devices
     toggle(product);
-    toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist');
+    favoriteService.toggle(product.id)
+      .then(({ data }) => {
+        toast.success(data.isFavorite ? 'Added to wishlist' : 'Removed from wishlist');
+      })
+      .catch(() => {
+        // rollback
+        toggle(product);
+        toast.error('Could not update wishlist. Please try again.');
+      });
   };
 
   return (
@@ -48,11 +59,10 @@ export default function ProductCard({ product }) {
       <Link to={`/products/${product.id}`}>
         {/* Image */}
         <div className="relative overflow-hidden h-48">
-          <img
+          <OptimizedImage
             src={image}
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
           />
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
@@ -69,7 +79,9 @@ export default function ProductCard({ product }) {
           </div>
           {/* Wishlist */}
           <button
+            type="button"
             onClick={handleWishlist}
+            aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
             className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-card transition-all ${
               wishlisted ? 'bg-primary text-white' : 'bg-white text-brand-muted hover:bg-primary hover:text-white'
             }`}

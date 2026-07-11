@@ -17,8 +17,9 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
     const orderRepo = AppDataSource.getRepository(Order);
 
     // Total stats
-    const totalOrders = await orderRepo.count({ where: { vendor: { id: vendor.id } } });
+    const totalOrders     = await orderRepo.count({ where: { vendor: { id: vendor.id } } });
     const deliveredOrders = await orderRepo.count({ where: { vendor: { id: vendor.id }, status: OrderStatus.DELIVERED } });
+    const totalProducts   = await AppDataSource.getRepository(Product).count({ where: { vendor: { id: vendor.id } } });
 
     // Revenue by month (last 6 months)
     const sixMonthsAgo = new Date();
@@ -85,6 +86,7 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
         summary: {
           totalOrders,
           deliveredOrders,
+          totalProducts,
           totalEarnings: vendor.totalEarnings,
           rating: vendor.rating,
           totalReviews: vendor.totalReviews,

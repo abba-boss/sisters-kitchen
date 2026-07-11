@@ -42,7 +42,7 @@ export default function NotificationsPage() {
 
   return (
     <MainLayout>
-      <div className="page-container py-10 max-w-2xl mx-auto">
+      <div className="page-container page-shell max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="section-title">Notifications</h1>

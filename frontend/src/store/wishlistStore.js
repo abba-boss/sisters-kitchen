@@ -6,6 +6,8 @@ export const useWishlistStore = create(
     (set, get) => ({
       items: [],
 
+      setItems: (items = []) => set({ items }),
+
       toggle: (product) => {
         const exists = get().items.find((i) => i.id === product.id);
         if (exists) {

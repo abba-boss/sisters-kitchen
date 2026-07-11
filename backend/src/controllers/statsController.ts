@@ -16,6 +16,7 @@ export const getPublicStats = async (_req: Request, res: Response): Promise<void
         .createQueryBuilder("product")
         .innerJoin("product.vendor", "vendor")
         .where("vendor.status = :approved", { approved: VendorStatus.APPROVED })
+        .andWhere("vendor.isOpen = :open", { open: true })
         .andWhere("product.isAvailable = :yes", { yes: true })
         .getCount(),
       reviewRepo

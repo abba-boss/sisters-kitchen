@@ -40,7 +40,7 @@ export default function ConfirmDialog({
             disabled={loading}
             className={`flex-1 py-3 text-sm font-semibold rounded-2xl text-white transition-all flex items-center justify-center gap-2 ${
               variant === 'danger'
-                ? 'bg-red-500 hover:bg-red-600 active:scale-[0.98]'
+                ? 'btn-danger flex-1'
                 : 'btn-primary'
             }`}
           >

@@ -76,7 +76,7 @@ export default function OrderDetailPage() {
 
   return (
     <MainLayout>
-      <div className="page-container py-10 max-w-3xl mx-auto">
+      <div className="page-container page-shell max-w-3xl mx-auto">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-brand-muted mb-6">
           <Link to="/orders" className="hover:text-primary">My Orders</Link>

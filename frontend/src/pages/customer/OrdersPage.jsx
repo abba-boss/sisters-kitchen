@@ -47,7 +47,7 @@ export default function OrdersPage() {
 
   return (
     <MainLayout>
-      <div className="page-container py-10">
+      <div className="page-container page-shell">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <h1 className="section-title">My Orders</h1>

@@ -10,7 +10,7 @@ export default function WishlistPage() {
 
   return (
     <MainLayout>
-      <div className="page-container py-10">
+      <div className="page-container page-shell">
         <div className="flex items-center justify-between mb-8">
           <h1 className="section-title">My Wishlist ({items.length})</h1>
           {items.length > 0 && (
