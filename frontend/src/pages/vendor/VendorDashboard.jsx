@@ -11,6 +11,7 @@ import {
   Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import ErrorState from '../../components/common/ErrorState';
 import { vendorService } from '../../services/vendorService';
 import { orderService } from '../../services/orderService';
 import { useSocketEvent } from '../../hooks/useSocket';
@@ -43,8 +44,8 @@ function UnderReviewBanner({ businessName }) {
         </p>
         <p className="text-xs text-yellow-700 mt-0.5 leading-relaxed">
           <strong>{businessName}</strong> has been registered successfully. Our team is reviewing your account —
-          you'll be approved within <strong>24–48 hours</strong>. You can set up your store in the meantime,
-          but customers won't see your products until you're approved.
+          you&apos;ll be approved within <strong>24–48 hours</strong>. You can set up your store in the meantime,
+          but customers won&apos;t see your products until you&apos;re approved.
         </p>
         <div className="flex items-center gap-3 mt-2">
           <Link to="/vendor/products/new"
@@ -58,8 +59,10 @@ function UnderReviewBanner({ businessName }) {
         </div>
       </div>
       <button
+        type="button"
         onClick={() => { setDismissed(true); sessionStorage.setItem('review-banner-dismissed', '1'); }}
         className="p-1.5 rounded-lg hover:bg-yellow-100 text-yellow-600 transition-colors flex-shrink-0"
+        aria-label="Dismiss"
       >
         <X size={15} />
       </button>
@@ -72,9 +75,12 @@ export default function VendorDashboard() {
   const [vendor, setVendor] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [toggling, setToggling] = useState(false);
 
-  useEffect(() => {
+  const fetchDashboard = () => {
+    setLoading(true);
+    setLoadError(false);
     Promise.all([
       vendorService.getMyProfile(),
       api.get('/analytics/vendor'),
@@ -85,9 +91,11 @@ export default function VendorDashboard() {
         setAnalytics(analyticsRes.data.data);
         setRecentOrders(ordersRes.data.data || []);
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchDashboard(); }, []);
 
   // Live new order counter
   useSocketEvent('order:new', ({ order }) => {
@@ -131,6 +139,14 @@ export default function VendorDashboard() {
 
   return (
     <DashboardLayout>
+      {loadError && !loading && !vendor ? (
+        <ErrorState
+          title="Couldn't load dashboard"
+          message="We couldn't load your vendor dashboard. Check your connection and try again."
+          onRetry={fetchDashboard}
+        />
+      ) : (
+      <>
       {/* Under-review alert for pending vendors */}
       {vendor?.status === 'pending' && (
         <UnderReviewBanner businessName={vendor.businessName} />
@@ -287,6 +303,8 @@ export default function VendorDashboard() {
           )}
         </div>
       </div>
+      </>
+      )}
     </DashboardLayout>
   );
 }

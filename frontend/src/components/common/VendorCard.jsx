@@ -1,9 +1,12 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, Clock, CheckCircle } from 'lucide-react';
+import OptimizedImage from './OptimizedImage';
+
+const VENDOR_COVER_FALLBACK = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600';
 
 export default function VendorCard({ vendor }) {
-  const cover = vendor.coverImage || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600';
+  const cover = vendor.coverImage || VENDOR_COVER_FALLBACK;
   const logo  = vendor.logo || null;
 
   return (
@@ -15,12 +18,11 @@ export default function VendorCard({ vendor }) {
       <Link to={`/vendors/${vendor.id}`}>
         {/* Cover */}
         <div className="relative h-40 overflow-hidden">
-          <img
+          <OptimizedImage
             src={cover}
             alt={vendor.businessName}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-            loading="lazy"
-            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600'; }}
+            fallback={VENDOR_COVER_FALLBACK}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/60 via-brand-dark/10 to-transparent" />
 
@@ -42,7 +44,9 @@ export default function VendorCard({ vendor }) {
                   src={logo}
                   alt={vendor.businessName}
                   className="w-full h-full object-cover"
-                  onError={(e) => { e.target.style.display = 'none'; }}
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-primary/10">

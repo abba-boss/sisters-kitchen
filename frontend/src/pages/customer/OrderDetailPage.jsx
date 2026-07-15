@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { PageLoader } from '../../components/common/LoadingSkeleton';
+import ErrorState from '../../components/common/ErrorState';
+import OptimizedImage from '../../components/common/OptimizedImage';
 import { orderService } from '../../services/orderService';
 import { joinOrderRoom, leaveOrderRoom } from '../../services/socketService';
 import { useSocketEvent } from '../../hooks/useSocket';
@@ -64,9 +66,14 @@ export default function OrderDetailPage() {
   if (loading) return <PageLoader />;
   if (!order) return (
     <MainLayout>
-      <div className="page-container py-20 text-center">
-        <p className="text-brand-muted">Order not found.</p>
-        <Link to="/orders" className="btn-primary mt-4 inline-block">My Orders</Link>
+      <div className="page-container page-shell">
+        <ErrorState
+          title="Order not found"
+          message="We couldn't find this order. It may have been removed or the link is incorrect."
+          actionLabel="My Orders"
+          actionTo="/orders"
+          onRetry={() => window.location.reload()}
+        />
       </div>
     </MainLayout>
   );
@@ -76,7 +83,7 @@ export default function OrderDetailPage() {
 
   return (
     <MainLayout>
-      <div className="page-container py-10 max-w-3xl mx-auto">
+      <div className="page-container page-shell max-w-3xl mx-auto">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-brand-muted mb-6">
           <Link to="/orders" className="hover:text-primary">My Orders</Link>
@@ -196,7 +203,7 @@ export default function OrderDetailPage() {
               const image = item.product?.images?.[0] || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=100';
               return (
                 <div key={item.id} className="flex items-center gap-3">
-                  <img src={image} alt={item.product?.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                  <OptimizedImage src={image} alt={item.product?.name || ''} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-brand-dark truncate">{item.product?.name}</p>
                     <p className="text-xs text-brand-muted">x{item.quantity} × {formatPrice(item.price)}</p>

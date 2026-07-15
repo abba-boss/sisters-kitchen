@@ -4,11 +4,11 @@ import { Home, Rss, Compass, ShoppingBag, User } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const NAV = [
-  { to: '/', icon: Home, label: 'Home' },
-  { to: '/feed', icon: Rss, label: 'Feed' },
-  { to: '/products?discover=1', match: '/products', icon: Compass, label: 'Discover' },
-  { to: '/orders', icon: ShoppingBag, label: 'Orders', authOnly: true },
-  { to: '/profile', icon: User, label: 'Profile', authOnly: true },
+  { to: '/shop',     match: '/shop',     icon: Home,      label: 'Shop'    },
+  { to: '/feed',     match: '/feed',     icon: Rss,       label: 'Feed'    },
+  { to: '/discover', match: '/discover', icon: Compass,   label: 'Discover'},
+  { to: '/orders',   match: '/orders',   icon: ShoppingBag, label: 'Orders', authOnly: true },
+  { to: '/profile',  match: '/profile',  icon: User,      label: 'Profile', authOnly: true },
 ];
 
 export default function MobileBottomNav() {

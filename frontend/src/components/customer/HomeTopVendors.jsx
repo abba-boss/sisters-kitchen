@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ChevronRight, Star } from 'lucide-react';
-import { vendorService } from '../../services/vendorService';
-import FollowButton from '../social/FollowButton';
-import { useAuthStore } from '../../store/authStore';
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ChevronRight, Star } from "lucide-react";
+import { vendorService } from "../../services/vendorService";
+import { useAuthStore } from "../../store/authStore";
 
 export default function HomeTopVendors() {
   const [vendors, setVendors] = useState([]);
@@ -13,7 +12,8 @@ export default function HomeTopVendors() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    vendorService.getAll({ limit: 6, sort: 'rating' })
+    vendorService
+      .getAll({ limit: 6, sort: "rating" })
       .then(({ data }) => setVendors(data.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -24,10 +24,15 @@ export default function HomeTopVendors() {
       <div className="page-container">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <h2 className="font-poppins font-bold text-xl text-brand-dark">Top Rated Vendors</h2>
+            <h2 className="font-poppins font-bold text-xl text-brand-dark">
+              Top Rated Vendors
+            </h2>
             <span className="text-lg">⭐</span>
           </div>
-          <Link to="/vendors" className="flex items-center gap-1 text-primary text-sm font-semibold hover:underline">
+          <Link
+            to="/vendors"
+            className="flex items-center gap-1 text-primary text-sm font-semibold hover:underline"
+          >
             See all <ChevronRight size={14} />
           </Link>
         </div>
@@ -35,7 +40,10 @@ export default function HomeTopVendors() {
         {loading ? (
           <div className="flex gap-4 overflow-hidden">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex-shrink-0 w-44 skeleton rounded-3xl h-56" />
+              <div
+                key={i}
+                className="flex-shrink-0 w-44 skeleton rounded-3xl h-56"
+              />
             ))}
           </div>
         ) : (
@@ -58,7 +66,7 @@ function VendorCard({ vendor, index }) {
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
+      viewport={{ once: true, margin: "-40px" }}
       transition={{ delay: index * 0.07 }}
       className="flex-shrink-0 w-40 sm:w-44 bg-white rounded-3xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden"
     >
@@ -68,13 +76,21 @@ function VendorCard({ vendor, index }) {
         onClick={() => navigate(`/vendors/${vendor.id}`)}
       >
         <img
-          src={vendor.coverImage || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400'}
+          src={
+            vendor.coverImage ||
+            "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400"
+          }
           alt={vendor.businessName}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400'; }}
+          onError={(e) => {
+            e.target.src =
+              "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400";
+          }}
         />
         {/* Open pill */}
-        <div className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full border-2 border-white ${vendor.isOpen ? 'bg-accent' : 'bg-gray-400'}`} />
+        <div
+          className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full border-2 border-white ${vendor.isOpen ? "bg-accent" : "bg-gray-400"}`}
+        />
       </div>
 
       {/* Avatar + info */}
@@ -84,10 +100,16 @@ function VendorCard({ vendor, index }) {
           onClick={() => navigate(`/vendors/${vendor.id}`)}
         >
           {vendor.logo ? (
-            <img src={vendor.logo} alt={vendor.businessName} className="w-full h-full object-cover" />
+            <img
+              src={vendor.logo}
+              alt={vendor.businessName}
+              className="w-full h-full object-cover"
+            />
           ) : (
             <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-              <span className="text-primary font-bold text-sm">{vendor.businessName?.[0]}</span>
+              <span className="text-primary font-bold text-sm">
+                {vendor.businessName?.[0]}
+              </span>
             </div>
           )}
         </div>
@@ -101,24 +123,22 @@ function VendorCard({ vendor, index }) {
 
         <div className="flex items-center justify-center gap-1 text-xs text-brand-muted mb-1">
           <Star size={10} fill="#FF7A59" className="text-primary" />
-          <span className="font-semibold text-brand-dark">{Number(vendor.rating||0).toFixed(1)}</span>
+          <span className="font-semibold text-brand-dark">
+            {Number(vendor.rating || 0).toFixed(1)}
+          </span>
         </div>
 
         <p className="text-xs text-brand-muted text-center mb-3">
           {vendor.totalOrders}+ orders
         </p>
 
-        {/* Follow button — only for logged-in users */}
-        {isAuthenticated ? (
-          <FollowButton vendorId={vendor.id} size="sm" variant="fill" className="w-full justify-center" />
-        ) : (
-          <button
-            onClick={() => navigate(`/vendors/${vendor.id}`)}
-            className="w-full text-xs font-semibold text-primary border border-primary/30 rounded-full py-1.5 hover:bg-primary hover:text-white transition-all"
-          >
-            View Store
-          </button>
-        )}
+        {/* View Store button */}
+        <button
+          onClick={() => navigate(`/vendors/${vendor.id}`)}
+          className="w-full text-xs font-semibold text-primary border border-primary/30 rounded-full py-1.5 hover:bg-primary hover:text-white transition-all"
+        >
+          View Store
+        </button>
       </div>
     </motion.div>
   );

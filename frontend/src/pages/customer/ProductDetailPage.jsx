@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { PageLoader } from '../../components/common/LoadingSkeleton';
+import ErrorState from '../../components/common/ErrorState';
+import OptimizedImage from '../../components/common/OptimizedImage';
 import StarRating from '../../components/common/StarRating';
 import { productService } from '../../services/productService';
 import { reviewService } from '../../services/reviewService';
@@ -43,9 +45,14 @@ export default function ProductDetailPage() {
   if (loading) return <PageLoader />;
   if (!product) return (
     <MainLayout>
-      <div className="page-container py-20 text-center">
-        <p className="text-brand-muted">Product not found.</p>
-        <Link to="/products" className="btn-primary mt-4 inline-block">Browse Food</Link>
+      <div className="page-container page-shell">
+        <ErrorState
+          title="Product not found"
+          message="This dish may have been removed or is no longer available."
+          actionLabel="Browse Food"
+          actionTo="/products"
+          onRetry={() => window.location.reload()}
+        />
       </div>
     </MainLayout>
   );
@@ -153,7 +160,7 @@ export default function ProductDetailPage() {
                 {images.map((img, i) => (
                   <button key={i} onClick={() => setActiveImg(i)}
                     className={`flex-shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all ${activeImg === i ? 'border-primary shadow-soft' : 'border-transparent opacity-70 hover:opacity-100'}`}>
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <OptimizedImage src={img} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>

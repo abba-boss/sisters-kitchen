@@ -26,10 +26,10 @@ import { useAuth } from '../../hooks/useAuth';
 import NotificationDropdown from '../common/NotificationDropdown';
 
 const DESKTOP_NAV = [
-  { to: '/', label: 'Home', match: '/' },
-  { to: '/feed', label: 'Feed', match: '/feed' },
-  { to: '/products?discover=1', label: 'Discover', match: '/products' },
-  { to: '/vendors', label: 'Vendors', match: '/vendors' },
+  { to: '/shop',     label: 'Shop',     match: '/shop'     },
+  { to: '/feed',     label: 'Feed',     match: '/feed'     },
+  { to: '/discover', label: 'Discover', match: '/discover' },
+  { to: '/vendors',  label: 'Vendors',  match: '/vendors'  },
 ];
 
 const MOBILE_MENU_NAV = [

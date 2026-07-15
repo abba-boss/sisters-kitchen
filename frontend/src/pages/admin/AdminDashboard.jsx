@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Users, Store, Package, ShoppingBag, TrendingUp, Wifi, ArrowUpRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import ErrorState from '../../components/common/ErrorState';
 import { useSocketEvent } from '../../hooks/useSocket';
 import { formatPrice, formatDate, getOrderStatusColor, getOrderStatusLabel } from '../../utils/formatters';
 import api from '../../services/api';
@@ -12,13 +13,16 @@ import toast from 'react-hot-toast';
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = () => {
+    setLoading(true);
+    setLoadError(false);
     api.get('/analytics/admin')
       .then(({ data: res }) => setData(res.data))
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   };
 
@@ -45,6 +49,14 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout>
+      {loadError && !loading && !data ? (
+        <ErrorState
+          title="Couldn't load dashboard"
+          message="We couldn't reach the analytics service. Check your connection and try again."
+          onRetry={fetchData}
+        />
+      ) : (
+      <>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-poppins font-bold text-2xl text-brand-dark">Admin Dashboard</h1>
@@ -138,6 +150,8 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+      </>
+      )}
     </DashboardLayout>
   );
 }

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Package, ShoppingBag, Star, Settings,
   Bell, LogOut, Menu, X, ChefHat, Users, BarChart3,
-  Store, TrendingUp, PlusSquare, CreditCard
+  Store, TrendingUp, PlusSquare, CreditCard, Rss, Camera, Zap
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
@@ -12,7 +12,10 @@ import NotificationDropdown from '../common/NotificationDropdown';
 
 const vendorLinks = [
   { to: '/vendor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/vendor/hub', icon: Zap, label: 'Business Hub' },
   { to: '/vendor/products', icon: Package, label: 'My Products' },
+  { to: '/vendor/posts', icon: Rss, label: 'Posts & Feed' },
+  { to: '/vendor/stories', icon: Camera, label: 'Stories' },
   { to: '/vendor/products/new', icon: PlusSquare, label: 'Add Product' },
   { to: '/vendor/orders', icon: ShoppingBag, label: 'Orders' },
   { to: '/vendor/earnings', icon: TrendingUp, label: 'Earnings' },
@@ -98,6 +101,7 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-brand-bg flex">
+      <a href="#dashboard-main" className="skip-link">Skip to main content</a>
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-60 bg-white shadow-card flex-shrink-0 fixed inset-y-0 left-0 z-30">
         <SidebarContent />
@@ -127,8 +131,12 @@ export default function DashboardLayout({ children }) {
         {/* Topbar */}
         <header className="bg-white shadow-card px-4 sm:px-6 h-16 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl hover:bg-brand-bg text-brand-muted transition-colors">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open navigation menu"
+              className="lg:hidden p-2 rounded-xl hover:bg-brand-bg text-brand-muted transition-colors"
+            >
               <Menu size={20} />
             </button>
             <h1 className="font-poppins font-semibold text-brand-dark text-base sm:text-lg truncate">
@@ -143,7 +151,7 @@ export default function DashboardLayout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 overflow-auto">
+        <main id="dashboard-main" className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
           {children}
         </main>
       </div>

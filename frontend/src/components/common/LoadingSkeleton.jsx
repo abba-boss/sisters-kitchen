@@ -1,10 +1,8 @@
 import { motion } from 'framer-motion';
 
-// ─── Individual skeletons ──────────────────────────────────────
-
 export function ProductSkeleton() {
   return (
-    <div className="card overflow-hidden border border-orange-100/70">
+    <div className="card overflow-hidden" aria-hidden="true">
       <div className="skeleton h-56 rounded-none" />
       <div className="p-4 space-y-2.5">
         <div className="skeleton h-3 w-1/3 rounded-full" />
@@ -21,7 +19,7 @@ export function ProductSkeleton() {
 
 export function VendorSkeleton() {
   return (
-    <div className="card overflow-hidden border border-orange-100/70">
+    <div className="card overflow-hidden" aria-hidden="true">
       <div className="skeleton h-40 rounded-none" />
       <div className="p-4 space-y-3">
         <div className="flex gap-3 items-center">
@@ -33,10 +31,6 @@ export function VendorSkeleton() {
         </div>
         <div className="skeleton h-3 w-full rounded-full" />
         <div className="skeleton h-3 w-2/3 rounded-full" />
-        <div className="flex justify-between">
-          <div className="skeleton h-3 w-1/4 rounded-full" />
-          <div className="skeleton h-3 w-1/4 rounded-full" />
-        </div>
       </div>
     </div>
   );
@@ -44,7 +38,7 @@ export function VendorSkeleton() {
 
 export function OrderSkeleton() {
   return (
-    <div className="card p-5 flex items-center gap-4">
+    <div className="card p-5 flex items-center gap-4" aria-hidden="true">
       <div className="skeleton w-12 h-12 rounded-2xl flex-shrink-0" />
       <div className="flex-1 space-y-2">
         <div className="skeleton h-4 w-1/3 rounded-full" />
@@ -60,33 +54,45 @@ export function OrderSkeleton() {
 
 export function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-bg">
+    <div className="min-h-screen flex items-center justify-center bg-brand-bg" role="status" aria-live="polite">
       <div className="text-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto mb-4"
+          aria-hidden="true"
         />
         <p className="text-brand-muted font-medium text-sm">Loading…</p>
+        <span className="sr-only">Page is loading</span>
       </div>
     </div>
   );
 }
 
+const CONTENT_WIDTHS = ['88%', '72%', '94%', '65%', '80%'];
+
 export function ContentLoader({ rows = 3 }) {
   return (
-    <div className="space-y-3 py-2">
+    <div className="space-y-3 py-2" aria-hidden="true">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="space-y-2">
-          <div className="skeleton h-4 rounded-full" style={{ width: `${70 + Math.random() * 30}%` }} />
-          <div className="skeleton h-3 rounded-full" style={{ width: `${40 + Math.random() * 40}%` }} />
+          <div className="skeleton h-4 rounded-full" style={{ width: CONTENT_WIDTHS[i % CONTENT_WIDTHS.length] }} />
+          <div className="skeleton h-3 rounded-full" style={{ width: CONTENT_WIDTHS[(i + 2) % CONTENT_WIDTHS.length] }} />
         </div>
       ))}
     </div>
   );
 }
 
-// ─── Grid helpers ──────────────────────────────────────────────
+export function SectionSkeleton({ lines = 4 }) {
+  return (
+    <div className="surface-card p-5 sm:p-6 space-y-4" aria-hidden="true">
+      <div className="skeleton h-6 w-1/3 rounded-full" />
+      <div className="skeleton h-4 w-2/3 rounded-full" />
+      <ContentLoader rows={lines} />
+    </div>
+  );
+}
 
 export function GridSkeleton({ count = 8, Component = ProductSkeleton }) {
   return (
@@ -108,7 +114,7 @@ export function DashboardStatsSkeleton() {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="card p-5 space-y-3">
+        <div key={i} className="card p-5 space-y-3" aria-hidden="true">
           <div className="skeleton w-10 h-10 rounded-xl" />
           <div className="skeleton h-7 w-1/2 rounded-full" />
           <div className="skeleton h-3 w-3/4 rounded-full" />

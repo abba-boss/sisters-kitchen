@@ -3,12 +3,15 @@ import { AppDataSource } from "../config/database";
 import { Order, OrderStatus } from "../entities/Order";
 import { OrderItem } from "../entities/OrderItem";
 import { Product } from "../entities/Product";
-import { Vendor } from "../entities/Vendor";
+import { Vendor, VendorStatus } from "../entities/Vendor";
 import { Notification, NotificationType } from "../entities/Notification";
 import { AuthRequest } from "../middleware/auth";
 import { generateOrderNumber } from "../utils/helpers";
 import { UserRole } from "../entities/User";
 import { emitOrderUpdate, emitNotification, emitToAdmins } from "../config/socket";
+import { creditCoins, REWARD_RATES } from "./rewardController";
+import { RewardTxType } from "../entities/RewardTransaction";
+
 
 // ─── Notification helper ──────────────────────────────────────
 async function createAndEmitNotification(
