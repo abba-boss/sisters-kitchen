@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   Sparkles,
   Phone,
-  Tag,
   Home,
   Building2,
   ArrowRight,
@@ -40,7 +39,6 @@ const PAYMENT_METHODS = [
 
 // 10 coins = ₦100 discount
 const COIN_RATE = 10;
-const COUPON_PREVIEW = 'WELCOME10';
 
 export default function CheckoutPage() {
   const { items, vendorGroups, clearCart, clearVendorItems } = useCart();
@@ -70,8 +68,6 @@ export default function CheckoutPage() {
   const [loading,       setLoading]       = useState(false);
   const [coinsToRedeem, setCoinsToRedeem] = useState(0);
   const [showCoins,     setShowCoins]     = useState(false);
-  const [couponCode,    setCouponCode]    = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState('');
   const [deliveryOption, setDeliveryOption] = useState('standard');
   const [successState, setSuccessState] = useState(null);
 
@@ -79,9 +75,8 @@ export default function CheckoutPage() {
   const maxRedeemable = Math.min(balance, Math.floor(subtotal / 100) * COIN_RATE);
   const coinDiscount  = Math.floor(coinsToRedeem / COIN_RATE) * 100;
   const serviceFee    = Math.round(subtotal * 0.03);
-  const couponDiscount = appliedCoupon ? Math.min(1000, Math.round(subtotal * 0.05)) : 0;
   const total         = Math.max(0, subtotal + deliveryFee - coinDiscount);
-  const grandTotal    = Math.max(0, subtotal + deliveryFee + serviceFee - coinDiscount - couponDiscount);
+  const grandTotal    = Math.max(0, subtotal + deliveryFee + serviceFee - coinDiscount);
   const estimatedPoints = Math.floor(subtotal / 200);
   const estimatedEta = `${22 + groupsToCheckout.length * 4}-${34 + groupsToCheckout.length * 6} min`;
   const savedAddresses = [
@@ -114,15 +109,6 @@ export default function CheckoutPage() {
       deliveryAddress: address.address,
       deliveryPhone: address.phone || prev.deliveryPhone,
     }));
-  };
-
-  const handleApplyCoupon = () => {
-    if (!couponCode.trim()) {
-      toast.error('Enter a coupon code');
-      return;
-    }
-    setAppliedCoupon(couponCode.trim());
-    toast.success(`Coupon ${couponCode.trim()} applied`);
   };
 
   const handlePlaceOrder = async (e) => {
@@ -430,7 +416,7 @@ export default function CheckoutPage() {
 
             <div className="rounded-[2rem] border border-orange-100 bg-white shadow-card p-5 sm:p-6 space-y-5">
               <h2 className="font-poppins font-semibold text-brand-dark flex items-center gap-2">
-                <Tag size={18} className="text-primary" /> Notes & Coupon
+                <Sparkles size={18} className="text-primary" /> Order Notes
               </h2>
 
               <div>
@@ -439,33 +425,6 @@ export default function CheckoutPage() {
                 </label>
                 <textarea name="notes" value={form.notes} onChange={handleChange}
                   placeholder="Special instructions, gate code, preferred drop-off point…" rows={3} className="input-field resize-none" />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-brand-dark mb-1.5 block">Coupon Code</label>
-                <div className="flex gap-3 flex-col sm:flex-row">
-                  <input
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder={`Try ${COUPON_PREVIEW}`}
-                    className="input-field"
-                  />
-                  <button type="button" onClick={handleApplyCoupon} className="btn-secondary whitespace-nowrap">
-                    Apply Code
-                  </button>
-                </div>
-                <AnimatePresence>
-                  {appliedCoupon && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      className="mt-3 rounded-xl bg-accent/10 px-4 py-3 text-sm text-accent font-medium"
-                    >
-                      Coupon <strong>{appliedCoupon}</strong> applied for preview savings of {formatPrice(couponDiscount)}.
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             </div>
 
@@ -552,13 +511,6 @@ export default function CheckoutPage() {
                   className="flex justify-between text-accent font-medium">
                   <span>🪙 Coins discount</span>
                   <span>-{formatPrice(coinDiscount)}</span>
-                </motion.div>
-              )}
-              {couponDiscount > 0 && (
-                <motion.div initial={{opacity:0,x:10}} animate={{opacity:1,x:0}}
-                  className="flex justify-between text-accent font-medium">
-                  <span>Coupon savings</span>
-                  <span>-{formatPrice(couponDiscount)}</span>
                 </motion.div>
               )}
               <div className="flex justify-between font-poppins font-bold text-brand-dark pt-2 border-t border-orange-100">

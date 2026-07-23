@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SlidersHorizontal, X, Search, ChevronDown } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
@@ -22,12 +22,20 @@ const SORT_OPTIONS = [
 
 export default function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [meta, setMeta] = useState({ total: 0, pages: 1 });
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchParams.get('search') || '');
+
+  // Legacy ?discover=1 → real Discover page
+  useEffect(() => {
+    if (searchParams.get('discover') === '1') {
+      navigate('/discover', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Read from URL params
   const page    = Number(searchParams.get('page') || 1);

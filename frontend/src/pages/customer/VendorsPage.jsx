@@ -39,8 +39,8 @@ export default function VendorsPage() {
       <div className="page-container page-shell">
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="section-title mb-2">Our Vendors</h1>
-          <p className="text-brand-muted">Discover talented female food vendors in your city</p>
+          <h1 className="section-title mb-2">Vendors</h1>
+          <p className="text-brand-muted">Directory of kitchens and food vendors — browse profiles and menus</p>
         </div>
 
         {/* Search + Filter */}

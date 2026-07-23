@@ -18,6 +18,7 @@ import {
   Compass,
   Rss,
   Store,
+  ShoppingBag,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
@@ -26,19 +27,35 @@ import { useAuth } from '../../hooks/useAuth';
 import NotificationDropdown from '../common/NotificationDropdown';
 
 const DESKTOP_NAV = [
-  { to: '/', label: 'Home', match: '/' },
-  { to: '/feed', label: 'Feed', match: '/feed' },
-  { to: '/products?discover=1', label: 'Discover', match: '/products' },
-  { to: '/vendors', label: 'Vendors', match: '/vendors' },
+  { to: '/', label: 'Feed', match: 'feed' },
+  { to: '/shop', label: 'Shop', match: 'shop' },
+  { to: '/discover', label: 'Discover', match: 'discover' },
+  { to: '/vendors', label: 'Vendors', match: 'vendors' },
 ];
 
 const MOBILE_MENU_NAV = [
   ...DESKTOP_NAV,
-  { to: '/wishlist', label: 'Wishlist', match: '/wishlist', authOnly: true },
-  { to: '/cart', label: 'Cart', match: '/cart' },
-  { to: '/notifications', label: 'Notifications', match: '/notifications', authOnly: true },
-  { to: '/profile', label: 'Profile', match: '/profile', authOnly: true },
+  { to: '/wishlist', label: 'Wishlist', match: 'wishlist', authOnly: true },
+  { to: '/cart', label: 'Cart', match: 'cart' },
+  { to: '/notifications', label: 'Notifications', match: 'notifications', authOnly: true },
+  { to: '/profile', label: 'Profile', match: 'profile', authOnly: true },
 ];
+
+const isNavActive = (match, pathname) => {
+  if (match === 'feed') {
+    return pathname === '/' || pathname.startsWith('/feed') || pathname.startsWith('/posts');
+  }
+  if (match === 'shop') {
+    return pathname === '/shop' || pathname.startsWith('/products');
+  }
+  if (match === 'discover') {
+    return pathname.startsWith('/discover');
+  }
+  if (match === 'vendors') {
+    return pathname.startsWith('/vendors');
+  }
+  return pathname.startsWith(`/${match}`);
+};
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -76,10 +93,7 @@ export default function Navbar() {
     setDropdownOpen(false);
   }, [location.pathname, location.search]);
 
-  const isActive = (match) => {
-    if (match === '/') return location.pathname === '/';
-    return location.pathname.startsWith(match);
-  };
+  const isActive = (match) => isNavActive(match, location.pathname);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -90,7 +104,7 @@ export default function Navbar() {
     setSearchQuery('');
   };
 
-  const goToDiscover = () => navigate('/products?discover=1');
+  const goToDiscover = () => navigate('/discover');
 
   const getDashboardLink = () => {
     if (user?.role === 'admin') return '/admin/dashboard';
@@ -235,7 +249,9 @@ export default function Navbar() {
                           {[
                             { to: getDashboardLink(), icon: LayoutDashboard, label: 'Dashboard' },
                             { to: '/orders', icon: Package, label: 'My Orders' },
-                            { to: '/feed', icon: Rss, label: 'Feed' },
+                            { to: '/', icon: Rss, label: 'Feed' },
+                            { to: '/shop', icon: ShoppingBag, label: 'Shop' },
+                            { to: '/discover', icon: Compass, label: 'Discover' },
                             { to: '/vendors', icon: Store, label: 'Vendors' },
                             { to: '/payments', icon: CreditCard, label: 'Payments' },
                             { to: '/profile', icon: Settings, label: 'Profile' },

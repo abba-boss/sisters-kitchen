@@ -563,7 +563,7 @@ function PremiumEmptyCart() {
               Browse Food
               <ArrowRight size={16} />
             </Link>
-            <Link to="/feed" className="btn-secondary inline-flex items-center gap-2">
+            <Link to="/" className="btn-secondary inline-flex items-center gap-2">
               Discover What&apos;s Popular
             </Link>
           </div>

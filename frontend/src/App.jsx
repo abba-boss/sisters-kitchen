@@ -16,7 +16,7 @@ import { favoriteService } from './services/favoriteService';
 import { useWishlistStore } from './store/wishlistStore';
 
 // Eager — critical first-paint & auth paths
-import HomePage from './pages/customer/HomePage';
+import FeedPage from './pages/social/FeedPage';
 import ProductsPage from './pages/customer/ProductsPage';
 import LoginPage from './pages/customer/LoginPage';
 import RegisterPage from './pages/customer/RegisterPage';
@@ -29,6 +29,8 @@ import AuthModal from './components/common/AuthModal';
 import RouteFallback from './components/common/RouteFallback';
 
 // Lazy — heavier or less-frequent routes
+const ShopPage = lazy(() => import('./pages/customer/ShopPage'));
+const DiscoverPage = lazy(() => import('./pages/social/DiscoverPage'));
 const ProductDetailPage = lazy(() => import('./pages/customer/ProductDetailPage'));
 const VendorsPage = lazy(() => import('./pages/customer/VendorsPage'));
 const VendorProfilePage = lazy(() => import('./pages/customer/VendorProfilePage'));
@@ -39,12 +41,12 @@ const WishlistPage = lazy(() => import('./pages/customer/WishlistPage'));
 const NotificationsPage = lazy(() => import('./pages/customer/NotificationsPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/customer/ForgotPasswordPage'));
 const OtpPage = lazy(() => import('./pages/customer/OtpPage'));
+const ResetPasswordPage = lazy(() => import('./pages/customer/ResetPasswordPage'));
 const PaymentVerifyPage = lazy(() => import('./pages/customer/PaymentVerifyPage'));
 const PaymentHistoryPage = lazy(() => import('./pages/customer/PaymentHistoryPage'));
 const ProfilePage = lazy(() => import('./pages/customer/ProfilePage'));
 const RewardsPage = lazy(() => import('./pages/customer/RewardsPage'));
 
-const FeedPage = lazy(() => import('./pages/social/FeedPage'));
 const PostDetailPage = lazy(() => import('./pages/social/PostDetailPage'));
 const PostEditPage = lazy(() => import('./pages/social/PostEditPage'));
 
@@ -178,19 +180,23 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <Suspense fallback={<RouteFallback />}>
         <Routes location={location} key={location.pathname}>
-          {/* Public */}
-          <Route path="/" element={<HomePage />} />
+          {/* Landing = Feed */}
+          <Route path="/" element={<FeedPage />} />
+          <Route path="/feed" element={<Navigate to="/" replace />} />
+          {/* Marketplace */}
+          <Route path="/shop" element={<ShopPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
+          {/* Explore */}
+          <Route path="/discover" element={<DiscoverPage />} />
           <Route path="/vendors" element={<VendorsPage />} />
           <Route path="/vendors/:id" element={<VendorProfilePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/otp" element={<OtpPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/payment/verify" element={<PaymentVerifyPage />} />
-          {/* Social */}
-          <Route path="/feed" element={<FeedPage />} />
           <Route path="/posts/:id" element={<PostDetailPage />} />
           <Route path="/cart" element={<CartPage />} />
           {/* Auth required */}

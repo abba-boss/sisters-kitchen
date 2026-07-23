@@ -691,7 +691,7 @@ export default function VendorProfilePage() {
                   <Link to="/vendors" className="flex items-center justify-between rounded-xl bg-brand-bg px-3 py-2.5 text-brand-dark hover:text-primary transition-colors">
                     Browse more vendors <ArrowRight size={14} />
                   </Link>
-                  <Link to="/feed" className="flex items-center justify-between rounded-xl bg-brand-bg px-3 py-2.5 text-brand-dark hover:text-primary transition-colors">
+                  <Link to="/" className="flex items-center justify-between rounded-xl bg-brand-bg px-3 py-2.5 text-brand-dark hover:text-primary transition-colors">
                     View social feed <ArrowRight size={14} />
                   </Link>
                   <Link to="/products" className="flex items-center justify-between rounded-xl bg-brand-bg px-3 py-2.5 text-brand-dark hover:text-primary transition-colors">

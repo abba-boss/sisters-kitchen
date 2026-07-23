@@ -61,6 +61,17 @@ export class User {
   @Column({ nullable: true })
   refreshToken: string;
 
+  /** Hashed 6-digit OTP for password reset */
+  @Column({ nullable: true })
+  resetOtpHash: string | null;
+
+  @Column({ type: "datetime", nullable: true })
+  resetOtpExpires: Date | null;
+
+  /** True after OTP verified, until password is reset */
+  @Column({ default: false })
+  resetOtpVerified: boolean;
+
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];
 

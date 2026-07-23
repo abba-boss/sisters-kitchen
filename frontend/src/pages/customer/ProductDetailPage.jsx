@@ -233,7 +233,9 @@ export default function ProductDetailPage() {
     <MainLayout>
       <div className="page-container page-shell">
         <nav className="flex items-center gap-2 text-sm text-brand-muted mb-6 flex-wrap">
-          <Link to="/" className="hover:text-primary">Home</Link>
+          <Link to="/" className="hover:text-primary">Feed</Link>
+          <ChevronRight size={14} />
+          <Link to="/shop" className="hover:text-primary">Shop</Link>
           <ChevronRight size={14} />
           <Link to="/products" className="hover:text-primary">Products</Link>
           {product.category && (

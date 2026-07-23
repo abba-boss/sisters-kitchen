@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 import AuthSplitLayout from '../../components/auth/AuthSplitLayout';
+import { authService } from '../../services/authService';
 import toast from 'react-hot-toast';
 
 export default function ForgotPasswordPage() {
@@ -17,26 +18,34 @@ export default function ForgotPasswordPage() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const { data } = await authService.forgotPassword({ email: email.trim() });
+      if (data.debugOtp) {
+        toast.success(`Dev code: ${data.debugOtp}`, { duration: 8000 });
+      } else {
+        toast.success(data.message || 'Check your email for a verification code');
+      }
+      navigate('/otp', { state: { email: email.trim().toLowerCase() } });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not send verification code');
+    } finally {
       setLoading(false);
-      toast.success('Verification flow preview ready');
-      navigate('/otp', { state: { email } });
-    }, 500);
+    }
   };
 
   return (
     <AuthSplitLayout
       variant="forgot"
       title="Forgot your password?"
-      subtitle="Enter the email linked to your account and continue to verification."
+      subtitle="Enter the email linked to your account and we’ll send a 6-digit verification code."
       footer={(
         <div className="space-y-3">
           <div className="rounded-2xl border border-orange-100 bg-brand-bg/50 p-4 text-sm text-brand-muted">
             <p className="font-semibold text-brand-dark flex items-center gap-2 mb-1">
               <ShieldCheck size={15} className="text-primary" />
-              Current project note
+              Secure reset
             </p>
-            This project does not currently expose a password-reset API. This screen is designed as a premium UI step and routes into the OTP screen without changing auth endpoints.
+            Codes expire in 10 minutes. In local development the code is also shown in a toast and the backend log.
           </div>
           <p className="text-center text-sm text-brand-muted">
             Remembered your password?{' '}
@@ -56,6 +65,8 @@ export default function ForgotPasswordPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
               className="input-field pl-11 transition focus:scale-[1.01]"
+              autoComplete="email"
+              required
             />
           </div>
         </div>
@@ -64,7 +75,7 @@ export default function ForgotPasswordPage() {
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Preparing verification…
+              Sending code…
             </span>
           ) : (
             <>

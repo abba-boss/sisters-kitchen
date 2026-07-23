@@ -1,18 +1,19 @@
-import { motion } from 'framer-motion';
-import Navbar from './Navbar';
-import Footer from './Footer';
-import MobileBottomNav from './MobileBottomNav';
+import { motion } from "framer-motion";
+import Navbar from "./Navbar";
+import MobileBottomNav from "./MobileBottomNav";
 
 const PAGE_VARIANTS = {
-  initial:  { opacity: 0, y: 8 },
-  animate:  { opacity: 1, y: 0 },
-  exit:     { opacity: 0, y: -4 },
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
 };
 
 export default function MainLayout({ children }) {
   return (
     <div className="min-h-screen flex flex-col bg-brand-bg">
-      <a href="#main-content" className="skip-link">Skip to main content</a>
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <Navbar />
       <motion.main
         id="main-content"
@@ -21,11 +22,10 @@ export default function MainLayout({ children }) {
         initial="initial"
         animate="animate"
         exit="exit"
-        transition={{ duration: 0.22, ease: 'easeOut' }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
       >
         {children}
       </motion.main>
-      <Footer />
       <MobileBottomNav />
     </div>
   );

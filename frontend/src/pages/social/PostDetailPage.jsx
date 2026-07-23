@@ -26,7 +26,7 @@ export default function PostDetailPage() {
     <MainLayout>
       <div className="page-container py-20 text-center">
         <p className="text-brand-muted mb-4">This post doesn't exist or was removed.</p>
-        <Link to="/feed" className="btn-primary">Back to Feed</Link>
+        <Link to="/" className="btn-primary">Back to Feed</Link>
       </div>
     </MainLayout>
   );
@@ -35,9 +35,7 @@ export default function PostDetailPage() {
     <MainLayout>
       <div className="page-container py-6 max-w-2xl mx-auto">
         <nav className="flex items-center gap-2 text-sm text-brand-muted mb-5">
-          <Link to="/" className="hover:text-primary">Home</Link>
-          <ChevronRight size={14} />
-          <Link to="/feed" className="hover:text-primary">Feed</Link>
+          <Link to="/" className="hover:text-primary">Feed</Link>
           <ChevronRight size={14} />
           <span className="text-brand-dark font-medium line-clamp-1 max-w-[200px]">
             {post.vendor?.businessName}

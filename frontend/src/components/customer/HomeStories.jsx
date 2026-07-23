@@ -12,7 +12,7 @@ export default function HomeStories() {
       <div className="page-container">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-poppins font-bold text-lg text-brand-dark">Stories</h2>
-          <Link to="/feed" className="flex items-center gap-1 text-primary text-sm font-semibold hover:underline">
+          <Link to="/" className="flex items-center gap-1 text-primary text-sm font-semibold hover:underline">
             See all <ChevronRight size={14} />
           </Link>
         </div>
