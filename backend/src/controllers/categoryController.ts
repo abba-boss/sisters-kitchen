@@ -20,7 +20,7 @@ export const getCategoryById = async (req: Request, res: Response): Promise<void
   try {
     const categoryRepo = AppDataSource.getRepository(Category);
     const category = await categoryRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["products"],
     });
     if (!category) {
@@ -61,7 +61,7 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
 export const updateCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const categoryRepo = AppDataSource.getRepository(Category);
-    const category = await categoryRepo.findOne({ where: { id: req.params.id as string } });
+    const category = await categoryRepo.findOne({ where: { id: String(req.params.id) } });
 
     if (!category) {
       res.status(404).json({ success: false, message: "Category not found" });
@@ -91,7 +91,7 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
 export const deleteCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const categoryRepo = AppDataSource.getRepository(Category);
-    const category = await categoryRepo.findOne({ where: { id: req.params.id as string } });
+    const category = await categoryRepo.findOne({ where: { id: String(req.params.id) } });
 
     if (!category) {
       res.status(404).json({ success: false, message: "Category not found" });

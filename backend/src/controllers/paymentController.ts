@@ -230,7 +230,7 @@ export const getPaymentReceipt = async (req: AuthRequest, res: Response): Promis
   try {
     const paymentRepo = AppDataSource.getRepository(Payment);
     const payment = await paymentRepo.findOne({
-      where: { id: req.params.id as string, user: { id: req.user!.id } },
+      where: { id: String(req.params.id), user: { id: req.user!.id } },
       relations: ["order", "order.items", "order.items.product", "order.vendor", "user"],
     });
 

@@ -104,7 +104,7 @@ export const deleteReview = async (req: AuthRequest, res: Response): Promise<voi
   try {
     const reviewRepo = AppDataSource.getRepository(Review);
     const review = await reviewRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["user"],
     });
 

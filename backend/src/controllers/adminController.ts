@@ -83,7 +83,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void
 export const toggleUserStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({ where: { id: req.params.id as string } });
+    const user = await userRepo.findOne({ where: { id: String(req.params.id) } });
 
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });

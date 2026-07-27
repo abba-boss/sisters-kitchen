@@ -61,7 +61,7 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
 export const getProductById = async (req: Request, res: Response): Promise<void> => {
   try {
     const product = await AppDataSource.getRepository(Product).findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["vendor", "category", "reviews", "reviews.user"],
     });
     if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
@@ -202,7 +202,7 @@ export const updateProduct = async (req: AuthRequest, res: Response): Promise<vo
   try {
     const productRepo = AppDataSource.getRepository(Product);
     const product = await productRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["vendor", "vendor.user"],
     });
     if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
@@ -259,7 +259,7 @@ export const deleteProduct = async (req: AuthRequest, res: Response): Promise<vo
   try {
     const productRepo = AppDataSource.getRepository(Product);
     const product = await productRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["vendor", "vendor.user"],
     });
     if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }

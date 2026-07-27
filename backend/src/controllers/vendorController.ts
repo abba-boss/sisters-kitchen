@@ -48,7 +48,7 @@ export const getVendorById = async (req: Request, res: Response): Promise<void> 
   try {
     const vendorRepo = AppDataSource.getRepository(Vendor);
     const vendor = await vendorRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["user", "products", "products.category"],
     });
 
@@ -210,7 +210,7 @@ export const updateVendorApproval = async (req: AuthRequest, res: Response): Pro
   try {
     const { status } = req.body;
     const vendorRepo = AppDataSource.getRepository(Vendor);
-    const vendor = await vendorRepo.findOne({ where: { id: req.params.id as string } });
+    const vendor = await vendorRepo.findOne({ where: { id: String(req.params.id) } });
 
     if (!vendor) {
       res.status(404).json({ success: false, message: "Vendor not found" });

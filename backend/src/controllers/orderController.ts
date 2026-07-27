@@ -164,7 +164,7 @@ export const getOrderById = async (req: AuthRequest, res: Response): Promise<voi
   try {
     const orderRepo = AppDataSource.getRepository(Order);
     const order = await orderRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["user", "vendor", "vendor.user", "items", "items.product", "payments"],
     });
 
@@ -221,7 +221,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     const { status, rejectionReason, estimatedDeliveryTime } = req.body;
     const orderRepo = AppDataSource.getRepository(Order);
     const order = await orderRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["user", "vendor", "vendor.user", "items", "items.product"],
     });
 

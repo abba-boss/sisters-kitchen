@@ -21,7 +21,7 @@ export const markAsRead = async (req: AuthRequest, res: Response): Promise<void>
   try {
     const notifRepo = AppDataSource.getRepository(Notification);
     await notifRepo.update(
-      { id: req.params.id as string, user: { id: req.user!.id } },
+      { id: String(req.params.id), user: { id: req.user!.id } },
       { isRead: true }
     );
     res.json({ success: true, message: "Marked as read" });
@@ -43,7 +43,7 @@ export const markAllAsRead = async (req: AuthRequest, res: Response): Promise<vo
 export const deleteNotification = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const notifRepo = AppDataSource.getRepository(Notification);
-    await notifRepo.delete({ id: req.params.id as string, user: { id: req.user!.id } });
+    await notifRepo.delete({ id: String(req.params.id), user: { id: req.user!.id } });
     res.json({ success: true, message: "Notification deleted" });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

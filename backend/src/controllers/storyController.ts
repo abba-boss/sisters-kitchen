@@ -131,7 +131,7 @@ export const viewStory = async (req: AuthRequest, res: Response): Promise<void> 
     const storyRepo = AppDataSource.getRepository(Story);
     const viewRepo  = AppDataSource.getRepository(StoryView);
 
-    const story = await storyRepo.findOne({ where: { id: req.params.id as string } });
+    const story = await storyRepo.findOne({ where: { id: String(req.params.id) } });
     if (!story) { res.status(404).json({ success: false, message: "Story not found" }); return; }
 
     // Upsert view (Unique constraint prevents duplicates)
@@ -152,7 +152,7 @@ export const deleteStory = async (req: AuthRequest, res: Response): Promise<void
   try {
     const storyRepo = AppDataSource.getRepository(Story);
     const story = await storyRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["vendor", "vendor.user"],
     });
     if (!story) { res.status(404).json({ success: false, message: "Story not found" }); return; }

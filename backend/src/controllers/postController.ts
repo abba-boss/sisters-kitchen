@@ -23,7 +23,7 @@ async function pushNotification(
   title: string,
   message: string,
   type: NotificationType,
-  referenceId: string
+  referenceId: string,
 ) {
   try {
     const { User } = await import("../entities/User");
@@ -40,7 +40,7 @@ async function pushNotification(
 // ── CREATE POST ──────────────────────────────────────────────────
 export const createPost = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const vendorRepo = AppDataSource.getRepository(Vendor);
@@ -49,13 +49,21 @@ export const createPost = async (
       relations: ["user"],
     });
     if (!vendor) {
-      res.status(403).json({ success: false, message: "Vendor profile required" });
+      res
+        .status(403)
+        .json({ success: false, message: "Vendor profile required" });
       return;
     }
 
     const {
-      caption, type = PostType.IMAGE, status = PostStatus.PUBLISHED,
-      tags, location, productId, allowComments = true, scheduledAt,
+      caption,
+      type = PostType.IMAGE,
+      status = PostStatus.PUBLISHED,
+      tags,
+      location,
+      productId,
+      allowComments = true,
+      scheduledAt,
     } = req.body;
 
     const postRepo = AppDataSource.getRepository(Post);
@@ -73,7 +81,9 @@ export const createPost = async (
 
     if (productId) {
       const productRepo = AppDataSource.getRepository(Product);
-      const product = await productRepo.findOne({ where: { id: productId, vendor: { id: vendor.id } } });
+      const product = await productRepo.findOne({
+        where: { id: productId, vendor: { id: vendor.id } },
+      });
       if (product) post.product = product;
     }
 
@@ -90,7 +100,7 @@ export const createPost = async (
         const isVideo = file.mimetype.startsWith("video/");
         const url = await uploadToCloudinary(
           file.path,
-          `sisters-kitchen/posts/${vendor.id}`
+          `sisters-kitchen/posts/${vendor.id}`,
         );
         const m = mediaRepo.create({
           url,
@@ -114,7 +124,7 @@ export const createPost = async (
     if (mediaUrls.length > 0) {
       const mediaRepo = AppDataSource.getRepository(PostMedia);
       const urlEntities = mediaUrls.map((url, i) =>
-        mediaRepo.create({ url, type: MediaType.IMAGE, sortOrder: i, post })
+        mediaRepo.create({ url, type: MediaType.IMAGE, sortOrder: i, post }),
       );
       await mediaRepo.save(urlEntities);
       post.media = [...(post.media || []), ...urlEntities];
@@ -131,7 +141,9 @@ export const createPost = async (
       emitNewPost(vendor.id, fullPost);
     }
 
-    res.status(201).json({ success: true, message: "Post created", data: fullPost });
+    res
+      .status(201)
+      .json({ success: true, message: "Post created", data: fullPost });
   } catch (err: any) {
     console.error("createPost error:", err);
     res.status(500).json({ success: false, message: err.message });
@@ -141,7 +153,7 @@ export const createPost = async (
 // ── PUBLIC FEED ──────────────────────────────────────────────────
 export const getPublicFeed = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { page = 1, limit = 12, type, vendorId, tag, search } = req.query;
@@ -172,14 +184,24 @@ export const getPublicFeed = async (
     const sanitized = posts.map((p) => ({
       ...p,
       author: p.author
-        ? { id: p.author.id, firstName: p.author.firstName, lastName: p.author.lastName, avatar: p.author.avatar }
+        ? {
+            id: p.author.id,
+            firstName: p.author.firstName,
+            lastName: p.author.lastName,
+            avatar: p.author.avatar,
+          }
         : null,
     }));
 
     res.json({
       success: true,
       data: sanitized,
-      meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
+      meta: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(total / Number(limit)),
+      },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -189,7 +211,7 @@ export const getPublicFeed = async (
 // ── VENDOR POSTS ─────────────────────────────────────────────────
 export const getVendorPosts = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { vendorId } = req.params;
@@ -220,7 +242,12 @@ export const getVendorPosts = async (
     res.json({
       success: true,
       data: posts,
-      meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
+      meta: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(total / Number(limit)),
+      },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -230,16 +257,20 @@ export const getVendorPosts = async (
 // ── MY POSTS (Vendor) ────────────────────────────────────────────
 export const getMyPosts = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { page = 1, limit = 12, status } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
     const vendorRepo = AppDataSource.getRepository(Vendor);
-    const vendor = await vendorRepo.findOne({ where: { user: { id: req.user!.id } } });
+    const vendor = await vendorRepo.findOne({
+      where: { user: { id: req.user!.id } },
+    });
     if (!vendor) {
-      res.status(403).json({ success: false, message: "Vendor profile required" });
+      res
+        .status(403)
+        .json({ success: false, message: "Vendor profile required" });
       return;
     }
 
@@ -261,7 +292,12 @@ export const getMyPosts = async (
     res.json({
       success: true,
       data: posts,
-      meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
+      meta: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(total / Number(limit)),
+      },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -271,12 +307,12 @@ export const getMyPosts = async (
 // ── GET SINGLE POST ──────────────────────────────────────────────
 export const getPostById = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
-      where: { id: req.params.id as string, status: PostStatus.PUBLISHED },
+      where: { id: String(req.params.id), status: PostStatus.PUBLISHED },
       relations: ["media", "vendor", "author", "product"],
     });
     if (!post) {
@@ -296,12 +332,12 @@ export const getPostById = async (
 // ── UPDATE POST ──────────────────────────────────────────────────
 export const updatePost = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["vendor", "vendor.user"],
     });
     if (!post) {
@@ -313,15 +349,26 @@ export const updatePost = async (
       return;
     }
 
-    const { caption, type, status, tags, location, allowComments, scheduledAt } = req.body;
+    const {
+      caption,
+      type,
+      status,
+      tags,
+      location,
+      allowComments,
+      scheduledAt,
+    } = req.body;
     Object.assign(post, {
-      caption:       caption?.trim()    ?? post.caption,
-      type:          type               ?? post.type,
-      status:        status             ?? post.status,
-      tags:          tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : post.tags,
-      location:      location?.trim()   ?? post.location,
-      allowComments: allowComments !== undefined ? allowComments !== "false" : post.allowComments,
-      scheduledAt:   scheduledAt ? new Date(scheduledAt) : post.scheduledAt,
+      caption: caption?.trim() ?? post.caption,
+      type: type ?? post.type,
+      status: status ?? post.status,
+      tags: tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : post.tags,
+      location: location?.trim() ?? post.location,
+      allowComments:
+        allowComments !== undefined
+          ? allowComments !== "false"
+          : post.allowComments,
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : post.scheduledAt,
     });
 
     await postRepo.save(post);
@@ -334,12 +381,12 @@ export const updatePost = async (
 // ── DELETE (soft) ────────────────────────────────────────────────
 export const deletePost = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: String(req.params.id) },
       relations: ["vendor", "vendor.user"],
     });
     if (!post) {
@@ -362,14 +409,14 @@ export const deletePost = async (
 // ── LIKE / UNLIKE ────────────────────────────────────────────────
 export const toggleLike = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const postRepo = AppDataSource.getRepository(Post);
     const likeRepo = AppDataSource.getRepository(PostLike);
 
     const post = await postRepo.findOne({
-      where: { id: req.params.id as string, status: PostStatus.PUBLISHED },
+      where: { id: String(req.params.id), status: PostStatus.PUBLISHED },
       relations: ["vendor", "vendor.user"],
     });
     if (!post) {
@@ -383,8 +430,14 @@ export const toggleLike = async (
 
     if (existing) {
       await likeRepo.remove(existing);
-      await postRepo.update(post.id, { likesCount: () => "GREATEST(likesCount - 1, 0)" });
-      res.json({ success: true, liked: false, likesCount: Math.max(post.likesCount - 1, 0) });
+      await postRepo.update(post.id, {
+        likesCount: () => "GREATEST(likesCount - 1, 0)",
+      });
+      res.json({
+        success: true,
+        liked: false,
+        likesCount: Math.max(post.likesCount - 1, 0),
+      });
     } else {
       const like = likeRepo.create({ user: req.user, post });
       await likeRepo.save(like);
@@ -397,7 +450,7 @@ export const toggleLike = async (
           "Someone liked your post ❤️",
           `${req.user!.firstName} liked your post`,
           NotificationType.NEW_POST_LIKE,
-          post.id
+          post.id,
         );
         emitPostLike(post.vendor.user.id, {
           postId: post.id,
@@ -416,17 +469,25 @@ export const toggleLike = async (
 // ── CHECK LIKE STATUS ────────────────────────────────────────────
 export const getLikeStatus = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const likeRepo = AppDataSource.getRepository(PostLike);
     const postRepo = AppDataSource.getRepository(Post);
 
-    const post = await postRepo.findOne({ where: { id: req.params.id as string } });
-    if (!post) { res.status(404).json({ success: false, message: "Post not found" }); return; }
+    const post = await postRepo.findOne({
+      where: { id: String(req.params.id) },
+    });
+    if (!post) {
+      res.status(404).json({ success: false, message: "Post not found" });
+      return;
+    }
 
     const liked = !!(await likeRepo.findOne({
-      where: { user: { id: req.user!.id }, post: { id: req.params.id as string } },
+      where: {
+        user: { id: req.user!.id },
+        post: { id: String(req.params.id) },
+      },
     }));
 
     res.json({ success: true, data: { liked, likesCount: post.likesCount } });
@@ -438,14 +499,14 @@ export const getLikeStatus = async (
 // ── COMMENTS ─────────────────────────────────────────────────────
 export const addComment = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
-    const postRepo    = AppDataSource.getRepository(Post);
+    const postRepo = AppDataSource.getRepository(Post);
     const commentRepo = AppDataSource.getRepository(PostComment);
 
     const post = await postRepo.findOne({
-      where: { id: req.params.id as string, status: PostStatus.PUBLISHED },
+      where: { id: String(req.params.id), status: PostStatus.PUBLISHED },
       relations: ["vendor", "vendor.user"],
     });
     if (!post) {
@@ -453,20 +514,31 @@ export const addComment = async (
       return;
     }
     if (!post.allowComments) {
-      res.status(400).json({ success: false, message: "Comments are disabled for this post" });
+      res.status(400).json({
+        success: false,
+        message: "Comments are disabled for this post",
+      });
       return;
     }
 
     const { content, parentId } = req.body;
-    const comment = commentRepo.create({ content: content.trim(), user: req.user, post });
+    const comment = commentRepo.create({
+      content: content.trim(),
+      user: req.user,
+      post,
+    });
 
     if (parentId) {
-      const parent = await commentRepo.findOne({ where: { id: parentId, post: { id: post.id } } });
+      const parent = await commentRepo.findOne({
+        where: { id: parentId, post: { id: post.id } },
+      });
       if (parent) comment.parent = parent;
     }
 
     await commentRepo.save(comment);
-    await postRepo.update(post.id, { commentsCount: () => "commentsCount + 1" });
+    await postRepo.update(post.id, {
+      commentsCount: () => "commentsCount + 1",
+    });
 
     // Notify vendor
     if (post.vendor.user.id !== req.user!.id) {
@@ -475,11 +547,14 @@ export const addComment = async (
         "New comment on your post 💬",
         `${req.user!.firstName}: ${content.substring(0, 60)}`,
         NotificationType.NEW_POST_COMMENT,
-        post.id
+        post.id,
       );
       emitPostComment(post.vendor.user.id, {
         postId: post.id,
-        comment: { ...comment, user: { id: req.user!.id, firstName: req.user!.firstName } },
+        comment: {
+          ...comment,
+          user: { id: req.user!.id, firstName: req.user!.firstName },
+        },
       });
     }
 
@@ -488,7 +563,9 @@ export const addComment = async (
       relations: ["user", "parent"],
     });
 
-    res.status(201).json({ success: true, message: "Comment added", data: full });
+    res
+      .status(201)
+      .json({ success: true, message: "Comment added", data: full });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -496,7 +573,7 @@ export const addComment = async (
 
 export const getComments = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { page = 1, limit = 20 } = req.query;
@@ -504,7 +581,11 @@ export const getComments = async (
 
     const commentRepo = AppDataSource.getRepository(PostComment);
     const [comments, total] = await commentRepo.findAndCount({
-      where: { post: { id: req.params.id as string }, parent: undefined, isDeleted: false },
+      where: {
+        post: { id: String(req.params.id) },
+        parent: undefined,
+        isDeleted: false,
+      },
       relations: ["user", "replies", "replies.user"],
       order: { createdAt: "DESC" },
       skip,
@@ -513,11 +594,23 @@ export const getComments = async (
 
     const sanitized = comments.map((c) => ({
       ...c,
-      user: { id: c.user.id, firstName: c.user.firstName, lastName: c.user.lastName, avatar: c.user.avatar },
-      replies: (c.replies || []).filter((r) => !r.isDeleted).map((r) => ({
-        ...r,
-        user: { id: r.user.id, firstName: r.user.firstName, lastName: r.user.lastName, avatar: r.user.avatar },
-      })),
+      user: {
+        id: c.user.id,
+        firstName: c.user.firstName,
+        lastName: c.user.lastName,
+        avatar: c.user.avatar,
+      },
+      replies: (c.replies || [])
+        .filter((r) => !r.isDeleted)
+        .map((r) => ({
+          ...r,
+          user: {
+            id: r.user.id,
+            firstName: r.user.firstName,
+            lastName: r.user.lastName,
+            avatar: r.user.avatar,
+          },
+        })),
     }));
 
     res.json({
@@ -532,7 +625,7 @@ export const getComments = async (
 
 export const deleteComment = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const commentRepo = AppDataSource.getRepository(PostComment);
@@ -545,9 +638,9 @@ export const deleteComment = async (
       return;
     }
 
-    const isOwner   = comment.user.id === req.user!.id;
-    const isVendor  = comment.post.vendor.user.id === req.user!.id;
-    const isAdmin   = req.user!.role === "admin";
+    const isOwner = comment.user.id === req.user!.id;
+    const isVendor = comment.post.vendor.user.id === req.user!.id;
+    const isAdmin = req.user!.role === "admin";
 
     if (!isOwner && !isVendor && !isAdmin) {
       res.status(403).json({ success: false, message: "Not authorized" });
@@ -555,7 +648,7 @@ export const deleteComment = async (
     }
 
     comment.isDeleted = true;
-    comment.content   = "[deleted]";
+    comment.content = "[deleted]";
     await commentRepo.save(comment);
 
     const postRepo = AppDataSource.getRepository(Post);
@@ -572,13 +665,15 @@ export const deleteComment = async (
 // ── SAVE / UNSAVE POST ────────────────────────────────────────────
 export const toggleSave = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const savedRepo = AppDataSource.getRepository(SavedPost);
-    const postRepo  = AppDataSource.getRepository(Post);
+    const postRepo = AppDataSource.getRepository(Post);
 
-    const post = await postRepo.findOne({ where: { id: req.params.id as string } });
+    const post = await postRepo.findOne({
+      where: { id: String(req.params.id) },
+    });
     if (!post) {
       res.status(404).json({ success: false, message: "Post not found" });
       return;
@@ -590,7 +685,11 @@ export const toggleSave = async (
 
     if (existing) {
       await savedRepo.remove(existing);
-      res.json({ success: true, saved: false, message: "Post removed from saved" });
+      res.json({
+        success: true,
+        saved: false,
+        message: "Post removed from saved",
+      });
     } else {
       const saved = savedRepo.create({ user: req.user, post });
       await savedRepo.save(saved);
@@ -603,7 +702,7 @@ export const toggleSave = async (
 
 export const getSavedPosts = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { page = 1, limit = 12 } = req.query;
