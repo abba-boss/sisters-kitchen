@@ -421,7 +421,7 @@ function FeedIntro({ firstName, search, setSearch, onSearch, onClear, hasSearch,
           <p className="mt-1 text-sm text-brand-muted">See what local kitchens are cooking, sharing, and serving today.</p>
         </div>
         {isAuthenticated && (
-          <div className="hidden sm:block">
+          <div className="sm:hidden">
             <NotificationDropdown />
           </div>
         )}
