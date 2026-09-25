@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Repository } from "typeorm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { AppDataSource } from "../config/database";
@@ -21,6 +22,14 @@ const stripSensitive = (user: User) => {
   } = user as any;
   return safe;
 };
+
+const findUserWithOtp = (userRepo: Repository<User>, email: string) =>
+  userRepo
+    .createQueryBuilder("user")
+    .addSelect(["user.resetOtpHash", "user.resetOtpExpires", "user.resetOtpVerified"])
+    .where("user.email = :email", { email })
+    .andWhere("user.isActive = :isActive", { isActive: true })
+    .getOne();
 
 const generateTokens = (userId: string) => {
   const accessToken = jwt.sign({ userId }, process.env.JWT_SECRET!, {
@@ -45,7 +54,7 @@ const issuePasswordResetOtp = async (user: User) => {
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { firstName, lastName, email, password, phone, role } = req.body;
+    const { firstName, lastName, email, password, phone, role, referralCode } = req.body;
 
     const userRepo = AppDataSource.getRepository(User);
     const existing = await userRepo.findOne({ where: { email } });
@@ -57,6 +66,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const hashedPassword = await bcrypt.hash(password, 12);
     const userRole = role === "vendor" ? UserRole.VENDOR : UserRole.CUSTOMER;
 
+    // Referral: link the new account to the inviter and credit them once.
+    let referrer: User | null = null;
+    if (referralCode) {
+      referrer = await userRepo.findOne({ where: { id: String(referralCode) } });
+      if (!referrer || referrer.email.toLowerCase() === email.toLowerCase()) {
+        referrer = null;
+      }
+    }
+
     const user = userRepo.create({
       firstName,
       lastName,
@@ -64,6 +82,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       password: hashedPassword,
       phone,
       role: userRole,
+      referredBy: referrer ?? undefined,
     });
 
     await userRepo.save(user);
@@ -79,6 +98,23 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       await vendorRepo.save(vendor);
     }
 
+    // Referral reward for the inviter. Never blocks registration.
+    if (referrer) {
+      try {
+        const { creditCoins, REWARD_RATES } = await import("./rewardController");
+        const { RewardTxType } = await import("../entities/RewardTransaction");
+        await creditCoins(
+          referrer.id,
+          REWARD_RATES.REFERRAL,
+          RewardTxType.EARN_REFERRAL,
+          `${firstName} ${lastName} joined with your link`,
+          user.id
+        );
+      } catch (rewardErr) {
+        console.error("Referral credit failed (non-fatal):", rewardErr);
+      }
+    }
+
     const { accessToken, refreshToken } = generateTokens(user.id);
     user.refreshToken = refreshToken;
     await userRepo.save(user);
@@ -86,7 +122,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json({
       success: true,
       message: "Registration successful",
-      data: { user: stripSensitive(user), accessToken, refreshToken },
+      data: { user: stripSensitive(user), accessToken, refreshToken, referralApplied: Boolean(referrer) },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -98,10 +134,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
 
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({
-      where: { email },
-      relations: ["vendor"],
-    });
+    const user = await userRepo
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .leftJoinAndSelect("user.vendor", "vendor")
+      .where("user.email = :email", { email })
+      .getOne();
 
     if (!user || !user.isActive) {
       res.status(401).json({ success: false, message: "Invalid credentials" });
@@ -138,9 +176,13 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as { userId: string };
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({
-      where: { id: decoded.userId, refreshToken, isActive: true },
-    });
+    const user = await userRepo
+      .createQueryBuilder("user")
+      .addSelect("user.refreshToken")
+      .where("user.id = :userId", { userId: decoded.userId })
+      .andWhere("user.refreshToken = :refreshToken", { refreshToken })
+      .andWhere("user.isActive = :isActive", { isActive: true })
+      .getOne();
 
     if (!user) {
       res.status(401).json({ success: false, message: "Invalid refresh token" });
@@ -161,8 +203,7 @@ export const logout = async (req: AuthRequest, res: Response): Promise<void> => 
   try {
     if (req.user) {
       const userRepo = AppDataSource.getRepository(User);
-      req.user.refreshToken = "";
-      await userRepo.save(req.user);
+      await userRepo.update(req.user.id, { refreshToken: "" });
     }
     res.json({ success: true, message: "Logged out successfully" });
   } catch (error: any) {
@@ -205,7 +246,11 @@ export const changePassword = async (req: AuthRequest, res: Response): Promise<v
   try {
     const { currentPassword, newPassword } = req.body;
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({ where: { id: req.user!.id } });
+    const user = await userRepo
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.id = :userId", { userId: req.user!.id })
+      .getOne();
 
     const isMatch = await bcrypt.compare(currentPassword, user!.password);
     if (!isMatch) {
@@ -232,7 +277,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     }
 
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({ where: { email, isActive: true } });
+    const user = await findUserWithOtp(userRepo, email);
 
     let debugOtp: string | undefined;
     if (user) debugOtp = await issuePasswordResetOtp(user);
@@ -261,7 +306,7 @@ export const verifyResetOtp = async (req: Request, res: Response): Promise<void>
     }
 
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({ where: { email, isActive: true } });
+    const user = await findUserWithOtp(userRepo, email);
 
     if (
       !user ||
@@ -308,7 +353,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     }
 
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({ where: { email, isActive: true } });
+    const user = await findUserWithOtp(userRepo, email);
 
     if (
       !user ||
@@ -364,7 +409,7 @@ export const resendResetOtp = async (req: Request, res: Response): Promise<void>
     }
 
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({ where: { email, isActive: true } });
+    const user = await findUserWithOtp(userRepo, email);
 
     let debugOtp: string | undefined;
     if (user) debugOtp = await issuePasswordResetOtp(user);

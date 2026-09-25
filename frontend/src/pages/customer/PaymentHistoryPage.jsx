@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Receipt, ChevronRight } from 'lucide-react';
+import { CreditCard, Receipt } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import EmptyState from '../../components/common/EmptyState';
 import Pagination from '../../components/common/Pagination';
@@ -59,16 +59,21 @@ export default function PaymentHistoryPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-brand-dark">{p.reference}</p>
-                    <p className="text-xs text-brand-muted">{methodLabel[p.method] || p.method} · {formatDateTime(p.createdAt)}</p>
+                    <p className="text-xs text-brand-muted">
+                      {methodLabel[p.method] || p.method}
+                      {p.order?.orderNumber ? ` · #${p.order.orderNumber}` : ''} · {formatDateTime(p.createdAt)}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className="font-poppins font-bold text-brand-dark">{formatPrice(p.amount)}</p>
-                    <span className={`badge ${statusStyles[p.status] || 'badge-warning'} capitalize`}>{p.status}</span>
+                    <span className={`badge ${statusStyles[p.status] || 'badge-warning'} capitalize`}>
+                      {p.method === 'cash_on_delivery' ? 'pay on delivery' : p.status}
+                    </span>
                   </div>
-                  {p.status === 'success' && (
-                    <Link to={`/orders/${p.order?.id}`} className="p-2 rounded-xl hover:bg-brand-bg text-brand-muted hover:text-primary transition-all">
+                  {p.order?.id && (
+                    <Link to={`/orders/${p.order.id}`} aria-label="View order" className="p-2 rounded-xl hover:bg-brand-bg text-brand-muted hover:text-primary transition-all">
                       <Receipt size={16} />
                     </Link>
                   )}

@@ -1,24 +1,24 @@
 import { Router } from "express";
 import {
-  createPost, getPublicFeed, getFollowingFeed, getVendorPosts, getMyPosts,
+  createPost, getPublicFeed, getFollowingFeed, getVendorPosts, getMyPosts, getMyPostById,
   getPostById, updatePost, deletePost,
   toggleLike, getLikeStatus,
   addComment, getComments, deleteComment,
   toggleSave, getSavedPosts,
 } from "../controllers/postController";
-import { authenticate, authorize } from "../middleware/auth";
+import { authenticate, authorize, optionalAuth } from "../middleware/auth";
 import { UserRole } from "../entities/User";
-import { uploadMultiple } from "../middleware/upload";
+import { uploadMedia } from "../middleware/upload";
 import { body } from "express-validator";
 import { handleValidationErrors } from "../middleware/validate";
 
 const router = Router();
 
 // ── Public ────────────────────────────────────────────────────────
-router.get("/feed",            getPublicFeed);
+router.get("/feed",            optionalAuth, getPublicFeed);
 router.get("/following",       authenticate, getFollowingFeed);
-router.get("/vendor/:vendorId", getVendorPosts);
-router.get("/:id",             getPostById);
+router.get("/vendor/:vendorId", optionalAuth, getVendorPosts);
+router.get("/:id",             optionalAuth, getPostById);
 router.get("/:id/comments",    getComments);
 
 // ── Authenticated ─────────────────────────────────────────────────
@@ -30,7 +30,7 @@ router.post(
   "/",
   authenticate,
   authorize(UserRole.VENDOR),
-  uploadMultiple.array("media", 10),
+  uploadMedia.array("media", 10),
   [
     body("caption").trim().notEmpty().withMessage("Caption is required").isLength({ max: 2200 }),
     handleValidationErrors,
@@ -52,6 +52,12 @@ router.delete(
   deletePost
 );
 
+router.get(
+  "/my/posts/:id",
+  authenticate,
+  authorize(UserRole.VENDOR, UserRole.ADMIN),
+  getMyPostById
+);
 router.get(
   "/my/posts",
   authenticate,

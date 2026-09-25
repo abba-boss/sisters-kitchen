@@ -30,6 +30,7 @@ import paymentRoutes from "./routes/paymentRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import analyticsRoutes from "./routes/analyticsRoutes";
 import statsRoutes from "./routes/statsRoutes";
+import uploadRoutes from "./routes/uploadRoutes";
 // ── V2 Social Commerce ────────────────────────────────────────────
 import postRoutes     from "./routes/postRoutes";
 import followerRoutes from "./routes/followerRoutes";
@@ -45,16 +46,21 @@ const PORT = process.env.PORT || 5000;
 // ── Security & logging middleware ──────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
-// Dynamic CORS — allow any localhost port + configured FRONTEND_URL
-const allowedOrigins = [
-  process.env.FRONTEND_URL || "http://localhost:5173",
+// Dynamic CORS — allow any localhost port + configured FRONTEND_URL list
+const configuredOrigins = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = new Set([
+  ...configuredOrigins,
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
   "http://localhost:5176",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
-];
+]);
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -64,25 +70,33 @@ app.use(cors({
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
       return callback(null, true);
     }
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS blocked: ${origin}`));
+    if (allowedOrigins.has(origin)) return callback(null, true);
+    // Reject at the browser boundary instead of surfacing a server error.
+    logger.warn(`CORS blocked: ${origin}`);
+    return callback(null, false);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "tiny"));
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-// ── Rate limiting ──────────────────────────────────────────────
+// ── Rate limiting (before body parsing so huge bodies are not buffered) ──
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500,
+  max: 1000,
   message: { success: false, message: "Too many requests, please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { success: false, message: "Too many changes, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
 });
 
 const authLimiter = rateLimit({
@@ -92,6 +106,13 @@ const authLimiter = rateLimit({
 });
 
 app.use("/api", globalLimiter);
+app.use("/api", writeLimiter);
+
+// Multipart uploads stream through multer, so JSON bodies stay small.
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/forgot-password", authLimiter);
@@ -122,6 +143,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/stats",     statsRoutes);
+app.use("/api/uploads",   uploadRoutes);
 // ── V2 ────────────────────────────────────────────────────────────
 app.use("/api/posts",     postRoutes);
 app.use("/api/followers", followerRoutes);

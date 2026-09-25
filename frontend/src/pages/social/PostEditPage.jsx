@@ -28,7 +28,7 @@ export default function PostEditPage() {
   const [form,    setForm]    = useState({ caption:'', type:'image', tags:'', location:'', allowComments:true, status:'published' });
 
   useEffect(() => {
-    postService.getById(id)
+    postService.getMyPostById(id)
       .then(({ data }) => {
         const p = data.data;
         setPost(p);

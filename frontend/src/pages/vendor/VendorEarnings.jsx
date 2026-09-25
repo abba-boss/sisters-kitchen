@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, ShoppingBag, Star, Package, ArrowUpRight } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Star, Package } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend

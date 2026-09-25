@@ -5,12 +5,12 @@ import {
   getFollowing,
   checkFollowStatus,
 } from "../controllers/followerController";
-import { authenticate } from "../middleware/auth";
+import { authenticate, optionalAuth } from "../middleware/auth";
 
 const router = Router();
 
 router.post  ("/:vendorId/follow",  authenticate, toggleFollow);
-router.get   ("/:vendorId/count",   authenticate, checkFollowStatus);
+router.get   ("/:vendorId/count",   optionalAuth, checkFollowStatus);
 router.get   ("/:vendorId/list",    getVendorFollowers);
 router.get   ("/my/following",      authenticate, getFollowing);
 

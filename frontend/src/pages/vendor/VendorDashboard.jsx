@@ -96,7 +96,6 @@ export default function VendorDashboard() {
   const [followersCount, setFollowersCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
-  const [withdrawing, setWithdrawing] = useState(false);
 
   const fetchDashboard = () => {
     setLoading(true);
@@ -160,12 +159,6 @@ export default function VendorDashboard() {
     } catch {
       toast.error('Failed to toggle store');
     } finally { setToggling(false); }
-  };
-
-  const handleWithdraw = () => {
-    setWithdrawing(true);
-    toast('Withdrawal requests will be processed from Earnings soon.', { icon: '💳' });
-    setTimeout(() => setWithdrawing(false), 800);
   };
 
   const summary = analytics?.summary || {};
@@ -480,18 +473,18 @@ export default function VendorDashboard() {
               </p>
               <p className="text-white/70 text-xs mt-2">All-time kitchen earnings</p>
             </div>
-            <motion.button
-              onClick={handleWithdraw}
-              disabled={withdrawing}
+            <Link
+              to="/vendor/earnings"
               whileTap={{ scale: 0.98 }}
               className="btn-primary w-full mt-4 flex items-center justify-center gap-2"
             >
               <Wallet size={16} />
-              {withdrawing ? 'Processing…' : 'Withdraw'}
-            </motion.button>
-            <Link to="/vendor/earnings" className="block text-center text-xs text-brand-muted hover:text-primary mt-2">
-              View payout history →
+              View earnings
             </Link>
+            <p className="text-center text-xs text-brand-muted mt-2">
+              Payouts are handled by the Sisters Kitchen team. Add your bank details in{' '}
+              <Link to="/vendor/profile" className="text-primary hover:underline">Store Profile</Link>.
+            </p>
           </PageSection>
 
           {/* Quick Actions */}

@@ -11,18 +11,18 @@ const notifySocketChanged = () => {
 
 export const connectSocket = () => {
   const token = useAuthStore.getState().accessToken;
-  if (!token) return socket;
 
   // Recreate the connection when the access token changes so a refreshed
   // token is not paired with the old authenticated socket.
-  if (socket && socket.auth?.token !== token) {
+  if (socket && (socket.auth?.token || null) !== (token || null)) {
     socket.disconnect();
     socket = null;
   }
   if (socket?.connected) return socket;
 
+  // Visitors still connect so the public feed can stream new kitchen posts.
   socket = io(SOCKET_URL, {
-    auth: { token },
+    auth: token ? { token } : {},
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 5,

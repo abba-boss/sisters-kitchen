@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, Store, Search, Eye } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Pagination from '../../components/common/Pagination';

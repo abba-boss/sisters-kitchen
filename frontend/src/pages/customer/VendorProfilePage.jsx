@@ -154,18 +154,18 @@ export default function VendorProfilePage() {
   ];
 
   const highlightItems = [
-    { label: "Today's Menu", icon: UtensilsCrossed, count: availableProducts.length },
-    { label: 'Kitchen', icon: Camera, count: stories.length },
-    { label: 'Reviews', icon: Star, count: reviews.length },
-    { label: 'Behind the Scenes', icon: Sparkles, count: posts.filter((p) => p.type === 'behind_scenes').length },
-    { label: 'Offers', icon: Gift, count: posts.filter((p) => p.type === 'promotion').length },
-    { label: 'Recipes', icon: BookOpen, count: posts.filter((p) => p.type === 'recipe').length },
-  ];
+    { label: "Today's Menu", icon: UtensilsCrossed, count: availableProducts.length, tab: 'products' },
+    { label: 'Kitchen', icon: Camera, count: stories.length, tab: 'posts' },
+    { label: 'Reviews', icon: Star, count: reviews.length, tab: 'reviews' },
+    { label: 'Behind the Scenes', icon: Sparkles, count: posts.filter((p) => p.type === 'behind_scenes').length, tab: 'posts' },
+    { label: 'Offers', icon: Gift, count: posts.filter((p) => p.type === 'promotion').length, tab: 'posts' },
+    { label: 'Recipes', icon: BookOpen, count: posts.filter((p) => p.type === 'recipe').length, tab: 'posts' },
+  ].filter((item) => item.count > 0);
 
   const tabs = [
     { key: 'products', label: `Products (${availableProducts.length})` },
     { key: 'posts', label: `Posts (${posts.length})` },
-    { key: 'videos', label: `Videos (${videoPosts.length})` },
+    ...(videoPosts.length > 0 ? [{ key: 'videos', label: `Videos (${videoPosts.length})` }] : []),
     { key: 'reviews', label: `Reviews (${reviews.length})` },
     { key: 'about', label: 'About' },
   ];
@@ -235,13 +235,19 @@ export default function VendorProfilePage() {
 
                   <div className="flex flex-wrap gap-2 lg:justify-end">
                     <FollowButton vendorId={id} size="md" variant="fill" />
-                    <button
-                      onClick={() => vendor.phone ? window.open(`https://wa.me/${vendor.phone.replace(/\D/g, '')}`) : toast('Phone number not available')}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-orange-100 text-brand-dark text-sm font-semibold hover:border-primary/30 hover:text-primary transition-colors"
-                    >
-                      <MessageSquare size={15} />
-                      Message
-                    </button>
+                    {(() => {
+                      const waNumber = vendor.whatsapp || vendor.phone;
+                      if (!waNumber) return null;
+                      return (
+                        <button
+                          onClick={() => window.open(`https://wa.me/${waNumber.replace(/\D/g, '')}`)}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-orange-100 text-brand-dark text-sm font-semibold hover:border-primary/30 hover:text-primary transition-colors"
+                        >
+                          <MessageSquare size={15} />
+                          Message
+                        </button>
+                      );
+                    })()}
                     <button
                       onClick={() => {
                         navigator.clipboard?.writeText(window.location.href);
@@ -268,33 +274,37 @@ export default function VendorProfilePage() {
                 </div>
               </div>
 
-              <section className="mt-6">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h2 className="font-poppins font-bold text-xl text-brand-dark">Story Highlights</h2>
-                    <p className="text-sm text-brand-muted">A quick look into this kitchen&apos;s best moments.</p>
+              {highlightItems.length > 0 && (
+                <section className="mt-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h2 className="font-poppins font-bold text-xl text-brand-dark">Story Highlights</h2>
+                      <p className="text-sm text-brand-muted">A quick look into this kitchen&apos;s best moments.</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-                  {highlightItems.map(({ label, icon: Icon, count }) => (
-                    <motion.button
-                      key={label}
-                      whileHover={{ y: -2 }}
-                      whileTap={{ scale: 0.97 }}
-                      transition={{ duration: 0.18 }}
-                      className="flex-shrink-0 w-[112px] rounded-[1.6rem] bg-white border border-orange-100 shadow-card px-3 py-4 text-center"
-                    >
-                      <div className="mx-auto w-14 h-14 rounded-full bg-gradient-to-br from-primary via-orange-400 to-yellow-400 p-[2px] mb-3">
-                        <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-primary">
-                          <Icon size={18} />
+                  <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+                    {highlightItems.map(({ label, icon: Icon, count, tab }) => (
+                      <motion.button
+                        key={label}
+                        type="button"
+                        onClick={() => setTab(tab)}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ duration: 0.18 }}
+                        className="flex-shrink-0 w-[112px] rounded-[1.6rem] bg-white border border-orange-100 shadow-card px-3 py-4 text-center hover:border-primary/30 transition-colors"
+                      >
+                        <div className="mx-auto w-14 h-14 rounded-full bg-gradient-to-br from-primary via-orange-400 to-yellow-400 p-[2px] mb-3">
+                          <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-primary">
+                            <Icon size={18} />
+                          </div>
                         </div>
-                      </div>
-                      <p className="text-sm font-semibold text-brand-dark leading-tight">{label}</p>
-                      <p className="text-xs text-brand-muted mt-1">{count} highlights</p>
-                    </motion.button>
-                  ))}
-                </div>
-              </section>
+                        <p className="text-sm font-semibold text-brand-dark leading-tight">{label}</p>
+                        <p className="text-xs text-brand-muted mt-1">{count} highlights</p>
+                      </motion.button>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               <section className="mt-6">
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -541,10 +551,6 @@ export default function VendorProfilePage() {
                               <StarRating rating={r.rating} size={14} />
                             </div>
                             {r.comment && <p className="text-sm text-brand-muted leading-relaxed">{r.comment}</p>}
-                            <div className="mt-4 rounded-2xl bg-brand-bg px-4 py-3">
-                              <p className="text-xs font-semibold text-brand-dark mb-1">Vendor reply</p>
-                              <p className="text-sm text-brand-muted">Thank you for supporting this kitchen. We appreciate every order and every review.</p>
-                            </div>
                           </motion.div>
                         ))
                       )}
@@ -680,7 +686,7 @@ export default function VendorProfilePage() {
                 </div>
               </SidebarCard>
 
-              <SidebarCard title="Recently Viewed" subtitle="Continue exploring the marketplace">
+              <SidebarCard title="Keep Exploring" subtitle="More kitchens and dishes nearby">
                 <div className="space-y-2 text-sm">
                   <Link to="/vendors" className="flex items-center justify-between rounded-xl bg-brand-bg px-3 py-2.5 text-brand-dark hover:text-primary transition-colors">
                     Browse more vendors <ArrowRight size={14} />

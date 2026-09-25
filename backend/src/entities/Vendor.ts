@@ -75,13 +75,13 @@ export class Vendor {
   @Column({ type: "simple-array", nullable: true })
   availableDays: string[];
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   bankName: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   accountNumber: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   accountName: string;
 
   @OneToOne(() => User, (user) => user.vendor)

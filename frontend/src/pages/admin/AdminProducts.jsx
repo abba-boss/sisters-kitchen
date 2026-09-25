@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Package, Search, Eye, Trash2, ToggleRight, ToggleLeft, Flame } from 'lucide-react';
+import { Package, Search, Eye, Trash2, Flame } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import EmptyState from '../../components/common/EmptyState';
 import { productService } from '../../services/productService';
-import { formatPrice, formatDate } from '../../utils/formatters';
+import { formatPrice } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
 export default function AdminProducts() {
@@ -17,8 +17,6 @@ export default function AdminProducts() {
   const [search,   setSearch]   = useState('');
   const [input,    setInput]    = useState('');
 
-  useEffect(() => { fetchProducts(); }, [page, search]);
-
   const fetchProducts = () => {
     setLoading(true);
     productService.getAll({ page, limit:20, search })
@@ -26,6 +24,8 @@ export default function AdminProducts() {
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => { fetchProducts(); }, [page, search]);
 
   const handleSearch = (e) => { e.preventDefault(); setSearch(input); setPage(1); };
 

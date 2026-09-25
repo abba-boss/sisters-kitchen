@@ -45,7 +45,7 @@ export default function ProductForm() {
   // ── Load product if editing ──────────────────────────────────
   useEffect(() => {
     if (!isEdit) return;
-    productService.getById(id)
+    productService.getMyProductById(id)
       .then(({ data }) => {
         const p = data.data;
         setForm({
@@ -111,7 +111,7 @@ export default function ProductForm() {
               : s
           )
         );
-      } catch (err) {
+      } catch {
         toast.error(`Image ${i + 1} upload failed — will retry on save`);
         setSlots((prev) =>
           prev.map((s, idx) =>

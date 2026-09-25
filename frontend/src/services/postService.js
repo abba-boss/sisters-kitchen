@@ -6,6 +6,7 @@ export const postService = {
   getFollowingFeed: (params) => api.get('/posts/following', { params }),
   getVendorPosts: (vendorId, params) => api.get(`/posts/vendor/${vendorId}`, { params }),
   getMyPosts:     (params) => api.get('/posts/my/posts', { params }),
+  getMyPostById:  (id) => api.get(`/posts/my/posts/${id}`),
   getById:        (id) => api.get(`/posts/${id}`),
 
   // CRUD

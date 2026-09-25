@@ -19,8 +19,9 @@ import toast from 'react-hot-toast';
 
 export default function CartPage() {
   const {
-    items, vendorGroups, subtotal,
+    items, savedItems, vendorGroups, subtotal,
     updateQuantity, removeFromCart, clearCart,
+    setItemNote, saveForLater,
   } = useCart();
   const { isAuthenticated, user } = useAuthStore();
   const openAuth = useAuthModalStore((s) => s.open);
@@ -28,8 +29,6 @@ export default function CartPage() {
   const navigate = useNavigate();
   const checkoutVendorRef = useRef(null);
   const [collapsedGroups, setCollapsedGroups] = useState({});
-  const [notes, setNotes] = useState({});
-  const [savedForLater, setSavedForLater] = useState({});
   const [suggestions, setSuggestions] = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
 
@@ -45,6 +44,13 @@ export default function CartPage() {
       navigate(vid ? `/checkout?vendor=${vid}` : '/checkout', { state: { vendorId: vid } });
     });
   };
+
+  // Only refetch suggestions when the set of cart products actually changes,
+  // not on every quantity tick.
+  const cartProductIds = useMemo(
+    () => items.map((item) => item.id).sort().join(','),
+    [items]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -63,7 +69,8 @@ export default function CartPage() {
         if (mounted) setLoadingSuggestions(false);
       });
     return () => { mounted = false; };
-  }, [items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartProductIds]);
 
   const totalItems = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity, 0),
@@ -75,7 +82,7 @@ export default function CartPage() {
     return sum + (Number(item.price) - Number(item.discountPrice)) * item.quantity;
   }, 0);
   const grandTotal = subtotal + deliveryFee;
-  const estimatedPoints = Math.floor(subtotal / 200);
+  const estimatedPoints = Math.floor(grandTotal / 100);
   const addressPreview = user?.address || 'Set your delivery address at checkout';
   const suggestionGroups = useMemo(() => ([
     { key: 'together', title: 'Frequently Bought Together', icon: Soup, items: suggestions.slice(0, 4) },
@@ -88,11 +95,8 @@ export default function CartPage() {
   };
 
   const handleSaveForLater = (item) => {
-    const isSaved = Boolean(savedForLater[item.id]);
-    setSavedForLater((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
-    toast.success(isSaved ? 'Moved back to cart' : 'Saved for later');
+    if (saveForLater(item.lineKey)) toast.success(`${item.name} saved for later`);
   };
-
   return (
     <MainLayout>
       <div className="page-container page-shell page-shell-mobile-pad">
@@ -118,7 +122,10 @@ export default function CartPage() {
         </div>
 
         {items.length === 0 ? (
-          <PremiumEmptyCart />
+          <>
+            <PremiumEmptyCart />
+            {savedItems.length > 0 && <SavedForLaterSection />}
+          </>
         ) : (
           <div className="grid xl:grid-cols-[minmax(0,1.15fr)_380px] gap-8 items-start">
             <div className="space-y-6 min-w-0">
@@ -269,14 +276,10 @@ export default function CartPage() {
 
                                       <button
                                         onClick={() => handleSaveForLater(item)}
-                                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
-                                          savedForLater[item.id]
-                                            ? 'bg-primary text-white'
-                                            : 'bg-brand-bg text-brand-muted hover:text-primary'
-                                        }`}
+                                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-brand-bg text-brand-muted hover:text-primary transition-colors"
                                       >
                                         <Bookmark size={13} />
-                                        {savedForLater[item.id] ? 'Saved' : 'Save for later'}
+                                        Save for later
                                       </button>
                                     </div>
 
@@ -285,8 +288,8 @@ export default function CartPage() {
                                         Special instructions
                                       </label>
                                       <textarea
-                                        value={notes[item.id] || ''}
-                                        onChange={(e) => setNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                        value={item.notes || ''}
+                                        onChange={(e) => setItemNote(item.lineKey, e.target.value)}
                                         rows={2}
                                         placeholder="Add preferences for checkout, like less pepper or extra cutlery."
                                         className="input-field resize-none text-sm"
@@ -496,6 +499,8 @@ export default function CartPage() {
             </aside>
           </div>
         )}
+
+        {items.length > 0 && savedItems.length > 0 && <SavedForLaterSection />}
       </div>
 
       {items.length > 0 && (
@@ -516,6 +521,63 @@ export default function CartPage() {
         </div>
       )}
     </MainLayout>
+  );
+}
+
+function SavedForLaterSection() {
+  const { savedItems, moveToCart, removeSavedItem } = useCart();
+
+  return (
+    <section className="rounded-[2rem] border border-orange-100 bg-white shadow-card p-5 sm:p-6 mt-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <h2 className="font-poppins font-bold text-xl text-brand-dark flex items-center gap-2">
+            <Bookmark size={17} className="text-primary" /> Saved for later
+          </h2>
+          <p className="text-sm text-brand-muted mt-1">
+            Still available — move an item back whenever you are ready.
+          </p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {savedItems.map((item) => {
+          const price = Number(item.discountPrice) || Number(item.price);
+          return (
+            <div key={item.lineKey} className="flex items-center gap-3 rounded-[1.4rem] border border-orange-100 p-3">
+              <img
+                src={item.images?.[0] || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=100'}
+                alt={item.name}
+                className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-brand-dark truncate">{item.name}</p>
+                <p className="text-xs text-brand-muted">
+                  {item.vendor?.businessName || 'Kitchen'} · {formatPrice(price)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (moveToCart(item.lineKey)) toast.success(`${item.name} moved to your cart`);
+                    else toast.error('That item is already in your cart');
+                  }}
+                  className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-white hover:bg-primary-dark transition-colors"
+                >
+                  Move to cart
+                </button>
+                <button
+                  onClick={() => removeSavedItem(item.lineKey)}
+                  aria-label={`Remove ${item.name}`}
+                  className="rounded-xl bg-brand-bg p-2 text-brand-muted hover:text-red-500 transition-colors"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

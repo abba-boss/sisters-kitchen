@@ -17,6 +17,8 @@ import { productService } from '../../services/productService';
 import { vendorService } from '../../services/vendorService';
 import { categoryService } from '../../services/categoryService';
 import { formatPrice } from '../../utils/formatters';
+import { useAuthStore } from '../../store/authStore';
+import { useAuthModalStore } from '../../store/authModalStore';
 
 export default function DiscoverPage() {
   const navigate = useNavigate();
@@ -78,7 +80,7 @@ export default function DiscoverPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search the feed for jollof, pastries, Lagos..."
-                className="h-13 w-full rounded-2xl border-0 bg-white py-3.5 pl-12 pr-28 text-sm text-brand-dark shadow-card-hover placeholder-brand-muted focus:outline-none focus:ring-4 focus:ring-white/20"
+                className="h-12 w-full rounded-2xl border-0 bg-white pl-12 pr-28 text-sm text-brand-dark shadow-card-hover placeholder-brand-muted focus:outline-none focus:ring-4 focus:ring-white/20"
               />
               <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark">
                 Search
@@ -105,6 +107,7 @@ export default function DiscoverPage() {
             icon={Bookmark}
             title="Saved stories"
             description="Keep recipes and inspiration close"
+            requiresAuth
           />
         </section>
 
@@ -219,9 +222,23 @@ export default function DiscoverPage() {
   );
 }
 
-function DiscoverLink({ to, icon: Icon, title, description }) {
+function DiscoverLink({ to, icon: Icon, title, description, requiresAuth }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const openAuth = useAuthModalStore((state) => state.open);
+
+  // Offer the sign-in modal instead of bouncing visitors to a bare /login page.
+  const handleClick = (event) => {
+    if (!requiresAuth || isAuthenticated) return;
+    event.preventDefault();
+    openAuth(`Sign in to see your ${title.toLowerCase()}`);
+  };
+
   return (
-    <Link to={to} className="group surface-muted flex items-center gap-3 p-4 transition-all hover:border-primary/30 hover:bg-white hover:shadow-soft">
+    <Link
+      to={to}
+      onClick={handleClick}
+      className="group surface-muted flex items-center gap-3 p-4 transition-all hover:border-primary/30 hover:bg-white hover:shadow-soft"
+    >
       <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
         <Icon size={18} aria-hidden="true" />
       </span>

@@ -54,3 +54,29 @@ export const authorize = (...roles: UserRole[]) => {
     next();
   };
 };
+
+/**
+ * Attaches `req.user` when a valid token is present but never rejects the
+ * request. Lets public endpoints personalize their response for signed-in users.
+ */
+export const optionalAuth = async (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const header = req.headers.authorization;
+    if (header?.startsWith("Bearer ")) {
+      const decoded = jwt.verify(header.split(" ")[1], process.env.JWT_SECRET!) as {
+        userId: string;
+      };
+      const user = await AppDataSource.getRepository(User).findOne({
+        where: { id: decoded.userId, isActive: true },
+      });
+      if (user) req.user = user;
+    }
+  } catch {
+    // An invalid token simply means "treat this as a visitor".
+  }
+  next();
+};

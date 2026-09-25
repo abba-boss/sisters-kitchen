@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, User, Mail, Lock, Phone, Store, Clock, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, Phone, Store, Clock, CheckCircle, Gift } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import AuthSplitLayout from '../../components/auth/AuthSplitLayout';
@@ -11,10 +11,11 @@ export default function RegisterPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const defaultRole = searchParams.get('role') || 'customer';
+  const referralCode = searchParams.get('ref') || '';
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', password: '', phone: '',
-    role: defaultRole, businessName: '',
+    role: defaultRole, businessName: '', referralCode,
   });
   const [showPwd, setShowPwd]         = useState(false);
   const [loading, setLoading]         = useState(false);
@@ -173,6 +174,12 @@ export default function RegisterPage() {
       </AnimatePresence>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {form.referralCode && (
+          <div className="flex items-center gap-2 rounded-2xl border border-accent/25 bg-accent/10 px-3.5 py-3 text-xs text-brand-dark">
+            <Gift size={15} className="text-accent flex-shrink-0" />
+            <span>You were invited by a friend — they earn Kitchen Coins when you join.</span>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-brand-dark mb-1 block">First Name *</label>

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { CheckCircle, Clock, Package, Truck, XCircle, Star } from 'lucide-react';
-import { formatDateTime, getOrderStatusLabel } from '../../utils/formatters';
+import { formatDateTime } from '../../utils/formatters';
 
 const STEP_META = {
   pending:          { icon: Clock,        color: 'text-yellow-500', bg: 'bg-yellow-50',  label: 'Order Placed'   },

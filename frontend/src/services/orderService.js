@@ -7,4 +7,5 @@ export const orderService = {
   getAllOrders: (params) => api.get('/orders/all', { params }),
   getById: (id) => api.get(`/orders/${id}`),
   updateStatus: (id, data) => api.patch(`/orders/${id}/status`, data),
+  cancel: (id) => api.post(`/orders/${id}/cancel`),
 };

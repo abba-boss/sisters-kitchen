@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Lock, Save, Eye, EyeOff, Wallet, Gift, Package, Heart,
   Store, MapPin, CreditCard, Bell, Settings, Users, ChevronRight,
-  Copy, Check, Trash2, CheckCheck, Sparkles, ShieldCheck, Coins,
+  Copy, Check, Trash2, CheckCheck, Sparkles, ShieldCheck,
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import PageSection from '../../components/common/PageSection';

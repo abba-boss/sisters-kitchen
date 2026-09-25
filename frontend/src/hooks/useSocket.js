@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { connectSocket, disconnectSocket, getSocket } from '../services/socketService';
+import { connectSocket, getSocket } from '../services/socketService';
 import { useAuthStore } from '../store/authStore';
 
 /**
@@ -7,16 +7,13 @@ import { useAuthStore } from '../store/authStore';
  * Must be called once at the app root.
  */
 export const useSocketConnection = () => {
-  const { isAuthenticated, accessToken } = useAuthStore();
+  const { accessToken } = useAuthStore();
 
   useEffect(() => {
-    if (isAuthenticated && accessToken) {
-      connectSocket();
-    } else {
-      disconnectSocket();
-    }
-    return () => {};
-  }, [isAuthenticated, accessToken]);
+    // Always connect: guests receive public feed events, signed-in users also
+    // receive their private order/notification rooms.
+    connectSocket();
+  }, [accessToken]);
 };
 
 /**

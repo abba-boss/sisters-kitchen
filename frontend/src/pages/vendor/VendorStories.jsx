@@ -1,20 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Eye, Camera, Upload, X, Loader, CheckCircle2, Clock } from 'lucide-react';
+import { Plus, Eye, Camera, Upload, X, Loader, Clock } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import EmptyState from '../../components/common/EmptyState';
 import { storyService } from '../../services/storyService';
-import { uploadImage } from '../../services/cloudinaryService';
-import { timeAgo } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
 export default function VendorStories() {
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-
-  useEffect(() => { fetchStories(); }, []);
 
   const fetchStories = () => {
     storyService.getMyStories()
@@ -22,6 +17,8 @@ export default function VendorStories() {
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => { fetchStories(); }, []);
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this story?')) return;
@@ -78,7 +75,7 @@ export default function VendorStories() {
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
                 <AnimatePresence>
-                  {activeStories.map((story, i) => (
+                  {activeStories.map((story) => (
                     <StoryCard key={story.id} story={story} onDelete={handleDelete} active />
                   ))}
                 </AnimatePresence>
@@ -163,47 +160,34 @@ function StoryCard({ story, onDelete, active }) {
 function CreateStoryModal({ isOpen, onClose, onCreated }) {
   const [file,     setFile]     = useState(null);
   const [preview,  setPreview]  = useState(null);
-  const [url,      setUrl]      = useState(null);
-  const [uploading,setUploading]= useState(false);
-  const [uploaded, setUploaded] = useState(false);
   const [caption,  setCaption]  = useState('');
   const [link,     setLink]     = useState('');
   const [saving,   setSaving]   = useState(false);
   const fileRef = useRef(null);
 
   const reset = () => {
-    setFile(null); setPreview(null); setUrl(null);
-    setUploading(false); setUploaded(false);
+    setFile(null); setPreview(null);
     setCaption(''); setLink('');
   };
 
   const handleClose = () => { reset(); onClose(); };
 
-  const handleFile = async (e) => {
+  // The file is uploaded together with the story so photo and video both take
+  // the same multipart path.
+  const handleFile = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
     if (fileRef.current) fileRef.current.value = '';
     setFile(f);
     setPreview(URL.createObjectURL(f));
-    setUploading(true); setUploaded(false); setUrl(null);
-    try {
-      const uploadedUrl = await uploadImage(f, 'sisters-kitchen/stories');
-      setUrl(uploadedUrl); setUploaded(true);
-    } catch { toast.error('Upload failed — will retry on save'); }
-    finally { setUploading(false); }
   };
 
   const handleSave = async () => {
-    if (!preview) { toast.error('Please select a photo or video'); return; }
-    if (uploading) { toast.error('Please wait for upload to finish'); return; }
+    if (!file) { toast.error('Please select a photo or video'); return; }
     setSaving(true);
     try {
       const fd = new FormData();
-      if (url) {
-        fd.append('mediaUrl', url);
-      } else if (file) {
-        fd.append('media', file);
-      }
+      fd.append('media', file);
       if (caption.trim()) fd.append('caption', caption.trim());
       if (link.trim())    fd.append('link',    link.trim());
 
@@ -250,26 +234,19 @@ function CreateStoryModal({ isOpen, onClose, onCreated }) {
                   style={{ aspectRatio: '9/16', maxHeight: 320 }}
                 >
                   {preview ? (
-                    <img src={preview} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    file?.type?.startsWith('video/') ? (
+                      <video src={preview} className="absolute inset-0 w-full h-full object-cover" muted playsInline />
+                    ) : (
+                      <img src={preview} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    )
                   ) : (
                     <div className="text-center p-6">
                       <Camera size={32} className="text-brand-muted mx-auto mb-2" />
-                      <p className="text-sm font-medium text-brand-dark">Tap to add photo</p>
-                      <p className="text-xs text-brand-muted mt-0.5">Supports JPG, PNG, WebP</p>
+                      <p className="text-sm font-medium text-brand-dark">Tap to add a photo or clip</p>
+                      <p className="text-xs text-brand-muted mt-0.5">JPG, PNG, WebP, MP4 or WebM</p>
                     </div>
                   )}
 
-                  {uploading && (
-                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center">
-                      <Loader size={24} className="text-white animate-spin mb-2" />
-                      <p className="text-white text-sm">Uploading…</p>
-                    </div>
-                  )}
-                  {uploaded && (
-                    <div className="absolute top-3 left-3 flex items-center gap-1 bg-accent text-white text-xs font-semibold px-2 py-1 rounded-full">
-                      <CheckCircle2 size={11} /> Uploaded
-                    </div>
-                  )}
                   {preview && (
                     <button
                       onClick={() => { reset(); fileRef.current?.click(); }}
@@ -280,12 +257,18 @@ function CreateStoryModal({ isOpen, onClose, onCreated }) {
                   )}
                 </div>
 
-                <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*,video/mp4,video/webm,video/quicktime"
+                  onChange={handleFile}
+                  className="hidden"
+                />
 
                 {preview && (
                   <button onClick={() => fileRef.current?.click()}
                     className="w-full flex items-center justify-center gap-2 text-sm text-primary font-medium border border-primary/30 rounded-xl py-2 hover:bg-primary/5 transition-colors">
-                    <Upload size={14} /> Change photo
+                    <Upload size={14} /> Change media
                   </button>
                 )}
 
@@ -322,7 +305,7 @@ function CreateStoryModal({ isOpen, onClose, onCreated }) {
                   <button onClick={handleClose} className="btn-secondary flex-1 py-3">Cancel</button>
                   <button
                     onClick={handleSave}
-                    disabled={!preview || uploading || saving}
+                    disabled={!file || saving}
                     className="btn-primary flex-1 py-3 flex items-center justify-center gap-2"
                   >
                     {saving ? (

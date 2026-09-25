@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  TrendingUp, Users, Eye, Heart, MessageCircle,
-  ShoppingBag, Star, Rss, Camera, BarChart3,
+  TrendingUp, Heart,
+  Star, Rss, Camera, BarChart3,
   ArrowUpRight, Zap, Target, Package
 } from 'lucide-react';
 import {
@@ -13,7 +13,6 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { vendorService } from '../../services/vendorService';
 import { postService } from '../../services/postService';
-import { storyService } from '../../services/storyService';
 import { formatPrice, formatNumber, getOrderStatusLabel } from '../../utils/formatters';
 import api from '../../services/api';
 
@@ -22,7 +21,6 @@ const COLORS = ['#FF7A59','#5FA36A','#F59E0B','#3B82F6','#8B5CF6'];
 export default function BusinessHub() {
   const [analytics, setAnalytics] = useState(null);
   const [posts,     setPosts]     = useState([]);
-  const [stories,   setStories]   = useState([]);
   const [vendor,    setVendor]    = useState(null);
   const [loading,   setLoading]   = useState(true);
   const [tab,       setTab]       = useState('overview');
@@ -32,13 +30,11 @@ export default function BusinessHub() {
       api.get('/analytics/vendor'),
       vendorService.getMyProfile(),
       postService.getMyPosts({ limit: 10 }),
-      storyService.getMyStories(),
     ])
-      .then(([an, vp, pp, st]) => {
+      .then(([an, vp, pp]) => {
         setAnalytics(an.data.data);
         setVendor(vp.data.data);
         setPosts(pp.data.data || []);
-        setStories(st.data.data || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

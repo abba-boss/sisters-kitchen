@@ -8,18 +8,23 @@ import toast from 'react-hot-toast';
 export default function DailyRewardModal({ isOpen, onClose }) {
   const [claiming, setClaiming] = useState(false);
   const [result,   setResult]   = useState(null);
-  const { incrementBalance } = useRewardStore();
+  const { setBalance, setShowDailyModal } = useRewardStore();
+
+  const dismiss = () => {
+    setShowDailyModal(false);
+    onClose();
+  };
 
   const handleClaim = async () => {
     setClaiming(true);
     try {
       const { data } = await rewardService.claimDaily();
       setResult(data.data);
-      incrementBalance(data.data.coins);
+      setBalance(Number(data.data.balanceAfter), new Date().toISOString());
       toast.success(data.message);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not claim');
-      onClose();
+      dismiss();
     } finally { setClaiming(false); }
   };
 
@@ -28,7 +33,7 @@ export default function DailyRewardModal({ isOpen, onClose }) {
       {isOpen && (
         <>
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={onClose} />
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={dismiss} />
 
           <motion.div
             initial={{ opacity:0, scale:0.8, y:30 }}
@@ -40,7 +45,7 @@ export default function DailyRewardModal({ isOpen, onClose }) {
           >
             <div className="bg-white rounded-3xl shadow-card-hover w-full max-w-xs overflow-hidden text-center">
               <div className="bg-gradient-to-br from-yellow-400 to-orange-400 p-8 relative">
-                <button onClick={onClose}
+                <button onClick={dismiss}
                   className="absolute top-3 right-3 w-7 h-7 bg-white/20 text-white rounded-full flex items-center justify-center">
                   <X size={14} />
                 </button>
@@ -66,7 +71,7 @@ export default function DailyRewardModal({ isOpen, onClose }) {
                       </p>
                     )}
                     <p className="text-xs text-brand-muted mt-3">Balance: {result.balanceAfter} coins</p>
-                    <button onClick={onClose} className="btn-primary w-full mt-4 py-3">
+                    <button onClick={dismiss} className="btn-primary w-full mt-4 py-3">
                       Awesome! 🎉
                     </button>
                   </motion.div>
@@ -84,7 +89,7 @@ export default function DailyRewardModal({ isOpen, onClose }) {
                         : '✨ Claim Free Coins'
                       }
                     </button>
-                    <button onClick={onClose} className="text-xs text-brand-muted mt-3 hover:underline block w-full">
+                    <button onClick={dismiss} className="text-xs text-brand-muted mt-3 hover:underline block w-full">
                       Maybe later
                     </button>
                   </>

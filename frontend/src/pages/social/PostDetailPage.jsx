@@ -14,7 +14,15 @@ export default function PostDetailPage() {
 
   useEffect(() => {
     postService.getById(id)
-      .then(({ data }) => setPost(data.data))
+      .then(({ data }) => {
+        const p = data.data;
+        // The API returns batched viewer state for the signed-in user.
+        setPost({
+          ...p,
+          _liked: p.viewerState?.liked ?? p._liked ?? false,
+          _saved: p.viewerState?.saved ?? p._saved ?? false,
+        });
+      })
       .catch(() => toast.error('Post not found'))
       .finally(() => setLoading(false));
   }, [id]);

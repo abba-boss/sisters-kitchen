@@ -19,12 +19,27 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Endpoints where a 401 means "wrong credentials", not "session expired".
+// Running the refresh flow on those signed the user out for a typo.
+const AUTH_ENTRY_PATHS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/verify-otp',
+  '/auth/reset-password',
+  '/auth/resend-otp',
+  '/auth/refresh-token',
+];
+
 // Response interceptor – handle 401 / refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    const url = original?.url || '';
+    const isAuthEntry = AUTH_ENTRY_PATHS.some((path) => url.includes(path));
+
+    if (error.response?.status === 401 && !original._retry && !isAuthEntry) {
       original._retry = true;
       const { refreshToken, setAuth, logout } = useAuthStore.getState();
       if (refreshToken) {

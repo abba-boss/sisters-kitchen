@@ -1,9 +1,9 @@
 const PENDING_CHECKOUT_KEY = 'sk-pending-checkout';
 
-export function savePendingCheckout({ orderIds, vendorId, clearAll }) {
+export function savePendingCheckout({ orderIds, vendorId, clearAll, discount = 0 }) {
   sessionStorage.setItem(
     PENDING_CHECKOUT_KEY,
-    JSON.stringify({ orderIds, vendorId, clearAll })
+    JSON.stringify({ orderIds, vendorId, clearAll, discount })
   );
 }
 

@@ -13,6 +13,7 @@ export const useCartStore = create(
   persist(
     (set, get) => ({
       items: [],
+      savedItems: [],
 
       // Add item while keeping different preparation preferences separate.
       addItem: (product, quantity = 1) => {
@@ -61,6 +62,47 @@ export const useCartStore = create(
               : item
           ),
         });
+      },
+
+      /** Per-item instruction that is sent to the kitchen at checkout. */
+      setItemNote: (lineKey, note) => {
+        set({
+          items: get().items.map((item) =>
+            getLineKey(item) === lineKey ? { ...item, notes: note } : item
+          ),
+        });
+      },
+
+      /** Move a line out of the cart but keep it for later. */
+      saveForLater: (lineKey) => {
+        const { items, savedItems } = get();
+        const item = items.find((entry) => getLineKey(entry) === lineKey);
+        if (!item) return false;
+        set({
+          items: items.filter((entry) => getLineKey(entry) !== lineKey),
+          savedItems: [...savedItems, item],
+        });
+        return true;
+      },
+
+      /** Put a saved line back into the cart. */
+      moveToCart: (lineKey) => {
+        const { items, savedItems } = get();
+        const item = savedItems.find((entry) => getLineKey(entry) === lineKey);
+        if (!item) return false;
+        if (items.some((entry) => getLineKey(entry) === lineKey)) {
+          set({ savedItems: savedItems.filter((entry) => getLineKey(entry) !== lineKey) });
+          return false;
+        }
+        set({
+          items: [...items, { ...item, quantity: item.quantity || 1 }],
+          savedItems: savedItems.filter((entry) => getLineKey(entry) !== lineKey),
+        });
+        return true;
+      },
+
+      removeSavedItem: (lineKey) => {
+        set({ savedItems: get().savedItems.filter((item) => getLineKey(item) !== lineKey) });
       },
 
       clearCart: () => set({ items: [] }),
@@ -112,6 +154,6 @@ export const useCartStore = create(
       get vendorId() { return get().items[0]?.vendor?.id || null; },
       get vendorName() { return get().items[0]?.vendor?.businessName || null; },
     }),
-    { name: 'sisters-kitchen-cart' }
+    { name: 'sisters-kitchen-cart', version: 2, migrate: (state) => ({ ...state, savedItems: state.savedItems || [] }) }
   )
 );

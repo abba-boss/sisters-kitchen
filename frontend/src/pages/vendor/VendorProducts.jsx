@@ -15,8 +15,6 @@ export default function VendorProducts() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => { fetchProducts(); }, []);
-
   const fetchProducts = () => {
     setLoading(true);
     productService.getMyProducts()
@@ -24,6 +22,8 @@ export default function VendorProducts() {
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => { fetchProducts(); }, []);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;

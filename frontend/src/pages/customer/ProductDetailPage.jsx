@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Truck,
   Sparkles,
-  PlayCircle,
   Expand,
   PackageCheck,
   UtensilsCrossed,
@@ -187,20 +186,31 @@ export default function ProductDetailPage() {
   };
 
   const handleWishlist = () => {
+    // The server is the source of truth; only flip local state once it agrees,
+    // otherwise the wishlist silently diverges on the next sign-in.
     if (!isAuthenticated) {
       openAuth('Sign in to save items to your wishlist', () => {
-        toggle(product);
-        toast.success('Added to wishlist');
+        persistWishlist(true);
       });
       return;
     }
+    persistWishlist(!isWishlisted(product.id));
+  };
+
+  const persistWishlist = (nextSaved) => {
+    const previous = isWishlisted(product.id);
+    if (nextSaved === previous) return;
+
     toggle(product);
-    favoriteService.toggle(product.id)
+    favoriteService
+      .toggle(product.id)
       .then(({ data }) => {
-        toast.success(data.isFavorite ? 'Added to wishlist' : 'Removed from wishlist');
+        const saved = Boolean(data.isFavorite);
+        if (saved !== nextSaved) toggle(product); // reconcile with the server
+        toast.success(saved ? 'Added to wishlist' : 'Removed from wishlist');
       })
       .catch(() => {
-        toggle(product);
+        if (previous !== nextSaved) toggle(product);
         toast.error('Could not update wishlist. Please try again.');
       });
   };
@@ -231,7 +241,7 @@ export default function ProductDetailPage() {
 
   return (
     <MainLayout>
-      <div className="page-container page-shell">
+      <div className="page-container page-shell page-shell-mobile-pad">
         <nav className="flex items-center gap-2 text-sm text-brand-muted mb-6 flex-wrap">
           <Link to="/" className="hover:text-primary">Feed</Link>
           <ChevronRight size={14} />
@@ -283,15 +293,10 @@ export default function ProductDetailPage() {
                 <div className="absolute bottom-4 right-4 flex flex-col gap-2">
                   <button
                     onClick={() => setFullscreen(true)}
+                    aria-label="View image full screen"
                     className="w-11 h-11 rounded-full bg-white/85 backdrop-blur-sm text-brand-dark flex items-center justify-center shadow-card hover:text-primary transition-colors"
                   >
                     <Expand size={18} />
-                  </button>
-                  <button
-                    className="w-11 h-11 rounded-full bg-white/85 backdrop-blur-sm text-brand-dark flex items-center justify-center shadow-card hover:text-primary transition-colors"
-                    onClick={() => toast('360° preview coming soon')}
-                  >
-                    <PlayCircle size={18} />
                   </button>
                 </div>
               </div>
@@ -308,12 +313,14 @@ export default function ProductDetailPage() {
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
-                <button
-                  onClick={() => toast('360° interactive preview coming soon')}
-                  className="flex-shrink-0 w-20 h-20 rounded-[1.3rem] bg-brand-bg border border-orange-100 text-brand-muted text-xs font-semibold hover:text-primary transition-colors"
-                >
-                  360° View
-                </button>
+                {images.length > 1 && (
+                  <button
+                    onClick={() => setFullscreen(true)}
+                    className="flex-shrink-0 w-20 h-20 rounded-[1.3rem] bg-brand-bg border border-orange-100 text-brand-muted text-xs font-semibold hover:text-primary transition-colors"
+                  >
+                    All photos
+                  </button>
+                )}
               </div>
             </div>
           </section>

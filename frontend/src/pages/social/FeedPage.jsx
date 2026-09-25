@@ -36,28 +36,13 @@ import { formatPrice } from '../../utils/formatters';
 
 const LIMIT = 10;
 
-async function hydrateViewerState(items, isAuthenticated) {
-  if (!isAuthenticated || !items.length) return items;
-
-  const [likeResults, savedResult] = await Promise.all([
-    Promise.all(
-      items.map((post) =>
-        postService
-          .getLikeStatus(post.id)
-          .then(({ data }) => ({ id: post.id, ...data.data }))
-          .catch(() => null)
-      )
-    ),
-    postService.getSaved({ page: 1, limit: 100 }).then(({ data }) => data.data || []).catch(() => []),
-  ]);
-  const likes = new Map(likeResults.filter(Boolean).map((result) => [result.id, result]));
-  const savedIds = new Set(savedResult.map((post) => post.id));
-
+// The API resolves like/save state for the whole page in two batched queries,
+// so no extra request per post is needed here.
+function hydrateViewerState(items) {
   return items.map((post) => ({
     ...post,
-    _liked: likes.get(post.id)?.liked ?? post._liked ?? false,
-    likesCount: likes.get(post.id)?.likesCount ?? post.likesCount ?? 0,
-    _saved: savedIds.has(post.id),
+    _liked: post.viewerState?.liked ?? post._liked ?? false,
+    _saved: post.viewerState?.saved ?? post._saved ?? false,
   }));
 }
 
@@ -114,8 +99,7 @@ export default function FeedPage() {
       const { data } = await postService.getFollowingFeed({ page: 1, limit: LIMIT });
       const items = data.data || [];
       setFollowingIds([...new Set(items.map((post) => post.vendor?.id).filter(Boolean))]);
-      const hydrated = await hydrateViewerState(items, isAuthenticated);
-      setPosts(hydrated);
+      setPosts(hydrateViewerState(items));
       setHasMore(items.length === LIMIT);
       setPage(1);
     } catch {
@@ -125,7 +109,7 @@ export default function FeedPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, setHasMore, setLoading, setPage, setPosts]);
+  }, [setHasMore, setLoading, setPage, setPosts]);
 
   useEffect(() => {
     if (activeTab === 'following') return undefined;
@@ -136,12 +120,10 @@ export default function FeedPage() {
 
     postService
       .getFeed({ page: 1, limit: LIMIT, ...filter })
-      .then(async ({ data }) => {
+      .then(({ data }) => {
         if (cancelled) return;
         const items = data.data || [];
-        const hydrated = await hydrateViewerState(items, isAuthenticated);
-        if (cancelled) return;
-        setPosts(hydrated);
+        setPosts(hydrateViewerState(items));
         setHasMore(items.length === LIMIT);
         setPage(1);
       })
@@ -158,7 +140,7 @@ export default function FeedPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, filter, isAuthenticated, refreshKey, setHasMore, setLoading, setPage, setPosts]);
+  }, [activeTab, filter, refreshKey, setHasMore, setLoading, setPage, setPosts]);
 
   const loadMore = useCallback(() => {
     if (loading || !hasMore) return;
@@ -170,10 +152,9 @@ export default function FeedPage() {
       : postService.getFeed({ page: nextPage, limit: LIMIT, ...filter });
 
     request
-      .then(async ({ data }) => {
+      .then(({ data }) => {
         const newPosts = data.data || [];
-        const hydrated = await hydrateViewerState(newPosts, isAuthenticated);
-        appendPosts(hydrated);
+        appendPosts(hydrateViewerState(newPosts));
         if (activeTab === 'following') {
           setFollowingIds((current) => [
             ...new Set([...current, ...newPosts.map((post) => post.vendor?.id).filter(Boolean)]),
@@ -184,7 +165,7 @@ export default function FeedPage() {
       })
       .catch(() => setFeedError('More stories could not be loaded. Please try again.'))
       .finally(() => setLoading(false));
-  }, [activeTab, appendPosts, filter, hasMore, isAuthenticated, loading, page, setHasMore, setLoading, setPage]);
+  }, [activeTab, appendPosts, filter, hasMore, loading, page, setHasMore, setLoading, setPage]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -421,7 +402,7 @@ function FeedIntro({ firstName, search, setSearch, onSearch, onClear, hasSearch,
           <p className="mt-1 text-sm text-brand-muted">See what local kitchens are cooking, sharing, and serving today.</p>
         </div>
         {isAuthenticated && (
-          <div className="sm:hidden">
+          <div className="md:hidden">
             <NotificationDropdown />
           </div>
         )}

@@ -6,6 +6,7 @@ import { User, UserRole } from "../entities/User";
 import { Product } from "../entities/Product";
 import { Payment, PaymentStatus } from "../entities/Payment";
 import { AuthRequest } from "../middleware/auth";
+import { publicOrder } from "../utils/serializers";
 
 // ─── Vendor Analytics ───────────────────────────────────────────
 export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -43,7 +44,7 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
 
     const dailyRevenue = await orderRepo
       .createQueryBuilder("order")
-      .select("DATE(order.createdAt) as day")
+      .select("DATE_FORMAT(order.createdAt, '%Y-%m-%d') as day")
       .addSelect("SUM(order.total) as revenue")
       .addSelect("COUNT(order.id) as orders")
       .where("order.vendorId = :vendorId", { vendorId: vendor.id })
@@ -191,7 +192,7 @@ export const getAdminAnalytics = async (req: AuthRequest, res: Response): Promis
         userGrowth,
         topVendors,
         ordersByStatus,
-        recentOrders,
+        recentOrders: recentOrders.map(publicOrder),
       },
     });
   } catch (error: any) {

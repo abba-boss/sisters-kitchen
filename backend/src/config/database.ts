@@ -35,7 +35,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME     || "sisters_kitchen",
   // Schema synchronization is a development convenience only. Production
   // deployments should use reviewed migrations and set DB_SYNC=false.
-  synchronize: process.env.NODE_ENV !== "production" && process.env.DB_SYNC !== "false",
+  synchronize: process.env.DB_SYNC === "true" && process.env.NODE_ENV !== "production",
   logging: false,
   entities: [
     // ── V1 ────────────────────────────────────────────────────

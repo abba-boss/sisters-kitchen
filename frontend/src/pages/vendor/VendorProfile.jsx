@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { Camera, Save } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { vendorService } from '../../services/vendorService';

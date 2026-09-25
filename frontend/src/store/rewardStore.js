@@ -6,9 +6,11 @@ export const useRewardStore = create(
     (set, get) => ({
       balance: 0,
       showDailyModal: false,
+      lastDailyRewardAt: null,
       lastFetched: null,
 
-      setBalance: (balance) => set({ balance, lastFetched: Date.now() }),
+      setBalance: (balance, lastDailyRewardAt) =>
+        set({ balance, lastDailyRewardAt: lastDailyRewardAt ?? get().lastDailyRewardAt, lastFetched: Date.now() }),
       incrementBalance: (amount) => set({ balance: get().balance + amount }),
       decrementBalance: (amount) => set({ balance: Math.max(0, get().balance - amount) }),
       setShowDailyModal: (v) => set({ showDailyModal: v }),

@@ -1,14 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ImagePlus, Upload, Loader, CheckCircle2, Tag, MapPin, ShoppingBag } from 'lucide-react';
+import { X, ImagePlus, Upload, Loader, Tag, MapPin, ShoppingBag } from 'lucide-react';
 import { postService } from '../../services/postService';
 import { productService } from '../../services/productService';
-import { uploadImage } from '../../services/cloudinaryService';
 import { useFeedStore } from '../../store/feedStore';
 import toast from 'react-hot-toast';
 
 const POST_TYPES = [
   { value: 'image',          label: '📸 Photo',          desc: 'Share a food photo'          },
+  { value: 'video',          label: '🎥 Reel',           desc: 'A short cooking clip'        },
   { value: 'text',           label: '✍️ Text',            desc: 'Share a thought'             },
   { value: 'promotion',      label: '🔥 Promotion',       desc: 'Announce a deal or offer'    },
   { value: 'availability',   label: '✅ Availability',    desc: "Today's menu availability"   },
@@ -55,39 +55,26 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
     return () => { cancelled = true; };
   }, [isOpen]);
 
-  // Image picking
-  const handleFilePick = async (e) => {
+  // Media picking — files are sent straight to the API in the multipart create
+  // request, which keeps image and video uploads on one code path.
+  const handleFilePick = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     if (fileRef.current) fileRef.current.value = '';
 
     const remaining = 10 - mediaSlots.length;
     const toAdd = files.slice(0, remaining);
+    if (files.length > remaining) {
+      toast.error('You can attach up to 10 photos or videos per post');
+    }
 
     const newSlots = toAdd.map((file) => ({
       src: URL.createObjectURL(file),
       file,
-      url: null,
-      uploading: true,
-      done: false,
+      isVideo: file.type.startsWith('video/'),
     }));
     setMediaSlots((prev) => [...prev, ...newSlots]);
-
-    // Upload to Cloudinary
-    for (let i = 0; i < toAdd.length; i++) {
-      const slotIndex = mediaSlots.length + i;
-      try {
-        const url = await uploadImage(toAdd[i], 'sisters-kitchen/posts');
-        setMediaSlots((prev) =>
-          prev.map((s, idx) => idx === slotIndex ? { ...s, url, uploading: false, done: true } : s)
-        );
-      } catch {
-        setMediaSlots((prev) =>
-          prev.map((s, idx) => idx === slotIndex ? { ...s, uploading: false, done: false } : s)
-        );
-        toast.error(`Image ${i + 1} upload failed`);
-      }
-    }
+    if (newSlots.some((slot) => slot.isVideo) && type === 'image') setType('video');
   };
 
   const removeSlot = (i) => {
@@ -101,25 +88,19 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
 
   const handleSubmit = async () => {
     if (!caption.trim()) { toast.error('Please add a caption'); return; }
-    const uploading = mediaSlots.some((s) => s.uploading);
-    if (uploading) { toast.error('Please wait for images to finish uploading'); return; }
 
     setSaving(true);
     try {
-      const uploadedUrls = mediaSlots.filter((s) => s.done && s.url).map((s) => s.url);
-      const failedFiles  = mediaSlots.filter((s) => !s.done && s.file);
-
       const fd = new FormData();
       fd.append('caption', caption.trim());
       fd.append('type',    type);
       fd.append('allowComments', String(allowComments));
-       if (selectedProductId && (type === 'promotion' || type === 'availability')) {
-         fd.append('productId', selectedProductId);
-       }
+      if (selectedProductId && (type === 'promotion' || type === 'availability')) {
+        fd.append('productId', selectedProductId);
+      }
       fd.append('tags', JSON.stringify(tags.split(',').map((t) => t.trim()).filter(Boolean)));
       if (location.trim()) fd.append('location', location.trim());
-      if (uploadedUrls.length) fd.append('mediaUrls', JSON.stringify(uploadedUrls));
-      failedFiles.forEach(({ file }) => fd.append('media', file));
+      mediaSlots.forEach(({ file }) => file && fd.append('media', file));
 
       const { data } = await postService.create(fd);
       prependPost(data.data);
@@ -202,7 +183,7 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
                           <ImagePlus size={13} /> Photos / Videos
                           <span className="text-brand-muted font-normal ml-1">({mediaSlots.length}/10)</span>
                         </label>
-                        <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFilePick} className="hidden" />
+                        <input ref={fileRef} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple onChange={handleFilePick} className="hidden" />
                         <div className="flex flex-wrap gap-2">
                           <AnimatePresence>
                             {mediaSlots.map((slot, i) => (
@@ -212,28 +193,19 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.7 }}
-                                className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 group flex-shrink-0"
-                                style={{ borderColor: slot.done ? '#5FA36A' : slot.uploading ? '#FF7A59' : '#FDE8DC' }}
+                                className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-[#FDE8DC] group flex-shrink-0"
                               >
-                                <img src={slot.src} alt="" className="w-full h-full object-cover"
-                                  onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=100'; }} />
-                                {slot.uploading && (
-                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                    <Loader size={16} className="text-white animate-spin" />
-                                  </div>
-                                )}
-                                {slot.done && (
-                                  <div className="absolute top-1 left-1 w-5 h-5 bg-accent rounded-full flex items-center justify-center shadow">
-                                    <CheckCircle2 size={11} className="text-white" />
-                                  </div>
+                                {slot.isVideo ? (
+                                  <video src={slot.src} className="w-full h-full object-cover" muted playsInline />
+                                ) : (
+                                  <img src={slot.src} alt="" className="w-full h-full object-cover"
+                                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=100'; }} />
                                 )}
                                 {i === 0 && <span className="absolute bottom-0 inset-x-0 text-center text-white text-xs bg-primary/70 py-0.5">Cover</span>}
-                                {!slot.uploading && (
-                                  <button onClick={() => removeSlot(i)}
-                                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <X size={10} />
-                                  </button>
-                                )}
+                                <button onClick={() => removeSlot(i)}
+                                  className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <X size={10} />
+                                </button>
                               </motion.div>
                             ))}
                           </AnimatePresence>
@@ -339,13 +311,11 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
                 <div className="px-5 py-4 border-t border-orange-50 flex-shrink-0">
                   <button
                     onClick={handleSubmit}
-                    disabled={saving || !caption.trim() || mediaSlots.some((s) => s.uploading)}
+                    disabled={saving || !caption.trim()}
                     className="btn-primary w-full flex items-center justify-center gap-2 py-3.5"
                   >
                     {saving ? (
                       <><Loader size={16} className="animate-spin" />Publishing…</>
-                    ) : mediaSlots.some((s) => s.uploading) ? (
-                      <><Loader size={16} className="animate-spin" />Uploading images…</>
                     ) : (
                       '✨ Publish Post'
                     )}

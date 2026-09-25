@@ -3,8 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Package, ShoppingBag, Star, Settings,
-  Bell, LogOut, Menu, X, ChefHat, Users, BarChart3,
-  Store, TrendingUp, PlusSquare, CreditCard, Rss, Camera, Zap
+  LogOut, Menu, ChefHat, Users, BarChart3,
+  Store, TrendingUp, PlusSquare, Rss, Camera, Zap
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
@@ -32,18 +32,9 @@ const adminLinks = [
   { to: '/admin/orders',    icon: ShoppingBag,      label: 'Orders'     },
 ];
 
-export default function DashboardLayout({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuthStore();
-  const { logout } = useAuth();
-  const location = useLocation();
-
-  const links = user?.role === 'admin' ? adminLinks : vendorLinks;
-  const title = user?.role === 'admin' ? 'Admin Panel' : 'Vendor Panel';
-
-  const SidebarContent = () => (
+function DashboardSidebarContent({ links, title, user, location, onNavigate, onLogout }) {
+  return (
     <div className="flex flex-col h-full">
-      {/* Logo */}
       <div className="p-5 border-b border-orange-100">
         <Link to="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-soft">
@@ -56,13 +47,12 @@ export default function DashboardLayout({ children }) {
         </Link>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {links.map(({ to, icon: Icon, label }) => {
           const active = location.pathname === to ||
             (to !== '/vendor/dashboard' && to !== '/admin/dashboard' && location.pathname.startsWith(to));
           return (
-            <Link key={to} to={to} onClick={() => setSidebarOpen(false)}
+            <Link key={to} to={to} onClick={onNavigate}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                 active
                   ? 'bg-primary text-white shadow-soft'
@@ -75,7 +65,6 @@ export default function DashboardLayout({ children }) {
         })}
       </nav>
 
-      {/* User + Logout */}
       <div className="p-4 border-t border-orange-100 space-y-1">
         <div className="flex items-center gap-3 px-3 py-2 mb-1">
           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -86,13 +75,23 @@ export default function DashboardLayout({ children }) {
             <p className="text-xs text-brand-muted capitalize">{user?.role}</p>
           </div>
         </div>
-        <button onClick={logout}
+        <button onClick={onLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors">
           <LogOut size={16} /> Logout
         </button>
       </div>
     </div>
   );
+}
+
+export default function DashboardLayout({ children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuthStore();
+  const { logout } = useAuth();
+  const location = useLocation();
+
+  const links = user?.role === 'admin' ? adminLinks : vendorLinks;
+  const title = user?.role === 'admin' ? 'Admin Panel' : 'Vendor Panel';
 
   const currentLabel = links.find((l) =>
     location.pathname === l.to ||
@@ -104,7 +103,14 @@ export default function DashboardLayout({ children }) {
       <a href="#dashboard-main" className="skip-link">Skip to main content</a>
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-60 bg-white shadow-card flex-shrink-0 fixed inset-y-0 left-0 z-30">
-        <SidebarContent />
+        <DashboardSidebarContent
+          links={links}
+          title={title}
+          user={user}
+          location={location}
+          onNavigate={() => setSidebarOpen(false)}
+          onLogout={logout}
+        />
       </aside>
 
       {/* Mobile Sidebar Backdrop */}
@@ -120,7 +126,14 @@ export default function DashboardLayout({ children }) {
               initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               className="fixed left-0 top-0 bottom-0 w-64 bg-white shadow-card-hover z-50 lg:hidden">
-              <SidebarContent />
+              <DashboardSidebarContent
+           links={links}
+           title={title}
+           user={user}
+           location={location}
+           onNavigate={() => setSidebarOpen(false)}
+           onLogout={logout}
+         />
             </motion.aside>
           </>
         )}

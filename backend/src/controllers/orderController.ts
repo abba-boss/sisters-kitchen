@@ -7,10 +7,35 @@ import { Vendor, VendorStatus } from "../entities/Vendor";
 import { Notification, NotificationType } from "../entities/Notification";
 import { AuthRequest } from "../middleware/auth";
 import { generateOrderNumber } from "../utils/helpers";
+import { publicOrder } from "../utils/serializers";
 import { UserRole } from "../entities/User";
 import { emitOrderUpdate, emitNotification, emitToAdmins, emitToUser } from "../config/socket";
 import { creditCoins, REWARD_RATES } from "./rewardController";
 import { RewardTxType } from "../entities/RewardTransaction";
+
+const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+  [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+  [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.CANCELLED],
+  [OrderStatus.READY]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELLED],
+  [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+  [OrderStatus.DELIVERED]: [],
+  [OrderStatus.CANCELLED]: [],
+};
+
+/** Give back stock that was reserved when the order was created. */
+async function restoreReservedStock(order: Order): Promise<void> {
+  const productRepo = AppDataSource.getRepository(Product);
+  for (const item of order.items || []) {
+    if (item.stockBefore == null || !item.product) continue;
+    await productRepo
+      .createQueryBuilder()
+      .update(Product)
+      .set({ stock: () => `stock + ${item.quantity}` })
+      .where("id = :productId", { productId: item.product.id })
+      .execute();
+  }
+}
 
 // ─── Notification helper ──────────────────────────────────────
 async function createAndEmitNotification(
@@ -101,7 +126,14 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       const price = Number(product.discountPrice) || Number(product.price);
       const itemSubtotal = price * quantity;
       subtotal += itemSubtotal;
-      orderItems.push({ product, quantity, price, subtotal: itemSubtotal, notes: item.notes });
+      orderItems.push({
+        product,
+        quantity,
+        price,
+        subtotal: itemSubtotal,
+        notes: item.notes,
+        stockBefore: product.stock > 0 ? product.stock : null,
+      });
     }
 
     const deliveryFee = 500;
@@ -166,9 +198,9 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       relations: ["user", "vendor", "vendor.user", "items", "items.product"],
     });
 
-    // Notify vendor, admins, and the customer-facing order room.
-    emitToUser(vendor.user.id, "order:new", { order: fullOrder });
-    emitToAdmins("order:new", { order: fullOrder });
+    const orderDto = publicOrder(fullOrder);
+    emitToUser(vendor.user.id, "order:new", { order: orderDto });
+    emitToAdmins("order:new", { order: orderDto });
     await createAndEmitNotification(
       vendor.user.id,
       "New Order Received! 🛎️",
@@ -177,7 +209,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       order.id
     );
 
-    res.status(201).json({ success: true, message: "Order placed successfully", data: fullOrder });
+    res.status(201).json({ success: true, message: "Order placed successfully", data: orderDto });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -201,7 +233,7 @@ export const getMyOrders = async (req: AuthRequest, res: Response): Promise<void
     const [orders, total] = await qb
       .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();
 
-    res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
+    res.json({ success: true, data: orders.map(publicOrder), meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -229,7 +261,7 @@ export const getOrderById = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    res.json({ success: true, data: order });
+    res.json({ success: true, data: publicOrder(order) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -257,7 +289,51 @@ export const getVendorOrders = async (req: AuthRequest, res: Response): Promise<
     const [orders, total] = await qb
       .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();
 
-    res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
+    res.json({ success: true, data: orders.map(publicOrder), meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const cancelMyOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const orderRepo = AppDataSource.getRepository(Order);
+    const order = await orderRepo.findOne({
+      where: { id: req.params.id as string, user: { id: req.user!.id } },
+      relations: ["user", "vendor", "vendor.user", "items", "items.product"],
+    });
+
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+    if (order.status === OrderStatus.CANCELLED) {
+      res.json({ success: true, message: "Order already cancelled", data: publicOrder(order) });
+      return;
+    }
+    if (!ORDER_TRANSITIONS[order.status]?.includes(OrderStatus.CANCELLED)) {
+      res.status(400).json({
+        success: false,
+        message: "This order can no longer be cancelled. Please contact the kitchen.",
+      });
+      return;
+    }
+
+    order.status = OrderStatus.CANCELLED;
+    order.rejectionReason = "Cancelled by customer";
+    await orderRepo.save(order);
+    await restoreReservedStock(order);
+
+    emitOrderUpdate(order);
+    await createAndEmitNotification(
+      order.vendor?.user?.id || order.user.id,
+      "Order Cancelled",
+      `#${order.orderNumber} was cancelled by the customer.`,
+      NotificationType.ORDER_CANCELLED,
+      order.id
+    );
+
+    res.json({ success: true, message: "Order cancelled", data: publicOrder(order) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -290,11 +366,23 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     }
 
     const prevStatus = order.status;
+    if (!isAdmin && !ORDER_TRANSITIONS[prevStatus]?.includes(status)) {
+      res.status(400).json({
+        success: false,
+        message: `Order cannot move from ${prevStatus} to ${status}`,
+      });
+      return;
+    }
     order.status = status;
     if (rejectionReason) order.rejectionReason = rejectionReason;
     if (estimatedDeliveryTime) order.estimatedDeliveryTime = estimatedDeliveryTime;
 
     await orderRepo.save(order);
+
+    // Restore finite inventory exactly once when an order is cancelled.
+    if (prevStatus !== OrderStatus.CANCELLED && status === OrderStatus.CANCELLED) {
+      await restoreReservedStock(order);
+    }
 
     // Update vendor earnings on delivery (once only)
     if (prevStatus !== OrderStatus.DELIVERED && status === OrderStatus.DELIVERED) {
@@ -302,8 +390,20 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       const vendor = await vendorRepo.findOne({ where: { id: order.vendor.id } });
       if (vendor) {
         vendor.totalOrders += 1;
-        vendor.totalEarnings = Number(vendor.totalEarnings) + Number(order.total);
+        vendor.totalEarnings = Number(vendor.totalEarnings) + Number(order.subtotal);
         await vendorRepo.save(vendor);
+      }
+
+      // Keep "sold" counts honest for ranking and product cards.
+      const productRepo = AppDataSource.getRepository(Product);
+      for (const item of order.items || []) {
+        if (!item.product) continue;
+        await productRepo
+          .createQueryBuilder()
+          .update(Product)
+          .set({ totalOrders: () => `totalOrders + ${item.quantity}` })
+          .where("id = :productId", { productId: item.product.id })
+          .execute();
       }
 
       // ── Reward customer with Kitchen Coins ────────────────────
@@ -342,9 +442,10 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     }
 
     // Emit to admin room
-    emitToAdmins("order:status_changed", { orderId: order.id, newStatus: status, prevStatus, order });
+    const updatedOrderDto = publicOrder(order);
+    emitToAdmins("order:status_changed", { orderId: order.id, newStatus: status, prevStatus, order: updatedOrderDto });
 
-    res.json({ success: true, message: "Order status updated", data: order });
+    res.json({ success: true, message: "Order status updated", data: updatedOrderDto });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -367,7 +468,7 @@ export const getAllOrders = async (req: AuthRequest, res: Response): Promise<voi
     const [orders, total] = await qb
       .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();
 
-    res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
+    res.json({ success: true, data: orders.map(publicOrder), meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Package, MapPin, Phone, ChevronRight, CheckCircle,
   Clock, Truck, XCircle, Wifi, WifiOff

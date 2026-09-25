@@ -5,8 +5,14 @@ import { Order, OrderStatus } from "../entities/Order";
 import { Notification, NotificationType } from "../entities/Notification";
 import { AuthRequest } from "../middleware/auth";
 import { emitOrderUpdate, emitNotification } from "../config/socket";
+import { publicPayment } from "../utils/serializers";
 import { v4 as uuidv4 } from "uuid";
 import https from "https";
+
+// ─── Helper: primary frontend origin ────────────────────────────
+/** FRONTEND_URL may be a comma-separated list; Paystack needs a single origin. */
+const primaryFrontendOrigin = (): string =>
+  (process.env.FRONTEND_URL || "http://localhost:5173").split(",")[0].trim();
 
 // ─── Helper: create notification ──────────────────────────────
 async function notify(userId: string, title: string, message: string, type: NotificationType, refId: string) {
@@ -54,16 +60,22 @@ export const initializePayment = async (req: AuthRequest, res: Response): Promis
       method: method || PaymentMethod.PAYSTACK,
       order,
       user: req.user,
-      status: PaymentStatus.PENDING,
+      status: method === PaymentMethod.CASH_ON_DELIVERY ? PaymentStatus.SUCCESS : PaymentStatus.PENDING,
     });
     await paymentRepo.save(payment);
 
     if (method === PaymentMethod.CASH_ON_DELIVERY) {
+      // Cash on delivery is settled in cash at the door, so the record is
+      // complete immediately rather than sitting in "pending" forever.
       order.status = OrderStatus.CONFIRMED;
       await orderRepo.save(order);
       emitOrderUpdate(order);
       await notify(req.user!.id, "Order Confirmed ✅", `Your cash-on-delivery order #${order.orderNumber} is confirmed!`, NotificationType.ORDER_CONFIRMED, order.id);
-      res.json({ success: true, message: "Cash on delivery order confirmed", data: { reference, orderId: order.id } });
+      res.json({
+        success: true,
+        message: "Cash on delivery order confirmed",
+        data: { reference, orderId: order.id, payment: publicPayment(payment) },
+      });
       return;
     }
 
@@ -72,7 +84,7 @@ export const initializePayment = async (req: AuthRequest, res: Response): Promis
       email: req.user!.email,
       amount: Math.round(Number(order.total) * 100),
       reference,
-      callback_url: `${process.env.FRONTEND_URL}/payment/verify?reference=${reference}`,
+      callback_url: `${primaryFrontendOrigin()}/payment/verify?reference=${reference}`,
       metadata: { orderId: order.id, userId: req.user!.id, orderNumber: order.orderNumber },
     });
 
@@ -158,7 +170,7 @@ export const verifyPayment = async (req: AuthRequest, res: Response): Promise<vo
           res.json({
             success: true,
             message: "Payment already verified",
-            data: { payment, orderId: payment.order.id },
+            data: { payment: publicPayment(payment), orderId: payment.order.id },
           });
           return;
         }
@@ -190,7 +202,7 @@ export const verifyPayment = async (req: AuthRequest, res: Response): Promise<vo
 
           await notify(payment.user.id, "Payment Successful 💳", `Payment of ₦${payment.amount} confirmed for order #${payment.order.orderNumber || ""}`, NotificationType.PAYMENT_SUCCESS, payment.order.id);
 
-          res.json({ success: true, message: "Payment verified", data: { payment, orderId: payment.order.id } });
+          res.json({ success: true, message: "Payment verified", data: { payment: publicPayment(payment), orderId: payment.order.id } });
         } else {
           payment.status = PaymentStatus.FAILED;
           await paymentRepo.save(payment);
@@ -220,7 +232,7 @@ export const getMyPayments = async (req: AuthRequest, res: Response): Promise<vo
       take: Number(limit),
     });
 
-    res.json({ success: true, data: payments, meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
+    res.json({ success: true, data: payments.map(publicPayment), meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -235,7 +247,7 @@ export const getPaymentReceipt = async (req: AuthRequest, res: Response): Promis
     });
 
     if (!payment) { res.status(404).json({ success: false, message: "Payment not found" }); return; }
-    res.json({ success: true, data: payment });
+    res.json({ success: true, data: publicPayment(payment) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

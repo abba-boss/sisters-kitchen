@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Store, ShoppingBag, TrendingUp, Package, ArrowUpRight } from 'lucide-react';
+import { Users, Store, ShoppingBag, TrendingUp, Package } from 'lucide-react';
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { formatPrice, formatDate, getOrderStatusLabel } from '../../utils/formatters';
+import { formatPrice, getOrderStatusLabel } from '../../utils/formatters';
 import api from '../../services/api';
 
 const COLORS = ['#FF7A59', '#5FA36A', '#F59E0B', '#3B82F6', '#8B5CF6', '#EC4899'];

@@ -1,12 +1,13 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
+import { IsNull } from "typeorm";
 import { Post, PostStatus, PostType } from "../entities/Post";
 import { PostMedia, MediaType } from "../entities/PostMedia";
 import { PostLike } from "../entities/PostLike";
 import { PostComment } from "../entities/PostComment";
 import { SavedPost } from "../entities/SavedPost";
 import { Follower } from "../entities/Follower";
-import { Vendor } from "../entities/Vendor";
+import { Vendor, VendorStatus } from "../entities/Vendor";
 import { Product } from "../entities/Product";
 import { Notification, NotificationType } from "../entities/Notification";
 import { AuthRequest } from "../middleware/auth";
@@ -17,6 +18,12 @@ import {
   emitPostComment,
   emitNotification,
 } from "../config/socket";
+import { publicPost } from "../utils/serializers";
+
+function parseBoolean(value: unknown, fallback: boolean): boolean {
+  if (value === undefined || value === null || value === "") return fallback;
+  return value === true || value === "true";
+}
 
 function parseTags(value: unknown): string[] {
   if (!value) return [];
@@ -29,17 +36,39 @@ function parseTags(value: unknown): string[] {
 }
 
 function sanitizePost(post: Post) {
-  return {
-    ...post,
-    author: post.author
-      ? {
-          id: post.author.id,
-          firstName: post.author.firstName,
-          lastName: post.author.lastName,
-          avatar: post.author.avatar,
-        }
-      : null,
-  };
+  return publicPost(post);
+}
+
+/**
+ * Resolve the viewer's like/save state for a page of posts in two queries
+ * instead of one request per post.
+ */
+async function withViewerState(posts: Post[], userId?: string) {
+  if (!userId || posts.length === 0) return posts;
+
+  const postIds = posts.map((post) => post.id);
+  const [likes, saves] = await Promise.all([
+    AppDataSource.getRepository(PostLike)
+      .createQueryBuilder("like")
+      .select("like.postId", "postId")
+      .where("like.userId = :userId", { userId })
+      .andWhere("like.postId IN (:...postIds)", { postIds })
+      .getRawMany<{ postId: string }>(),
+    AppDataSource.getRepository(SavedPost)
+      .createQueryBuilder("saved")
+      .select("saved.postId", "postId")
+      .where("saved.userId = :userId", { userId })
+      .andWhere("saved.postId IN (:...postIds)", { postIds })
+      .getRawMany<{ postId: string }>(),
+  ]);
+
+  const likedIds = new Set(likes.map((row) => row.postId));
+  const savedIds = new Set(saves.map((row) => row.postId));
+
+  return posts.map((post) => ({
+    ...sanitizePost(post),
+    viewerState: { liked: likedIds.has(post.id), saved: savedIds.has(post.id) },
+  }));
 }
 
 // ─── helper: persist + push a notification ──────────────────────
@@ -83,7 +112,7 @@ export const createPost = async (
       tags, location, productId, allowComments = true, scheduledAt,
     } = req.body;
 
-    if (status === PostStatus.PUBLISHED && vendor.status !== "approved") {
+    if (status === PostStatus.PUBLISHED && vendor.status !== VendorStatus.APPROVED) {
       res.status(403).json({
         success: false,
         message: "Your kitchen must be approved before publishing stories",
@@ -96,7 +125,7 @@ export const createPost = async (
       caption: caption?.trim(),
       type,
       status,
-      allowComments: allowComments !== "false",
+      allowComments: parseBoolean(allowComments, true),
       tags: parseTags(tags),
       location: location?.trim(),
       vendor,
@@ -123,7 +152,8 @@ export const createPost = async (
         const isVideo = file.mimetype.startsWith("video/");
         const url = await uploadToCloudinary(
           file.path,
-          `sisters-kitchen/posts/${vendor.id}`
+          `sisters-kitchen/posts/${vendor.id}`,
+          isVideo ? "video" : "image"
         );
         const m = mediaRepo.create({
           url,
@@ -147,7 +177,14 @@ export const createPost = async (
     if (mediaUrls.length > 0) {
       const mediaRepo = AppDataSource.getRepository(PostMedia);
       const urlEntities = mediaUrls.map((url, i) =>
-        mediaRepo.create({ url, type: MediaType.IMAGE, sortOrder: i, post })
+        mediaRepo.create({
+          url,
+          type: /\.(mp4|webm|mov|m4v)$/i.test(url) || url.includes("/video/")
+            ? MediaType.VIDEO
+            : MediaType.IMAGE,
+          sortOrder: i,
+          post,
+        })
       );
       await mediaRepo.save(urlEntities);
       post.media = [...(post.media || []), ...urlEntities];
@@ -174,7 +211,7 @@ export const createPost = async (
 
 // ── PUBLIC FEED ──────────────────────────────────────────────────
 export const getPublicFeed = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ): Promise<void> => {
   try {
@@ -208,8 +245,8 @@ export const getPublicFeed = async (
       .take(Number(limit))
       .getManyAndCount();
 
-    // Strip sensitive author fields before returning public DTOs.
-    const sanitized = posts.map(sanitizePost);
+    // Strip sensitive fields and resolve like/save state in batch.
+    const sanitized = await withViewerState(posts, req.user?.id);
 
     res.json({
       success: true,
@@ -264,7 +301,7 @@ export const getFollowingFeed = async (
 
     res.json({
       success: true,
-      data: posts.map(sanitizePost),
+      data: await withViewerState(posts, req.user!.id),
       meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (err: any) {
@@ -274,7 +311,7 @@ export const getFollowingFeed = async (
 
 // ── VENDOR POSTS ─────────────────────────────────────────────────
 export const getVendorPosts = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ): Promise<void> => {
   try {
@@ -303,7 +340,7 @@ export const getVendorPosts = async (
 
     res.json({
       success: true,
-      data: posts.map(sanitizePost),
+      data: await withViewerState(posts, req.user?.id),
       meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (err: any) {
@@ -352,9 +389,33 @@ export const getMyPosts = async (
   }
 };
 
+export const getMyPostById = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const postRepo = AppDataSource.getRepository(Post);
+    const post = await postRepo.findOne({
+      where: { id: req.params.id as string },
+      relations: ["media", "vendor", "vendor.user", "author", "product"],
+    });
+    if (!post) {
+      res.status(404).json({ success: false, message: "Post not found" });
+      return;
+    }
+    if (post.vendor?.user?.id !== req.user!.id && req.user!.role !== "admin") {
+      res.status(403).json({ success: false, message: "Not authorized to edit this post" });
+      return;
+    }
+    res.json({ success: true, data: sanitizePost(post) });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // ── GET SINGLE POST ──────────────────────────────────────────────
 export const getPostById = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ): Promise<void> => {
   try {
@@ -363,7 +424,11 @@ export const getPostById = async (
       where: { id: req.params.id as string, status: PostStatus.PUBLISHED },
       relations: ["media", "vendor", "author", "product"],
     });
-    if (!post || (post.scheduledAt && post.scheduledAt.getTime() > Date.now())) {
+    if (
+      !post ||
+      post.vendor?.status !== VendorStatus.APPROVED ||
+      (post.scheduledAt && post.scheduledAt.getTime() > Date.now())
+    ) {
       res.status(404).json({ success: false, message: "Post not found" });
       return;
     }
@@ -371,7 +436,8 @@ export const getPostById = async (
     await postRepo.update(post.id, { viewsCount: () => "viewsCount + 1" });
     post.viewsCount += 1;
 
-    res.json({ success: true, data: sanitizePost(post) });
+    const [withState] = await withViewerState([post], req.user?.id);
+    res.json({ success: true, data: withState });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -398,18 +464,36 @@ export const updatePost = async (
     }
 
     const { caption, type, status, tags, location, allowComments, scheduledAt } = req.body;
+
+    if (type !== undefined && !Object.values(PostType).includes(type)) {
+      res.status(400).json({ success: false, message: "Invalid post type" });
+      return;
+    }
+    if (status !== undefined && !Object.values(PostStatus).includes(status)) {
+      res.status(400).json({ success: false, message: "Invalid post status" });
+      return;
+    }
+    // A suspended kitchen must not be able to push content back into the feed.
+    if (status === PostStatus.PUBLISHED && post.vendor.status !== VendorStatus.APPROVED) {
+      res.status(403).json({
+        success: false,
+        message: "Your kitchen must be approved before publishing stories",
+      });
+      return;
+    }
+
     Object.assign(post, {
       caption:       caption?.trim()    ?? post.caption,
       type:          type               ?? post.type,
       status:        status             ?? post.status,
       tags:          tags !== undefined ? parseTags(tags) : post.tags,
       location:      location?.trim()   ?? post.location,
-      allowComments: allowComments !== undefined ? allowComments !== "false" : post.allowComments,
+      allowComments: parseBoolean(allowComments, post.allowComments),
       scheduledAt:   scheduledAt ? new Date(scheduledAt) : post.scheduledAt,
     });
 
     await postRepo.save(post);
-    res.json({ success: true, message: "Post updated", data: post });
+    res.json({ success: true, message: "Post updated", data: sanitizePost(post) });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -588,7 +672,7 @@ export const getComments = async (
 
     const commentRepo = AppDataSource.getRepository(PostComment);
     const [comments, total] = await commentRepo.findAndCount({
-      where: { post: { id: req.params.id as string }, parent: undefined, isDeleted: false },
+      where: { post: { id: req.params.id as string }, parent: IsNull(), isDeleted: false },
       relations: ["user", "replies", "replies.user"],
       order: { createdAt: "DESC" },
       skip,

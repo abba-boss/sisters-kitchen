@@ -166,26 +166,81 @@ export const claimDailyReward = async (req: AuthRequest, res: Response): Promise
   } catch (err: any) { res.status(500).json({ success: false, message: err.message }); }
 };
 
+/** 10 Kitchen Coins = ₦100 off. */
+export const COINS_PER_NAIRA = 10;
+
 export const redeemCoins = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { amount, orderId } = req.body;
-    if (!amount || amount <= 0) {
-      res.status(400).json({ success: false, message: "Invalid amount" }); return;
+    let coins = Number(amount);
+
+    if (!orderId) {
+      res.status(400).json({ success: false, message: "Apply coins to a specific order" });
+      return;
+    }
+    if (!Number.isInteger(coins) || coins < COINS_PER_NAIRA) {
+      res.status(400).json({
+        success: false,
+        message: `Redeem at least ${COINS_PER_NAIRA} coins`,
+      });
+      return;
+    }
+    coins -= coins % COINS_PER_NAIRA; // only whole ₦100 blocks are redeemable
+
+    const { Order, OrderStatus } = await import("../entities/Order");
+    const orderRepo = AppDataSource.getRepository(Order);
+    const order = await orderRepo.findOne({ where: { id: orderId } });
+
+    if (!order || order.user.id !== req.user!.id) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+    if (order.status !== OrderStatus.PENDING) {
+      res.status(400).json({
+        success: false,
+        message: "Coins can only be applied before the kitchen accepts your order",
+      });
+      return;
     }
 
-    // 10 coins = ₦100 discount
-    const discountNaira = Math.floor(Number(amount) / 10) * 100;
+    const wallet = await ensureWallet(req.user!.id);
+    if (Number(wallet.balance) < coins) {
+      res.status(400).json({
+        success: false,
+        message: `You only have ${Math.floor(Number(wallet.balance))} coins`,
+      });
+      return;
+    }
+
+    const maxDiscount = Number(order.subtotal);
+    const discountNaira = Math.min(Math.floor(coins / COINS_PER_NAIRA) * 100, maxDiscount);
+    if (discountNaira <= 0) {
+      res.status(400).json({ success: false, message: "This order cannot take a discount" });
+      return;
+    }
+    const coinsSpent = Math.ceil(discountNaira / 100) * COINS_PER_NAIRA;
 
     const tx = await debitCoins(
-      req.user!.id, Number(amount), RewardTxType.SPEND_DISCOUNT,
-      `Redeemed ${amount} coins for ₦${discountNaira} discount`,
-      orderId
+      req.user!.id,
+      coinsSpent,
+      RewardTxType.SPEND_DISCOUNT,
+      `Redeemed ${coinsSpent} coins for ₦${discountNaira} off order #${order.orderNumber}`,
+      order.id
     );
+
+    order.discount = Number(order.discount || 0) + discountNaira;
+    order.total = Math.max(Number(order.subtotal) + Number(order.deliveryFee) - Number(order.discount), 0);
+    await orderRepo.save(order);
 
     res.json({
       success: true,
-      message: `Redeemed! You save ₦${discountNaira}`,
-      data: { coinsSpent: amount, discountNaira, balanceAfter: tx.balanceAfter },
+      message: `Applied ₦${discountNaira.toLocaleString()} off your order`,
+      data: {
+        coinsSpent,
+        discountNaira,
+        balanceAfter: tx.balanceAfter,
+        orderTotal: Number(order.total),
+      },
     });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });

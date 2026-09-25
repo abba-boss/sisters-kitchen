@@ -96,7 +96,7 @@ function AuthBootstrap() {
       .catch(() => {});
     rewardService.getWallet()
       .then(({ data }) => {
-        setBalance(Number(data.data.balance));
+        setBalance(Number(data.data.balance), data.data.lastDailyRewardAt);
       })
       .catch(() => {});
   }, [_hasHydrated, clearNotifications, isAuthenticated, logout, setBalance, setWishlistItems, updateUser]);
@@ -130,11 +130,31 @@ function AppProviders() {
   return null;
 }
 
+/**
+ * Nudges returning members to claim their daily Kitchen Coins once per day.
+ * A dismissed modal is remembered for the rest of the day.
+ */
 function DailyRewardWrapper() {
-  const { showDailyModal, setShowDailyModal } = useRewardStore();
+  const { showDailyModal, setShowDailyModal, lastDailyRewardAt } = useRewardStore();
   const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const claimedToday =
+      lastDailyRewardAt &&
+      new Date(lastDailyRewardAt).toDateString() === new Date().toDateString();
+    if (!claimedToday) setShowDailyModal(true);
+  }, [isAuthenticated, lastDailyRewardAt, setShowDailyModal]);
+
   if (!isAuthenticated || !showDailyModal) return null;
   return <DailyRewardModal isOpen={showDailyModal} onClose={() => setShowDailyModal(false)} />;
+}
+
+/** Only verified kitchens can publish, so the composer only mounts for vendors. */
+function VendorCreatePostModal({ isOpen, onClose }) {
+  const { isAuthenticated, user } = useAuthStore();
+  if (!isAuthenticated || user?.role !== 'vendor') return null;
+  return <CreatePostModal isOpen={isOpen} onClose={onClose} />;
 }
 
 export default function App() {
@@ -173,7 +193,7 @@ export default function App() {
         }}
       />
       <AuthModal />
-      <CreatePostModal isOpen={createPostOpen} onClose={closeCreatePost} />
+      <VendorCreatePostModal isOpen={createPostOpen} onClose={closeCreatePost} />
       <AuthBootstrap />
       <AppProviders />
       <DailyRewardWrapper />

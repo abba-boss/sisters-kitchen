@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   OneToMany,
   OneToOne,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
 import { Order } from "./Order";
 import { Review } from "./Review";
@@ -33,7 +35,7 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  @Column({ select: false })
   password: string;
 
   @Column({ nullable: true })
@@ -58,18 +60,18 @@ export class User {
   @Column({ default: false })
   isEmailVerified: boolean;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   refreshToken: string;
 
   /** Hashed 6-digit OTP for password reset */
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   resetOtpHash: string | null;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: "datetime", nullable: true, select: false })
   resetOtpExpires: Date | null;
 
   /** True after OTP verified, until password is reset */
-  @Column({ default: false })
+  @Column({ default: false, select: false })
   resetOtpVerified: boolean;
 
   @OneToMany(() => Order, (order) => order.user)
@@ -86,6 +88,14 @@ export class User {
 
   @OneToOne(() => Vendor, (vendor) => vendor.user)
   vendor: Vendor;
+
+  /** Who invited this account, used for referral rewards. */
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: "referredById" })
+  referredBy: User | null;
+
+  @Column({ nullable: true, select: false })
+  referredById: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

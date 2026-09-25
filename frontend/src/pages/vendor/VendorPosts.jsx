@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Grid3X3, List, Edit2, Trash2, Eye, EyeOff, Flame, PenSquare } from 'lucide-react';
+import { Plus, Grid3X3, List, Trash2, Eye, EyeOff, Flame, PenSquare } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import CreatePostModal from '../../components/social/CreatePostModal';
 import EmptyState from '../../components/common/EmptyState';
 import { postService } from '../../services/postService';
-import { timeAgo, formatNumber } from '../../utils/formatters';
+import { timeAgo } from '../../utils/formatters';
 import { useSocketEvent } from '../../hooks/useSocket';
 import { useFeedStore } from '../../store/feedStore';
 import toast from 'react-hot-toast';

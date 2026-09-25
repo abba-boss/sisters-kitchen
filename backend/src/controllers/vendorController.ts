@@ -73,10 +73,13 @@ export const getVendorById = async (req: Request, res: Response): Promise<void> 
 export const getMyVendorProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const vendorRepo = AppDataSource.getRepository(Vendor);
-    const vendor = await vendorRepo.findOne({
-      where: { user: { id: req.user!.id } },
-      relations: ["user", "products"],
-    });
+    const vendor = await vendorRepo
+      .createQueryBuilder("vendor")
+      .addSelect(["vendor.bankName", "vendor.accountNumber", "vendor.accountName"])
+      .leftJoinAndSelect("vendor.user", "user")
+      .leftJoinAndSelect("vendor.products", "products")
+      .where("vendor.userId = :userId", { userId: req.user!.id })
+      .getOne();
 
     if (!vendor) {
       res.status(404).json({ success: false, message: "Vendor profile not found" });
@@ -92,9 +95,11 @@ export const getMyVendorProfile = async (req: AuthRequest, res: Response): Promi
 export const updateVendorProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const vendorRepo = AppDataSource.getRepository(Vendor);
-    const vendor = await vendorRepo.findOne({
-      where: { user: { id: req.user!.id } },
-    });
+    const vendor = await vendorRepo
+      .createQueryBuilder("vendor")
+      .addSelect(["vendor.bankName", "vendor.accountNumber", "vendor.accountName"])
+      .where("vendor.userId = :userId", { userId: req.user!.id })
+      .getOne();
 
     if (!vendor) {
       res.status(404).json({ success: false, message: "Vendor profile not found" });
@@ -147,9 +152,11 @@ export const updateVendorProfile = async (req: AuthRequest, res: Response): Prom
 export const toggleVendorStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const vendorRepo = AppDataSource.getRepository(Vendor);
-    const vendor = await vendorRepo.findOne({
-      where: { user: { id: req.user!.id } },
-    });
+    const vendor = await vendorRepo
+      .createQueryBuilder("vendor")
+      .addSelect(["vendor.bankName", "vendor.accountNumber", "vendor.accountName"])
+      .where("vendor.userId = :userId", { userId: req.user!.id })
+      .getOne();
 
     if (!vendor) {
       res.status(404).json({ success: false, message: "Vendor not found" });

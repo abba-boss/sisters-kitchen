@@ -25,14 +25,11 @@ import { useAuthStore } from '../../store/authStore';
 import { useRewardStore } from '../../store/rewardStore';
 import { orderService } from '../../services/orderService';
 import { paymentService } from '../../services/paymentService';
+import { rewardService } from '../../services/rewardService';
 import { formatPrice } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
-const PAYMENT_METHODS = [
-  { value: 'wallet',           label: 'Kitchen Coins',        icon: Wallet,      disabled: true, helper: 'Coins are earned automatically on every order.' },
-  { value: 'paystack',         label: 'Pay Online (Paystack)', icon: CreditCard },
-  { value: 'cash_on_delivery', label: 'Cash on Delivery',      icon: Truck      },
-];
+const COINS_PER_NAIRA = 10;
 
 const buildItemNotes = (item) => {
   const customization = item._customization || {};
@@ -49,7 +46,7 @@ const buildItemNotes = (item) => {
 export default function CheckoutPage() {
   const { vendorGroups, clearCart, clearVendorItems } = useCart();
   const { user }                         = useAuthStore();
-  const { balance } = useRewardStore();
+  const { balance, setBalance } = useRewardStore();
   const navigate                         = useNavigate();
   const location                         = useLocation();
   const [searchParams]                   = useSearchParams();
@@ -76,8 +73,9 @@ export default function CheckoutPage() {
 
   // The server is the pricing authority: subtotal plus one delivery fee per kitchen.
   const grandTotal    = subtotal + deliveryFee;
-  const estimatedPoints = Math.floor(subtotal / 200);
+  const estimatedPoints = Math.floor(grandTotal / 100);
   const estimatedEta = 'coordinated by each kitchen';
+  const isMultiVendor = groupsToCheckout.length > 1;
   const savedAddresses = [
     {
       id: 'primary',
@@ -103,10 +101,52 @@ export default function CheckoutPage() {
     }
   }, [checkoutItems.length, navigate]);
 
+  const fetchWallet = () => {
+    rewardService
+      .getWallet()
+      .then(({ data }) => setBalance(data.data.balance))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (user) fetchWallet();
+  }, [user?.id]);
+
+  // Paystack charges one order at a time, so multi-kitchen baskets fall back to COD.
+  useEffect(() => {
+    if (isMultiVendor) {
+      setForm((prev) =>
+        prev.paymentMethod === 'paystack' || prev.paymentMethod === 'wallet'
+          ? { ...prev, paymentMethod: 'cash_on_delivery' }
+          : prev
+      );
+    }
+  }, [isMultiVendor]);
+
   if (checkoutItems.length === 0) return <PageLoader />;
 
+  const coinsBalance = Math.floor(Number(balance) || 0);
+  const maxRedeemableCoins = Math.min(coinsBalance, Math.floor(subtotal / 100) * COINS_PER_NAIRA);
+  const coinsDiscount = maxRedeemableCoins / COINS_PER_NAIRA * 100;
+  const useCoins = form.paymentMethod === 'wallet';
+  const displayTotal = Math.max(grandTotal - (useCoins ? coinsDiscount : 0), 0);
+
+  const paymentMethods = [
+    {
+      value: 'wallet',
+      label: 'Kitchen Coins',
+      icon: Wallet,
+      disabled: maxRedeemableCoins < COINS_PER_NAIRA,
+      helper: maxRedeemableCoins < COINS_PER_NAIRA
+        ? `Earn coins as you order. You have ${coinsBalance}.`
+        : `Use up to ${maxRedeemableCoins} coins for ₦${coinsDiscount.toLocaleString()} off this order.`,
+    },
+    { value: 'paystack', label: 'Pay Online (Paystack)', icon: CreditCard },
+    { value: 'cash_on_delivery', label: 'Cash on Delivery', icon: Truck },
+  ];
+
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
-  const paymentMethodForSubmit = form.paymentMethod === 'wallet' ? 'paystack' : form.paymentMethod;
+  const paymentMethodForSubmit = form.paymentMethod;
 
   const applySavedAddress = (address) => {
     setForm((prev) => ({
@@ -120,6 +160,11 @@ export default function CheckoutPage() {
     e.preventDefault();
     if (!form.deliveryAddress.trim()) { toast.error('Please enter your delivery address'); return; }
 
+    if (isMultiVendor && paymentMethodForSubmit !== 'cash_on_delivery') {
+      toast.error('Online payment works for one kitchen at a time. Use Cash on Delivery for this cart.');
+      return;
+    }
+
     const closedGroup = groupsToCheckout.find((g) =>
       g.items.some((i) => i.vendor?.isOpen === false)
     );
@@ -129,8 +174,16 @@ export default function CheckoutPage() {
     }
 
     setLoading(true);
+    const orderIds = [];
+    // Best-effort cleanup so a partial failure never leaves orphan orders or
+    // reserved stock behind.
+    const rollback = async () => {
+      await Promise.allSettled(
+        orderIds.map((id) => orderService.cancel(id))
+      );
+    };
+
     try {
-      const orderIds = [];
       for (const group of groupsToCheckout) {
         const { data } = await orderService.create({
           vendorId:        group.vendorId,
@@ -146,11 +199,27 @@ export default function CheckoutPage() {
         orderIds.push(data.data.id);
       }
 
-      if (paymentMethodForSubmit === 'paystack' && orderIds.length === 1) {
+      // Kitchen Coins reduce the amount actually charged on the single order.
+      let appliedDiscount = 0;
+      if (useCoins && orderIds.length === 1 && maxRedeemableCoins >= COINS_PER_NAIRA) {
+        const { data: redeemRes } = await rewardService.redeem({
+          orderId: orderIds[0],
+          amount: maxRedeemableCoins,
+        });
+        appliedDiscount = redeemRes.data.discountNaira || 0;
+        fetchWallet();
+      }
+
+      if (orderIds.length === 1 && (paymentMethodForSubmit === 'paystack' || useCoins)) {
         const { data: payRes } = await paymentService.initialize({ orderId: orderIds[0], method: 'paystack' });
         // Save pending checkout so PaymentVerifyPage can clear the right cart items
         const { savePendingCheckout } = await import('../../utils/checkoutStorage');
-        savePendingCheckout({ orderIds, vendorId: targetVendorId, clearAll: !targetVendorId });
+        savePendingCheckout({
+          orderIds,
+          vendorId: targetVendorId,
+          clearAll: !targetVendorId,
+          discount: appliedDiscount,
+        });
         window.location.href = payRes.data.authorizationUrl;
       } else {
         for (const orderId of orderIds) {
@@ -160,13 +229,18 @@ export default function CheckoutPage() {
           });
         }
         if (targetVendorId) clearVendorItems(targetVendorId); else clearCart();
-        setSuccessState({ orderIds });
-        toast.success(`Order${orderIds.length > 1 ? 's' : ''} placed! 🎉`);
+        setSuccessState({ orderIds, discount: appliedDiscount });
+        toast.success(
+          appliedDiscount
+            ? `Order placed — you saved ₦${appliedDiscount.toLocaleString()} in Kitchen Coins! 🎉`
+            : `Order${orderIds.length > 1 ? 's' : ''} placed! 🎉`
+        );
         setTimeout(() => {
           navigate(orderIds.length === 1 ? `/orders/${orderIds[0]}` : '/orders');
         }, 1600);
       }
     } catch (err) {
+      await rollback();
       toast.error(err.response?.data?.message || 'Failed to place order');
     } finally { setLoading(false); }
   };
@@ -311,7 +385,7 @@ export default function CheckoutPage() {
                 <CreditCard size={18} className="text-primary" /> Payment Method
               </h2>
               <div className="space-y-3">
-                {PAYMENT_METHODS.map(({ value, label, icon: Icon, disabled, helper }) => (
+                {paymentMethods.map(({ value, label, icon: Icon, disabled, helper }) => (
                   <label key={value} className={`flex items-start gap-3 p-4 rounded-2xl border-2 transition-all ${
                     disabled
                       ? 'border-orange-100 bg-brand-bg/40 cursor-not-allowed opacity-70'
@@ -331,9 +405,10 @@ export default function CheckoutPage() {
                     </div>
                   </label>
                 ))}
-                {groupsToCheckout.length > 1 && paymentMethodForSubmit === 'paystack' && (
+                {isMultiVendor && (
                   <p className="text-xs text-brand-muted bg-orange-50 rounded-xl p-3">
-                    💡 For multiple vendors, use Cash on Delivery or checkout each vendor separately.
+                    💡 Your cart spans {groupsToCheckout.length} kitchens, so this order uses Cash on Delivery.
+                    Pay online by checking out one kitchen at a time.
                   </p>
                 )}
               </div>
@@ -359,7 +434,7 @@ export default function CheckoutPage() {
                 <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Placing Order…</>
               ) : (
                 <>
-                  Place Order{groupsToCheckout.length > 1 ? 's' : ''} — {formatPrice(grandTotal)}
+                  Place Order{groupsToCheckout.length > 1 ? 's' : ''} — {formatPrice(displayTotal)}
                   <ArrowRight size={18} />
                 </>
               )}
@@ -427,9 +502,15 @@ export default function CheckoutPage() {
                 <span>Delivery{groupsToCheckout.length>1?` ×${groupsToCheckout.length}`:''}</span>
                 <span>{formatPrice(deliveryFee)}</span>
               </div>
+              {useCoins && coinsDiscount > 0 && (
+                <div className="flex justify-between text-accent font-semibold">
+                  <span>Kitchen Coins ({maxRedeemableCoins})</span>
+                  <span>-{formatPrice(coinsDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-poppins font-bold text-brand-dark pt-2 border-t border-orange-100">
                 <span>Total</span>
-                <span className="text-primary text-lg">{formatPrice(grandTotal)}</span>
+                <span className="text-primary text-lg">{formatPrice(displayTotal)}</span>
               </div>
             </div>
 
@@ -466,7 +547,10 @@ export default function CheckoutPage() {
                 </motion.div>
                 <h3 className="font-poppins font-bold text-2xl text-brand-dark mb-2">Order placed successfully</h3>
                 <p className="text-brand-muted text-sm leading-relaxed">
-                  Your order is confirmed and being prepared. We&apos;re taking you to your order details now.
+                  {successState.discount > 0
+                    ? `You saved ₦${successState.discount.toLocaleString()} with Kitchen Coins. `
+                    : ''}
+                  We&apos;re taking you to your order details now.
                 </p>
               </motion.div>
             </motion.div>
@@ -478,7 +562,7 @@ export default function CheckoutPage() {
         <div className="page-container flex items-center gap-3">
           <div className="min-w-0">
             <p className="text-xs text-brand-muted">Total</p>
-            <p className="font-poppins font-bold text-brand-dark">{formatPrice(grandTotal)}</p>
+            <p className="font-poppins font-bold text-brand-dark">{formatPrice(displayTotal)}</p>
           </div>
           <button
             type="button"

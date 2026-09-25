@@ -53,12 +53,28 @@ export default function VendorOrders() {
   });
 
   const handleStatusUpdate = async (orderId, status) => {
+    let rejectionReason;
+    if (status === 'cancelled') {
+      // The customer sees this reason, so never cancel silently.
+      rejectionReason = window.prompt(
+        'Why are you rejecting this order? The customer will see this reason.',
+        'This item is not available right now'
+      );
+      if (rejectionReason === null) return; // cancelled the prompt
+      if (!rejectionReason.trim()) {
+        toast.error('A rejection reason is required');
+        return;
+      }
+    }
+
     setUpdating(orderId);
     try {
-      await orderService.updateStatus(orderId, { status });
+      await orderService.updateStatus(orderId, { status, rejectionReason });
       toast.success(`Order ${getOrderStatusLabel(status)}`);
       fetchOrders();
-    } catch { toast.error('Failed to update order'); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update order');
+    }
     finally { setUpdating(null); }
   };
 

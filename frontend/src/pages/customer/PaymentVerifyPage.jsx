@@ -13,6 +13,7 @@ export default function PaymentVerifyPage() {
   const clearVendorItems = useCartStore((s) => s.clearVendorItems);
   const [status, setStatus] = useState('loading');
   const [orderId, setOrderId] = useState(null);
+  const [discount, setDiscount] = useState(0);
 
   useEffect(() => {
     const reference = searchParams.get('reference') || searchParams.get('trxref');
@@ -36,6 +37,7 @@ export default function PaymentVerifyPage() {
         }
 
         setStatus('success');
+        setDiscount(Number(pending?.discount) || 0);
         setTimeout(() => navigate(`/orders/${verifiedOrderId}`), 3000);
       })
       .catch(() => setStatus('failed'));
@@ -69,7 +71,12 @@ export default function PaymentVerifyPage() {
               <CheckCircle size={40} className="text-accent" />
             </motion.div>
             <h2 className="font-poppins font-bold text-xl text-brand-dark mb-2">Payment Successful! 🎉</h2>
-            <p className="text-brand-muted text-sm mb-6">Your order has been confirmed. Redirecting to your order…</p>
+            <p className="text-brand-muted text-sm mb-6">
+              {discount > 0
+                ? `You saved ₦${discount.toLocaleString()} with Kitchen Coins. `
+                : ''}
+              Your order has been confirmed. Redirecting to your order…
+            </p>
             {orderId && (
               <Link to={`/orders/${orderId}`} className="btn-primary inline-block">
                 View Order

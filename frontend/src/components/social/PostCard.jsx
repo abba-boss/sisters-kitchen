@@ -22,6 +22,7 @@ const POST_TYPE_BADGE = {
   behind_scenes:{ label: '🎬 Behind the Scenes', bg: 'bg-purple-50 text-purple-600' },
   recipe:       { label: '📖 Recipe',          bg: 'bg-yellow-50 text-yellow-600' },
   customer_highlight: { label: '⭐ Customer Love', bg: 'bg-pink-50 text-pink-500' },
+  video:        { label: '🎥 Video',           bg: 'bg-indigo-50 text-indigo-600' },
 };
 
 export default function PostCard({ post, showVendor = true, onDelete, onSaveChange }) {

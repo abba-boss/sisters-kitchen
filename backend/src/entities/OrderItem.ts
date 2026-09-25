@@ -26,6 +26,10 @@ export class OrderItem {
   @Column({ nullable: true })
   notes: string;
 
+  /** Stock present before this order; null means the item is untracked. */
+  @Column({ type: "int", nullable: true })
+  stockBefore: number | null;
+
   @ManyToOne(() => Order, (order) => order.items, { onDelete: "CASCADE" })
   @JoinColumn()
   order: Order;

@@ -6,6 +6,8 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { notificationService } from '../../services/notificationService';
 import { timeAgo } from '../../utils/formatters';
 
+let notificationRequest = null;
+
 const TYPE_COLORS = {
   order_placed: 'bg-primary/10 text-primary',
   order_confirmed: 'bg-accent/10 text-accent',
@@ -25,11 +27,15 @@ export default function NotificationDropdown() {
   const { notifications, unreadCount, setNotifications, markAsRead, markAllAsRead, removeNotification } = useNotificationStore();
 
   useEffect(() => {
-    // Load notifications from API on mount
-    notificationService.getAll()
+    // The bell is rendered in two places (navbar + feed header), so the
+    // in-flight request is shared instead of firing once per mount.
+    if (notificationRequest) return;
+    notificationRequest = notificationService
+      .getAll()
       .then(({ data }) => setNotifications(data.data || []))
-      .catch(() => {});
-  }, []);
+      .catch(() => {})
+      .finally(() => { notificationRequest = null; });
+  }, [setNotifications]);
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };

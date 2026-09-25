@@ -6,6 +6,7 @@ import { Category } from "../entities/Category";
 import { AuthRequest } from "../middleware/auth";
 import { uploadToCloudinary } from "../utils/helpers";
 import { SelectQueryBuilder } from "typeorm";
+import { publicProduct } from "../utils/serializers";
 
 /** Only products customers should see: available, approved vendor, kitchen open */
 function applyPublicProductFilters(qb: SelectQueryBuilder<Product>) {
@@ -26,20 +27,7 @@ function isProductPubliclyAvailable(product: Product): boolean {
 }
 
 function sanitizeProductPublic(product: Product) {
-  return {
-    ...product,
-    reviews: (product.reviews || []).map((review) => ({
-      ...review,
-      user: review.user
-        ? {
-            id: review.user.id,
-            firstName: review.user.firstName,
-            lastName: review.user.lastName,
-            avatar: review.user.avatar,
-          }
-        : null,
-    })),
-  };
+  return publicProduct(product);
 }
 
 // ─── List / Search ─────────────────────────────────────────────
@@ -93,6 +81,29 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
     }
     res.json({ success: true, data: sanitizeProductPublic(product) });
   } catch (e: any) { res.status(500).json({ success: false, message: e.message }); }
+};
+
+export const getMyProductById = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const vendorRepo = AppDataSource.getRepository(Vendor);
+    const vendor = await vendorRepo.findOne({ where: { user: { id: req.user!.id } } });
+    if (!vendor) {
+      res.status(404).json({ success: false, message: "Vendor profile not found" });
+      return;
+    }
+
+    const product = await AppDataSource.getRepository(Product).findOne({
+      where: { id: req.params.id as string, vendor: { id: vendor.id } },
+      relations: ["category"],
+    });
+    if (!product) {
+      res.status(404).json({ success: false, message: "Product not found" });
+      return;
+    }
+    res.json({ success: true, data: { ...product, vendor } });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 };
 
 export const getFeaturedProducts = async (req: Request, res: Response): Promise<void> => {

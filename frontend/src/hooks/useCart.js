@@ -33,6 +33,7 @@ export const useCart = () => {
 
   return {
     items,
+    savedItems: store.savedItems,
     vendorGroups,
     vendorId,
     vendorName,
@@ -42,6 +43,10 @@ export const useCart = () => {
     addToCart,
     removeFromCart,
     updateQuantity: (productId, quantity, lineKey) => store.updateQuantity(productId, quantity, lineKey),
+    setItemNote:   store.setItemNote,
+    saveForLater:  store.saveForLater,
+    moveToCart:    store.moveToCart,
+    removeSavedItem: store.removeSavedItem,
     clearCart:       store.clearCart,
     clearVendorItems: store.clearVendorItems,
   };

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
   createOrder, getMyOrders, getOrderById,
-  getVendorOrders, updateOrderStatus, getAllOrders,
+  getVendorOrders, updateOrderStatus, getAllOrders, cancelMyOrder,
 } from "../controllers/orderController";
 import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../entities/User";
@@ -14,6 +14,7 @@ router.get("/my-orders", authenticate, getMyOrders);
 router.get("/vendor-orders", authenticate, authorize(UserRole.VENDOR), getVendorOrders);
 router.get("/all", authenticate, authorize(UserRole.ADMIN), getAllOrders);
 router.get("/:id", authenticate, getOrderById);
+router.post("/:id/cancel", authenticate, authorize(UserRole.CUSTOMER), cancelMyOrder);
 router.patch("/:id/status", authenticate, authorize(UserRole.VENDOR, UserRole.ADMIN), updateOrderStatus);
 
 export default router;

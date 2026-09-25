@@ -5,6 +5,9 @@ import { Vendor } from "../entities/Vendor";
 import { Notification, NotificationType } from "../entities/Notification";
 import { AuthRequest } from "../middleware/auth";
 import { emitNewFollower, emitNotification } from "../config/socket";
+import { creditCoins, REWARD_RATES } from "./rewardController";
+import { RewardTxType } from "../entities/RewardTransaction";
+import { publicVendor } from "../utils/serializers";
 
 export const toggleFollow = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -29,6 +32,17 @@ export const toggleFollow = async (req: AuthRequest, res: Response): Promise<voi
     } else {
       const follow = followerRepo.create({ follower: req.user, vendor });
       await followerRepo.save(follow);
+
+      // Reward for discovering a new kitchen (non-fatal).
+      try {
+        await creditCoins(
+          req.user!.id,
+          REWARD_RATES.FOLLOW_VENDOR,
+          RewardTxType.EARN_FOLLOW,
+          `Followed ${vendor.businessName}`,
+          vendor.id
+        );
+      } catch {}
 
       const notifRepo = AppDataSource.getRepository(Notification);
       const n = notifRepo.create({
@@ -82,7 +96,7 @@ export const getFollowing = async (req: AuthRequest, res: Response): Promise<voi
       relations: ["vendor"],
       order: { createdAt: "DESC" },
     });
-    res.json({ success: true, data: rows.map((f) => f.vendor) });
+    res.json({ success: true, data: rows.map((f) => publicVendor(f.vendor)) });
   } catch (err: any) { res.status(500).json({ success: false, message: err.message }); }
 };
 
@@ -91,10 +105,11 @@ export const checkFollowStatus = async (req: AuthRequest, res: Response): Promis
     const vendorId = req.params.vendorId as string;
     const followerRepo = AppDataSource.getRepository(Follower);
 
-    const [following, count] = await Promise.all([
-      followerRepo.findOne({ where: { follower: { id: req.user!.id }, vendor: { id: vendorId } } }),
-      followerRepo.count({ where: { vendor: { id: vendorId } } }),
-    ]);
+    // Follower counts are public; only the "am I following" flag needs a user.
+    const count = await followerRepo.count({ where: { vendor: { id: vendorId } } });
+    const following = req.user
+      ? await followerRepo.findOne({ where: { follower: { id: req.user.id }, vendor: { id: vendorId } } })
+      : null;
 
     res.json({ success: true, data: { following: !!following, followersCount: count } });
   } catch (err: any) { res.status(500).json({ success: false, message: err.message }); }

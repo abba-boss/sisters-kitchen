@@ -3,6 +3,8 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { AppDataSource } from "./database";
 import { User } from "../entities/User";
+import { Order } from "../entities/Order";
+import { publicOrder } from "../utils/serializers";
 
 let io: SocketIOServer;
 
@@ -23,7 +25,8 @@ export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
           return callback(null, true);
         }
         if (configuredOrigins.includes(origin)) return callback(null, true);
-        callback(new Error(`Socket CORS blocked: ${origin}`));
+        console.warn(`Socket CORS blocked: ${origin}`);
+        return callback(null, false);
       },
       credentials: true,
       methods: ["GET", "POST"],
@@ -31,23 +34,24 @@ export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
     pingTimeout: 60000,
   });
 
-  // Auth middleware for socket connections
+  // Optional auth: the public feed is browsable without an account, so a
+  // missing token is allowed. An invalid token is still rejected.
   io.use(async (socket: Socket, next) => {
+    const token =
+      socket.handshake.auth?.token ||
+      socket.handshake.headers?.authorization?.split(" ")[1];
+
+    if (!token) {
+      (socket as any).user = null;
+      return next();
+    }
+
     try {
-      const token =
-        socket.handshake.auth?.token ||
-        socket.handshake.headers?.authorization?.split(" ")[1];
-
-      if (!token) {
-        return next(new Error("Authentication error: No token"));
-      }
-
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
-      const userRepo = AppDataSource.getRepository(User);
-      const user = await userRepo.findOne({ where: { id: decoded.userId, isActive: true } });
-
+      const user = await AppDataSource.getRepository(User).findOne({
+        where: { id: decoded.userId, isActive: true },
+      });
       if (!user) return next(new Error("Authentication error: User not found"));
-
       (socket as any).user = user;
       next();
     } catch {
@@ -56,8 +60,17 @@ export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
   });
 
   io.on("connection", (socket: Socket) => {
-    const user = (socket as any).user as User;
-    console.log(`🔌 Socket connected: ${user.email} (${socket.id})`);
+    const user = (socket as any).user as User | null;
+    console.log(
+      user
+        ? `🔌 Socket connected: ${user.email} (${socket.id})`
+        : `🔌 Guest socket connected (${socket.id})`
+    );
+
+    if (!user) {
+      socket.on("disconnect", () => console.log(`🔌 Guest socket disconnected (${socket.id})`));
+      return;
+    }
 
     // Track user's sockets
     if (!userSocketMap.has(user.id)) {
@@ -75,8 +88,22 @@ export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
       socket.join(`vendor:user:${user.id}`);
     }
 
-    socket.on("join:order", (orderId: string) => {
-      socket.join(`order:${orderId}`);
+    socket.on("join:order", async (orderId: string) => {
+      try {
+        const orderRepo = AppDataSource.getRepository(Order);
+        const order = await orderRepo.findOne({
+          where: { id: orderId },
+          relations: ["user", "vendor", "vendor.user"],
+        });
+        const canJoin =
+          order &&
+          (order.user?.id === user.id ||
+            order.vendor?.user?.id === user.id ||
+            user.role === "admin");
+        if (canJoin) socket.join(`order:${orderId}`);
+      } catch {
+        // Ignore malformed or unknown order-room requests.
+      }
     });
 
     socket.on("leave:order", (orderId: string) => {
@@ -118,7 +145,7 @@ export const emitToAdmins = (event: string, data: any) => {
 /** Emit order update to customer + vendor + admins watching it */
 export const emitOrderUpdate = (order: any) => {
   if (!io) return;
-  const payload = { order };
+  const payload = { order: publicOrder(order) };
   // Customer
   emitToUser(order.user?.id || order.userId, "order:updated", payload);
   // Vendor (via vendor's user id)

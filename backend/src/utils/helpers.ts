@@ -14,7 +14,8 @@ export const generateOrderNumber = (): string => {
  */
 export const uploadToCloudinary = async (
   filePath: string,
-  folder = "sisters-kitchen"
+  folder = "sisters-kitchen",
+  resourceType: "image" | "video" = "image"
 ): Promise<string> => {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "";
   const apiKey    = process.env.CLOUDINARY_API_KEY    || "";
@@ -35,6 +36,7 @@ export const uploadToCloudinary = async (
   try {
     const result = await cloudinary.uploader.upload(filePath, {
       folder,
+      resource_type: resourceType,
       use_filename: false,
       unique_filename: true,
       overwrite: false,
@@ -54,7 +56,10 @@ export const uploadToCloudinary = async (
   }
 };
 
-export const deleteFromCloudinary = async (imageUrl: string): Promise<void> => {
+export const deleteFromCloudinary = async (
+  imageUrl: string,
+  resourceType: "image" | "video" = "image"
+): Promise<void> => {
   if (!imageUrl || imageUrl.startsWith("/uploads/")) return; // local file
 
   try {
@@ -64,7 +69,7 @@ export const deleteFromCloudinary = async (imageUrl: string): Promise<void> => {
     const withVersion = parts[1]; // e.g. v12345/sisters-kitchen/abc.jpg
     const withoutVersion = withVersion.replace(/^v\d+\//, "");
     const publicId = withoutVersion.replace(/\.[^/.]+$/, "");
-    await cloudinary.uploader.destroy(publicId);
+    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
   } catch (err) {
     console.error("Cloudinary delete error:", err);
   }

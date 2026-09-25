@@ -7,7 +7,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-  getVendorProducts,
+  getVendorProducts, getMyProductById,
 } from "../controllers/productController";
 import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../entities/User";
@@ -19,6 +19,7 @@ router.get("/", getAllProducts);
 router.get("/featured", getFeaturedProducts);
 router.get("/fresh-today", getFreshTodayProducts);
 router.get("/my-products", authenticate, authorize(UserRole.VENDOR), getVendorProducts);
+router.get("/my-products/:id", authenticate, authorize(UserRole.VENDOR), getMyProductById);
 router.get("/:id", getProductById);
 router.post(
   "/",

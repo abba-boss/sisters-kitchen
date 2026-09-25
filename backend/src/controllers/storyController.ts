@@ -19,12 +19,20 @@ export const createStory = async (req: AuthRequest, res: Response): Promise<void
 
     let mediaUrl = bodyUrl;
     const file = req.file as Express.Multer.File | undefined;
+    const isVideoUpload = Boolean(file?.mimetype?.startsWith("video/"));
     if (file) {
-      mediaUrl = await uploadToCloudinary(file.path, `sisters-kitchen/stories/${vendor.id}`);
+      mediaUrl = await uploadToCloudinary(
+        file.path,
+        `sisters-kitchen/stories/${vendor.id}`,
+        isVideoUpload ? "video" : "image"
+      );
     }
     if (!mediaUrl) { res.status(400).json({ success: false, message: "Media is required" }); return; }
 
-    const isVideo = mediaUrl.includes("/video/") || mediaUrl.endsWith(".mp4") || mediaUrl.endsWith(".webm");
+    const isVideo =
+      isVideoUpload ||
+      mediaUrl.includes("/video/") ||
+      /\.(mp4|webm|mov|m4v)$/i.test(mediaUrl);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     const storyRepo = AppDataSource.getRepository(Story);

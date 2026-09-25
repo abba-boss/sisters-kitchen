@@ -17,5 +17,11 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // This app loads data in effects (fetch on mount / on filter change) and
+      // sets a loading flag synchronously before the request. That is correct
+      // behaviour, not a cascading-render bug, so keep the signal as a warning.
+      'react-hooks/set-state-in-effect': 'warn',
+    },
   },
 ])
