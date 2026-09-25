@@ -16,7 +16,7 @@
 
   body {
     font-family: "DM Sans", sans-serif;
-    background-color: #FFF6EE;
+    background-color: #FBF7F3;
     color: #4A2C2A;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -180,6 +180,14 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
+  .social-page-container {
+    @apply max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .social-card {
+    @apply rounded-[1.8rem] border border-orange-100 bg-white shadow-card;
+  }
+
   /* ── Skeleton ─────────────────────────────────────────────── */
   .skeleton {
     @apply animate-pulse bg-gradient-to-r from-orange-50 via-orange-100 to-orange-50
@@ -275,7 +283,7 @@
 
 /* ── Custom scrollbar ────────────────────────────────────────── */
 ::-webkit-scrollbar          { width: 6px; height: 6px; }
-::-webkit-scrollbar-track    { background: #FFF6EE; }
+::-webkit-scrollbar-track    { background: #FBF7F3; }
 ::-webkit-scrollbar-thumb    { background: #FFCBB8; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #FF7A59; }
 

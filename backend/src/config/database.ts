@@ -33,7 +33,9 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME || "root",
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME     || "sisters_kitchen",
-  synchronize: true,
+  // Schema synchronization is a development convenience only. Production
+  // deployments should use reviewed migrations and set DB_SYNC=false.
+  synchronize: process.env.NODE_ENV !== "production" && process.env.DB_SYNC !== "false",
   logging: false,
   entities: [
     // ── V1 ────────────────────────────────────────────────────

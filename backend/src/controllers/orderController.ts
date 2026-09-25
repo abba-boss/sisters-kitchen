@@ -8,7 +8,7 @@ import { Notification, NotificationType } from "../entities/Notification";
 import { AuthRequest } from "../middleware/auth";
 import { generateOrderNumber } from "../utils/helpers";
 import { UserRole } from "../entities/User";
-import { emitOrderUpdate, emitNotification, emitToAdmins } from "../config/socket";
+import { emitOrderUpdate, emitNotification, emitToAdmins, emitToUser } from "../config/socket";
 import { creditCoins, REWARD_RATES } from "./rewardController";
 import { RewardTxType } from "../entities/RewardTransaction";
 
@@ -35,6 +35,10 @@ async function createAndEmitNotification(
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { items, deliveryAddress, deliveryPhone, notes, vendorId } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ success: false, message: "Your cart is empty" });
+      return;
+    }
 
     const vendorRepo = AppDataSource.getRepository(Vendor);
     const vendor = await vendorRepo.findOne({ where: { id: vendorId }, relations: ["user"] });
@@ -59,6 +63,12 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     const orderItems: Partial<OrderItem>[] = [];
 
     for (const item of items) {
+      const quantity = Number(item.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        res.status(400).json({ success: false, message: "Invalid item quantity" });
+        return;
+      }
+
       const product = await productRepo.findOne({
         where: { id: item.productId },
         relations: ["vendor"],
@@ -81,7 +91,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         });
         return;
       }
-      if (product.stock > 0 && item.quantity > product.stock) {
+      if (product.stock > 0 && quantity > product.stock) {
         res.status(400).json({
           success: false,
           message: `Only ${product.stock} of "${product.name}" left in stock`,
@@ -89,9 +99,9 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         return;
       }
       const price = Number(product.discountPrice) || Number(product.price);
-      const itemSubtotal = price * item.quantity;
+      const itemSubtotal = price * quantity;
       subtotal += itemSubtotal;
-      orderItems.push({ product, quantity: item.quantity, price, subtotal: itemSubtotal, notes: item.notes });
+      orderItems.push({ product, quantity, price, subtotal: itemSubtotal, notes: item.notes });
     }
 
     const deliveryFee = 500;
@@ -114,13 +124,50 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
 
     await orderRepo.save(order);
 
+    // Reserve stock atomically after the order exists. A conditional update
+    // prevents two concurrent checkouts from claiming the last portions.
+    const reservedStock: Array<{ productId: string; quantity: number }> = [];
+    for (const item of orderItems) {
+      const quantity = Number(item.quantity);
+      if (item.product && item.product.stock > 0) {
+        const stockUpdate = await productRepo
+          .createQueryBuilder()
+          .update(Product)
+          .set({ stock: () => `stock - ${quantity}` })
+          .where("id = :productId AND stock >= :quantity", {
+            productId: item.product.id,
+            quantity,
+          })
+          .execute();
+
+        if (stockUpdate.affected !== 1) {
+          for (const reserved of reservedStock) {
+            await productRepo
+              .createQueryBuilder()
+              .update(Product)
+              .set({ stock: () => `stock + ${reserved.quantity}` })
+              .where("id = :productId", { productId: reserved.productId })
+              .execute();
+          }
+          await orderRepo.remove(order);
+          res.status(409).json({
+            success: false,
+            message: `"${item.product.name}" just sold out. Your cart was not charged.`,
+          });
+          return;
+        }
+        reservedStock.push({ productId: item.product.id, quantity });
+      }
+    }
+
     // Reload with relations for socket payload
     const fullOrder = await orderRepo.findOne({
       where: { id: order.id },
       relations: ["user", "vendor", "vendor.user", "items", "items.product"],
     });
 
-    // Notify vendor via socket + DB notification
+    // Notify vendor, admins, and the customer-facing order room.
+    emitToUser(vendor.user.id, "order:new", { order: fullOrder });
     emitToAdmins("order:new", { order: fullOrder });
     await createAndEmitNotification(
       vendor.user.id,
@@ -210,7 +257,7 @@ export const getVendorOrders = async (req: AuthRequest, res: Response): Promise<
     const [orders, total] = await qb
       .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();
 
-    res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit) } });
+    res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

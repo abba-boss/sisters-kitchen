@@ -8,7 +8,7 @@ import { AuthRequest } from "../middleware/auth";
 import { deliverPasswordResetOtp, generateSixDigitOtp } from "../utils/mail";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
-const isDev = process.env.NODE_ENV !== "production";
+const debugOtpEnabled = process.env.DEBUG_OTP === "true";
 
 const stripSensitive = (user: User) => {
   const {
@@ -241,7 +241,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       success: true,
       message: "If that email is registered, a verification code has been sent.",
     };
-    if (isDev && debugOtp) payload.debugOtp = debugOtp;
+    if (debugOtpEnabled && debugOtp) payload.debugOtp = debugOtp;
 
     res.json(payload);
   } catch (error: any) {
@@ -373,7 +373,7 @@ export const resendResetOtp = async (req: Request, res: Response): Promise<void>
       success: true,
       message: "If that email is registered, a new verification code has been sent.",
     };
-    if (isDev && debugOtp) payload.debugOtp = debugOtp;
+    if (debugOtpEnabled && debugOtp) payload.debugOtp = debugOtp;
 
     res.json(payload);
   } catch (error: any) {

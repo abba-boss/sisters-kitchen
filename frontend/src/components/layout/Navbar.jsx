@@ -17,25 +17,26 @@ import {
   Coins,
   Compass,
   Rss,
-  Store,
-  ShoppingBag,
+  Bookmark,
+  PenLine,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 import { useRewardStore } from '../../store/rewardStore';
 import { useAuth } from '../../hooks/useAuth';
 import NotificationDropdown from '../common/NotificationDropdown';
+import { useCreatePostStore } from '../../store/createPostStore';
 
 const DESKTOP_NAV = [
   { to: '/', label: 'Feed', match: 'feed' },
-  { to: '/shop', label: 'Shop', match: 'shop' },
   { to: '/discover', label: 'Discover', match: 'discover' },
-  { to: '/vendors', label: 'Vendors', match: 'vendors' },
+  { to: '/vendors', label: 'Kitchens', match: 'vendors' },
 ];
 
 const MOBILE_MENU_NAV = [
   ...DESKTOP_NAV,
   { to: '/wishlist', label: 'Wishlist', match: 'wishlist', authOnly: true },
+  { to: '/saved', label: 'Saved stories', match: 'saved', authOnly: true },
   { to: '/cart', label: 'Cart', match: 'cart' },
   { to: '/notifications', label: 'Notifications', match: 'notifications', authOnly: true },
   { to: '/profile', label: 'Profile', match: 'profile', authOnly: true },
@@ -44,9 +45,6 @@ const MOBILE_MENU_NAV = [
 const isNavActive = (match, pathname) => {
   if (match === 'feed') {
     return pathname === '/' || pathname.startsWith('/feed') || pathname.startsWith('/posts');
-  }
-  if (match === 'shop') {
-    return pathname === '/shop' || pathname.startsWith('/products');
   }
   if (match === 'discover') {
     return pathname.startsWith('/discover');
@@ -67,6 +65,7 @@ export default function Navbar() {
   const { user, isAuthenticated } = useAuthStore();
   const totalItems = useCartStore((s) => s.getTotalItems());
   const balance = useRewardStore((s) => s.balance);
+  const openCreatePost = useCreatePostStore((state) => state.open);
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,7 +98,7 @@ export default function Navbar() {
     e.preventDefault();
     const q = searchQuery.trim();
     if (!q) return;
-    navigate(`/products?search=${encodeURIComponent(q)}`);
+    navigate(`/?search=${encodeURIComponent(q)}`);
     setSearchOpen(false);
     setSearchQuery('');
   };
@@ -128,7 +127,7 @@ export default function Navbar() {
             </div>
             <div className="hidden sm:block leading-tight">
               <p className="font-poppins font-bold text-base text-brand-dark">Sisters Kitchen</p>
-              <p className="text-[11px] text-brand-muted">Homemade Social Commerce</p>
+              <p className="text-[11px] text-brand-muted">Food stories. Local kitchens.</p>
             </div>
           </Link>
 
@@ -167,6 +166,16 @@ export default function Navbar() {
             >
               <Compass size={19} />
             </button>
+
+            {user?.role === 'vendor' && (
+              <button
+                onClick={openCreatePost}
+                className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-soft transition-all hover:bg-primary-dark active:scale-95"
+              >
+                <PenLine size={15} aria-hidden="true" />
+                Create
+              </button>
+            )}
 
             <Link
               to="/cart"
@@ -250,9 +259,9 @@ export default function Navbar() {
                             { to: getDashboardLink(), icon: LayoutDashboard, label: 'Dashboard' },
                             { to: '/orders', icon: Package, label: 'My Orders' },
                             { to: '/', icon: Rss, label: 'Feed' },
-                            { to: '/shop', icon: ShoppingBag, label: 'Shop' },
                             { to: '/discover', icon: Compass, label: 'Discover' },
-                            { to: '/vendors', icon: Store, label: 'Vendors' },
+                            { to: '/vendors', icon: ChefHat, label: 'Kitchens' },
+                            { to: '/saved', icon: Bookmark, label: 'Saved stories' },
                             { to: '/payments', icon: CreditCard, label: 'Payments' },
                             { to: '/profile', icon: Settings, label: 'Profile' },
                             { to: '/rewards', icon: Coins, label: 'Rewards' },
@@ -318,7 +327,7 @@ export default function Navbar() {
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
                 <input
                   type="text"
-                  placeholder="Search food, vendors, categories..."
+                  placeholder="Search food stories, recipes, and kitchens..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus

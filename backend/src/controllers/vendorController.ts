@@ -15,14 +15,14 @@ function sanitizeVendorPublic(vendor: Vendor) {
 
 export const getAllVendors = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { page = 1, limit = 12, search, status } = req.query;
+    const { page = 1, limit = 12, search } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
     const vendorRepo = AppDataSource.getRepository(Vendor);
     const qb = vendorRepo
       .createQueryBuilder("vendor")
       .leftJoinAndSelect("vendor.user", "user")
-      .where("vendor.status = :status", { status: status || VendorStatus.APPROVED });
+      .where("vendor.status = :status", { status: VendorStatus.APPROVED });
 
     if (search) {
       qb.andWhere("vendor.businessName LIKE :search", { search: `%${search}%` });
@@ -48,7 +48,7 @@ export const getVendorById = async (req: Request, res: Response): Promise<void> 
   try {
     const vendorRepo = AppDataSource.getRepository(Vendor);
     const vendor = await vendorRepo.findOne({
-      where: { id: req.params.id as string },
+      where: { id: req.params.id as string, status: VendorStatus.APPROVED },
       relations: ["user", "products", "products.category"],
     });
 

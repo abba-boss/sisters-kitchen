@@ -25,7 +25,7 @@ export default {
           dark: "#3F8349",
         },
         brand: {
-          bg: "#FFF6EE",
+          bg: "#FBF7F3",
           dark: "#4A2C2A",
           muted: "#8B6361",
         },

@@ -1,24 +1,22 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Rss, Store, Compass, ShoppingBag, User } from 'lucide-react';
+import { Rss, Compass, ChefHat, ShoppingBag, User } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const NAV = [
   { to: '/', match: 'feed', icon: Rss, label: 'Feed' },
-  { to: '/shop', match: 'shop', icon: Store, label: 'Shop' },
   { to: '/discover', match: 'discover', icon: Compass, label: 'Discover' },
-  { to: '/orders', match: 'orders', icon: ShoppingBag, label: 'Orders', authOnly: true },
-  { to: '/profile', match: 'profile', icon: User, label: 'Profile', authOnly: true },
+  { to: '/vendors', match: 'vendors', icon: ChefHat, label: 'Kitchens' },
+  { to: '/orders', match: 'orders', icon: ShoppingBag, label: 'Orders', requiresAuth: true },
+  { to: '/profile', match: 'profile', icon: User, label: 'Me', requiresAuth: true },
 ];
 
 const isNavActive = (match, pathname) => {
   if (match === 'feed') {
     return pathname === '/' || pathname.startsWith('/feed') || pathname.startsWith('/posts');
   }
-  if (match === 'shop') {
-    return pathname === '/shop' || pathname.startsWith('/products');
-  }
   if (match === 'discover') return pathname.startsWith('/discover');
+  if (match === 'vendors') return pathname.startsWith('/vendors');
   if (match === 'orders') return pathname.startsWith('/orders');
   if (match === 'profile') return pathname.startsWith('/profile');
   return false;
@@ -28,18 +26,29 @@ export default function MobileBottomNav() {
   const { isAuthenticated } = useAuthStore();
   const location = useLocation();
 
-  if (location.pathname.startsWith('/vendor') || location.pathname.startsWith('/admin')) return null;
+  if (
+    location.pathname.startsWith('/vendor') ||
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/products/') ||
+    location.pathname.startsWith('/cart') ||
+    location.pathname.startsWith('/checkout')
+  ) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/86 backdrop-blur-2xl border-t border-orange-100 safe-area-pb mobile-bottom-nav">
-      <div className="max-w-screen-sm mx-auto px-2 h-16 flex items-center justify-around">
-        {NAV.filter((item) => (item.authOnly ? isAuthenticated : true)).map((item) => {
+    <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-orange-100/80 bg-white/90 backdrop-blur-2xl safe-area-pb mobile-bottom-nav">
+      <div className="mx-auto flex h-16 max-w-screen-sm items-center justify-around px-2">
+        {NAV.map((item) => {
           const Icon = item.icon;
           const active = isNavActive(item.match, location.pathname);
-          const to = item.authOnly && !isAuthenticated ? '/login' : item.to;
+          const to = item.requiresAuth && !isAuthenticated ? '/login' : item.to;
 
           return (
-            <Link key={item.label} to={to} className="min-w-[58px] py-1 flex flex-col items-center gap-0.5">
+            <Link
+              key={item.label}
+              to={to}
+              className="flex min-w-[58px] flex-col items-center gap-0.5 py-1"
+              aria-current={active ? 'page' : undefined}
+            >
               <motion.div whileTap={{ scale: 0.88 }} className="relative">
                 <Icon
                   size={21}
@@ -49,7 +58,7 @@ export default function MobileBottomNav() {
                 {active && (
                   <motion.div
                     layoutId="mobileNavActive"
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary"
+                    className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary"
                   />
                 )}
               </motion.div>

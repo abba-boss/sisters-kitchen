@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Loader, Trash2, CornerDownRight } from 'lucide-react';
 import { postService } from '../../services/postService';

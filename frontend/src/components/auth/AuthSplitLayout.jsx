@@ -13,14 +13,14 @@ const FOOD_COPY = {
   login: {
     eyebrow: 'Fresh, fast, trusted',
     title: 'Discover homemade food worth coming back for.',
-    body: 'Sign in to track orders, save favorites, and keep your premium food marketplace experience in sync.',
-    highlights: ['Track deliveries in real time', 'Save wishlist and rewards', 'Checkout faster across devices'],
+    body: 'Sign in to follow kitchens, save the stories that inspire you, and keep your food journey in sync.',
+    highlights: ['Follow kitchens you love', 'Save recipes and stories', 'Track orders and rewards'],
   },
   register: {
     eyebrow: 'Join the marketplace',
     title: 'Create your account and start ordering beautifully.',
-    body: 'Set up your Sisters Kitchen account to shop curated meals, follow favorite kitchens, and unlock rewards.',
-    highlights: ['Customer and vendor signup', 'Premium social-commerce experience', 'Rewards, stories, and saved favorites'],
+    body: 'Set up your Sisters Kitchen account to follow favorite kitchens, save recipes, and discover your next meal.',
+    highlights: ['Customer and kitchen accounts', 'A community built around food', 'Rewards, stories, and saved favorites'],
   },
   forgot: {
     eyebrow: 'Account recovery',
@@ -66,7 +66,7 @@ export default function AuthSplitLayout({
                 </div>
                 <div>
                   <p className="font-poppins text-xl font-bold">Sisters Kitchen</p>
-                  <p className="text-sm text-white/75">Premium food marketplace</p>
+                  <p className="text-sm text-white/75">Food stories. Local kitchens.</p>
                 </div>
               </Link>
               <Link
@@ -99,9 +99,9 @@ export default function AuthSplitLayout({
 
             <div className="grid grid-cols-3 gap-3">
               {[
-                ['4.9/5', 'Customer satisfaction'],
-                ['24/7', 'Food discovery'],
-                ['120+', 'Trusted kitchens'],
+                ['Stories', 'Fresh kitchen updates'],
+                ['Kitchens', 'Local food creators'],
+                ['Rewards', 'Earn as you engage'],
               ].map(([value, label]) => (
                 <div key={label} className="rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
                   <p className="font-poppins text-2xl font-bold">{value}</p>
@@ -125,7 +125,7 @@ export default function AuthSplitLayout({
                 </div>
                 <div>
                   <p className="font-poppins text-xl font-bold text-brand-dark">Sisters Kitchen</p>
-                  <p className="text-sm text-brand-muted">Premium food marketplace</p>
+                  <p className="text-sm text-brand-muted">Food stories. Local kitchens.</p>
                 </div>
               </Link>
             </div>

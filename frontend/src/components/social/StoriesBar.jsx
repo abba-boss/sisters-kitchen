@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Eye, Play, Radio } from 'lucide-react';
+import { X, ExternalLink, Eye, Play, Plus, Sparkles } from 'lucide-react';
 import { storyService } from '../../services/storyService';
 import { useAuthStore } from '../../store/authStore';
 import { timeAgo } from '../../utils/formatters';
@@ -10,7 +11,7 @@ export default function StoriesBar() {
   const [loading,  setLoading]  = useState(true);
   const [viewer,   setViewer]   = useState(null); // { groupIdx, storyIdx }
   const scrollRef = useRef(null);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
     // Public stories – no auth required
@@ -21,7 +22,6 @@ export default function StoriesBar() {
   }, []);
 
   if (loading) return <StoriesBarSkeleton />;
-  if (groups.length === 0) return null;
 
   const openViewer = (groupIdx, storyIdx = 0) => setViewer({ groupIdx, storyIdx });
   const closeViewer = () => setViewer(null);
@@ -32,21 +32,54 @@ export default function StoriesBar() {
 
   return (
     <>
-      {/* Stories scroll bar */}
-      <div className="bg-white border-b border-orange-50 py-3 px-4">
-        <div
-          ref={scrollRef}
-          className="flex gap-4 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory"
-        >
-          {groups.map((group, i) => (
-            <StoryRing
-              key={group.vendor.id}
-              group={group}
-              onClick={() => openViewer(i)}
-            />
-          ))}
+      <section aria-labelledby="stories-heading">
+        <div className="mb-3 flex items-center justify-between gap-3 px-4 pt-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles size={15} className="text-primary" aria-hidden="true" />
+              <h2 id="stories-heading" className="font-poppins text-sm font-bold text-brand-dark">
+                Fresh from their kitchens
+              </h2>
+            </div>
+            <p className="mt-0.5 text-[11px] text-brand-muted">See what is happening before it hits the menu.</p>
+          </div>
+          {groups.length > 0 && <span className="text-[11px] font-semibold text-primary">{groups.length} new</span>}
         </div>
-      </div>
+
+        {groups.length === 0 ? (
+          <div className="px-4 pb-4">
+            <div className="rounded-2xl bg-brand-bg/70 px-4 py-3 text-sm text-brand-muted">
+              No kitchen stories right now. Follow a kitchen to catch their next update.
+            </div>
+          </div>
+        ) : (
+          <div
+            ref={scrollRef}
+            className="flex gap-4 overflow-x-auto px-4 pb-4 scrollbar-hide snap-x snap-mandatory"
+          >
+            {user?.role === 'vendor' && (
+              <Link
+                to="/vendor/stories"
+                className="flex w-16 flex-shrink-0 snap-start flex-col items-center gap-1.5"
+              >
+                <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-primary/40 bg-primary/5 text-primary transition-colors hover:bg-primary/10">
+                  <Plus size={20} aria-hidden="true" />
+                </span>
+                <span className="w-16 truncate text-center text-xs font-semibold leading-tight text-primary">
+                  Your story
+                </span>
+              </Link>
+            )}
+            {groups.map((group, i) => (
+              <StoryRing
+                key={group.vendor.id}
+                group={group}
+                onClick={() => openViewer(i)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Full-screen story viewer */}
       <AnimatePresence>
@@ -91,9 +124,9 @@ function StoryRing({ group, onClick }) {
             <Play size={11} fill="currentColor" />
           </span>
         )}
-        {latestStory?.link && (
-          <span className="absolute -top-1 -left-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold border border-white shadow-soft inline-flex items-center gap-1">
-            <Radio size={8} /> LIVE
+        {latestStory && (
+          <span className="absolute -top-1 -left-1 inline-flex items-center gap-0.5 rounded-full border border-white bg-primary px-1.5 py-0.5 text-[8px] font-bold text-white shadow-soft">
+            <Sparkles size={7} /> NEW
           </span>
         )}
       </div>
@@ -116,22 +149,6 @@ function StoryViewer({ groups, initialGroupIdx, initialStoryIdx, onClose, onView
   const stories = group?.stories || [];
   const story   = stories[storyIdx];
 
-  useEffect(() => {
-    if (!story) return;
-    onView?.(story);
-    setProgress(0);
-
-    const startTime = Date.now();
-    timerRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const pct = Math.min((elapsed / DURATION) * 100, 100);
-      setProgress(pct);
-      if (pct >= 100) next();
-    }, 50);
-
-    return () => clearInterval(timerRef.current);
-  }, [groupIdx, storyIdx]);
-
   const next = () => {
     clearInterval(timerRef.current);
     if (storyIdx < stories.length - 1) {
@@ -149,6 +166,22 @@ function StoryViewer({ groups, initialGroupIdx, initialStoryIdx, onClose, onView
     if (storyIdx > 0) setStoryIdx((i) => i - 1);
     else if (groupIdx > 0) { setGroupIdx((i) => i - 1); setStoryIdx(0); }
   };
+
+  useEffect(() => {
+    if (!story) return;
+    onView?.(story);
+    setProgress(0);
+
+    const startTime = Date.now();
+    timerRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min((elapsed / DURATION) * 100, 100);
+      setProgress(pct);
+      if (pct >= 100) next();
+    }, 50);
+
+    return () => clearInterval(timerRef.current);
+  }, [groupIdx, storyIdx]);
 
   if (!story) return null;
 
@@ -226,10 +259,10 @@ function StoryViewer({ groups, initialGroupIdx, initialStoryIdx, onClose, onView
 
         {/* CTA link */}
         {story.link && (
-          <a href={story.link} target="_blank" rel="noreferrer"
+          <StoryLink href={story.link}
             className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white text-brand-dark text-xs font-semibold px-4 py-2 rounded-full shadow z-10 hover:bg-primary hover:text-white transition-all">
             <ExternalLink size={12} /> View →
-          </a>
+          </StoryLink>
         )}
 
         {/* Views count */}
@@ -238,13 +271,20 @@ function StoryViewer({ groups, initialGroupIdx, initialStoryIdx, onClose, onView
         </div>
 
         {/* Tap zones */}
-        <div className="absolute inset-0 flex z-5">
+        <div className="absolute inset-0 z-[5] flex">
           <div className="flex-1" onClick={prev} />
           <div className="flex-1" onClick={next} />
         </div>
       </div>
     </motion.div>
   );
+}
+
+function StoryLink({ href, children, className }) {
+  if (href.startsWith('/')) {
+    return <Link to={href} className={className}>{children}</Link>;
+  }
+  return <a href={href} target="_blank" rel="noreferrer" className={className}>{children}</a>;
 }
 
 function StoriesBarSkeleton() {

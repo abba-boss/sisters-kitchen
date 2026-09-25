@@ -1,250 +1,407 @@
-import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Compass,
-  Flame,
-  Users,
-  Search,
-  Bell,
-  MessageCircleMore,
+  ArrowUpRight,
   Bookmark,
-  MapPin,
-  Tag,
-  Clock3,
   ChefHat,
   ChevronRight,
+  Compass,
+  Flame,
+  Heart,
+  MapPin,
+  Search,
   Sparkles,
-  PlayCircle,
   Store,
-  Radio,
+  Users,
   UtensilsCrossed,
+  X,
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import PostCard from '../../components/social/PostCard';
 import PostSkeleton from '../../components/social/PostSkeleton';
 import StoriesBar from '../../components/social/StoriesBar';
+import FeedComposer from '../../components/social/FeedComposer';
+import NotificationDropdown from '../../components/common/NotificationDropdown';
+import FollowButton from '../../components/social/FollowButton';
 import { postService } from '../../services/postService';
-import { useFeedStore } from '../../store/feedStore';
-import { useSocketEvent } from '../../hooks/useSocket';
 import { vendorService } from '../../services/vendorService';
 import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
+import { useFeedStore } from '../../store/feedStore';
 import { useAuthStore } from '../../store/authStore';
-import NotificationDropdown from '../../components/common/NotificationDropdown';
-import FollowButton from '../../components/social/FollowButton';
+import { useAuthModalStore } from '../../store/authModalStore';
+import { useSocketEvent } from '../../hooks/useSocket';
 import { formatPrice } from '../../utils/formatters';
-import toast from 'react-hot-toast';
-
-const TABS = [
-  { key: '',           label: 'All',      icon: Compass },
-  { key: 'promotion',  label: 'Deals',    icon: Flame   },
-  { key: 'behind_scenes', label: 'Stories', icon: null  },
-  { key: 'recipe',     label: 'Recipes',  icon: null    },
-];
 
 const LIMIT = 10;
 
+async function hydrateViewerState(items, isAuthenticated) {
+  if (!isAuthenticated || !items.length) return items;
+
+  const [likeResults, savedResult] = await Promise.all([
+    Promise.all(
+      items.map((post) =>
+        postService
+          .getLikeStatus(post.id)
+          .then(({ data }) => ({ id: post.id, ...data.data }))
+          .catch(() => null)
+      )
+    ),
+    postService.getSaved({ page: 1, limit: 100 }).then(({ data }) => data.data || []).catch(() => []),
+  ]);
+  const likes = new Map(likeResults.filter(Boolean).map((result) => [result.id, result]));
+  const savedIds = new Set(savedResult.map((post) => post.id));
+
+  return items.map((post) => ({
+    ...post,
+    _liked: likes.get(post.id)?.liked ?? post._liked ?? false,
+    likesCount: likes.get(post.id)?.likesCount ?? post.likesCount ?? 0,
+    _saved: savedIds.has(post.id),
+  }));
+}
+
+const FEED_TABS = [
+  { key: 'for-you', label: 'For you', type: '' },
+  { key: 'following', label: 'Following', type: null },
+  { key: 'recipes', label: 'Recipes', type: 'recipe' },
+  { key: 'offers', label: 'Offers', type: 'promotion' },
+];
+
 export default function FeedPage() {
   const {
-    posts, page, hasMore, loading, filter,
-    setPosts, appendPosts, setPage, setHasMore,
-    setLoading, setFilter, prependPost,
+    posts,
+    page,
+    hasMore,
+    loading,
+    filter,
+    setPosts,
+    appendPosts,
+    setPage,
+    setHasMore,
+    setLoading,
+    setFilter,
+    prependPost,
   } = useFeedStore();
   const { isAuthenticated, user } = useAuthStore();
+  const openAuth = useAuthModalStore((state) => state.open);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const observerRef = useRef(null);
   const sentinelRef = useRef(null);
-  const navigate = useNavigate();
-  const [search, setSearch] = useState(filter.search || '');
+  const urlSearch = searchParams.get('search') || '';
+  const [search, setSearch] = useState(urlSearch);
+  const [activeTab, setActiveTab] = useState('for-you');
   const [vendors, setVendors] = useState([]);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [followingIds, setFollowingIds] = useState([]);
+  const [feedError, setFeedError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Initial / filter-change load
   useEffect(() => {
+    setSearch(urlSearch);
+    setActiveTab('for-you');
+    setFilter({ type: '', vendorId: '', search: urlSearch });
+  }, [urlSearch, setFilter]);
+
+  const loadFollowingFeed = useCallback(async () => {
+    setLoading(true);
+    setFeedError('');
+
+    try {
+      const { data } = await postService.getFollowingFeed({ page: 1, limit: LIMIT });
+      const items = data.data || [];
+      setFollowingIds([...new Set(items.map((post) => post.vendor?.id).filter(Boolean))]);
+      const hydrated = await hydrateViewerState(items, isAuthenticated);
+      setPosts(hydrated);
+      setHasMore(items.length === LIMIT);
+      setPage(1);
+    } catch {
+      setPosts([]);
+      setHasMore(false);
+      setFeedError('We could not load kitchens you follow. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated, setHasMore, setLoading, setPage, setPosts]);
+
+  useEffect(() => {
+    if (activeTab === 'following') return undefined;
+
     let cancelled = false;
     setLoading(true);
-    postService.getFeed({ page: 1, limit: LIMIT, ...filter })
-      .then(({ data }) => {
+    setFeedError('');
+
+    postService
+      .getFeed({ page: 1, limit: LIMIT, ...filter })
+      .then(async ({ data }) => {
         if (cancelled) return;
-        setPosts(data.data || []);
-        setHasMore((data.data || []).length === LIMIT);
+        const items = data.data || [];
+        const hydrated = await hydrateViewerState(items, isAuthenticated);
+        if (cancelled) return;
+        setPosts(hydrated);
+        setHasMore(items.length === LIMIT);
         setPage(1);
       })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [filter]);
+      .catch(() => {
+        if (cancelled) return;
+        setPosts([]);
+        setHasMore(false);
+        setFeedError('The food feed could not be loaded. Check your connection and try again.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-  // Load more (infinite scroll)
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, filter, isAuthenticated, refreshKey, setHasMore, setLoading, setPage, setPosts]);
+
   const loadMore = useCallback(() => {
     if (loading || !hasMore) return;
     const nextPage = page + 1;
     setLoading(true);
-    postService.getFeed({ page: nextPage, limit: LIMIT, ...filter })
-      .then(({ data }) => {
+
+    const request = activeTab === 'following'
+      ? postService.getFollowingFeed({ page: nextPage, limit: LIMIT })
+      : postService.getFeed({ page: nextPage, limit: LIMIT, ...filter });
+
+    request
+      .then(async ({ data }) => {
         const newPosts = data.data || [];
-        appendPosts(newPosts);
+        const hydrated = await hydrateViewerState(newPosts, isAuthenticated);
+        appendPosts(hydrated);
+        if (activeTab === 'following') {
+          setFollowingIds((current) => [
+            ...new Set([...current, ...newPosts.map((post) => post.vendor?.id).filter(Boolean)]),
+          ]);
+        }
         setHasMore(newPosts.length === LIMIT);
         setPage(nextPage);
       })
-      .catch(() => {})
+      .catch(() => setFeedError('More stories could not be loaded. Please try again.'))
       .finally(() => setLoading(false));
-  }, [loading, hasMore, page, filter]);
+  }, [activeTab, appendPosts, filter, hasMore, isAuthenticated, loading, page, setHasMore, setLoading, setPage]);
 
-  // Intersection observer for sentinel
   useEffect(() => {
-    if (observerRef.current) observerRef.current.disconnect();
-    observerRef.current = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) loadMore();
+      },
       { threshold: 0.1 }
     );
-    if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
-    return () => observerRef.current?.disconnect();
+
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    observerRef.current = observer;
+
+    return () => observer.disconnect();
   }, [loadMore]);
 
-  // Real-time new post from socket
-  useSocketEvent('post:new', ({ post }) => { prependPost(post); });
+  useSocketEvent('post:new', ({ post }) => {
+    if (activeTab === 'following' && followingIds.length && !followingIds.includes(post.vendor?.id)) return;
+    prependPost(post);
+  });
 
   useEffect(() => {
-    vendorService.getAll({ limit: 8 })
+    vendorService
+      .getAll({ limit: 8 })
       .then(({ data }) => setVendors(data.data || []))
       .catch(() => {});
-    productService.getAll({ limit: 8, sort: 'popular' })
+    productService
+      .getAll({ limit: 8, sort: 'popular' })
       .then(({ data }) => setProducts(data.data || []))
       .catch(() => {});
-    categoryService.getAll()
+    categoryService
+      .getAll()
       .then(({ data }) => setCategories(data.data || []))
       .catch(() => {});
   }, []);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setFilter({ search: search.trim() });
+  const handleSearch = (event) => {
+    event.preventDefault();
+    const query = search.trim();
+    setSearchParams(query ? { search: query } : {}, { replace: true });
   };
 
-  const timelineItems = useMemo(() => {
-    const items = [];
-    posts.forEach((post, index) => {
-      items.push({ type: 'post', post, key: post.id });
-      if ((index + 1) % 3 === 0) {
-        items.push({ type: 'vendors', key: `vendors-${post.id}-${index}` });
-      } else if ((index + 1) % 5 === 0) {
-        items.push({ type: 'categories', key: `categories-${post.id}-${index}` });
-      } else if ((index + 1) % 7 === 0) {
-        items.push({ type: 'deals', key: `deals-${post.id}-${index}` });
+  const clearSearch = () => {
+    setSearch('');
+    setSearchParams({}, { replace: true });
+  };
+
+  const selectTab = (tab) => {
+    if (tab.key === activeTab) return;
+
+    if (tab.key === 'following') {
+      if (!isAuthenticated) {
+        openAuth('Sign in to see stories from kitchens you follow');
+        return;
       }
+      setActiveTab(tab.key);
+      loadFollowingFeed();
+      return;
+    }
+
+    setActiveTab(tab.key);
+    setFilter({ type: tab.type, vendorId: '', search: search.trim() });
+  };
+
+  const retry = () => {
+    setRefreshKey((value) => value + 1);
+    if (activeTab === 'following') loadFollowingFeed();
+  };
+
+  const trendingTopics = useMemo(() => {
+    const counts = new Map();
+    posts.flatMap((post) => post.tags || []).forEach((tag) => {
+      const key = String(tag).replace(/^#/, '').trim();
+      if (key) counts.set(key, (counts.get(key) || 0) + 1);
     });
+    categories.forEach((category) => counts.set(category.name, (counts.get(category.name) || 0) + 1));
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([name, count]) => ({ name, count }));
+  }, [categories, posts]);
+
+  const timelineItems = useMemo(() => {
+    const items = posts.map((post) => ({ type: 'post', post, key: post.id }));
+    if (posts.length >= 4) {
+      items.splice(4, 0, { type: 'vendors', key: `kitchens-${posts[3].id}` });
+    }
+    if (posts.length >= 9) {
+      items.splice(9, 0, { type: 'dishes', key: `dishes-${posts[8].id}` });
+    }
     return items;
   }, [posts]);
 
+  const firstName = user?.firstName || 'food lover';
+
   return (
     <MainLayout>
-      <div className="page-container py-5 lg:py-6">
-        <div className="grid lg:grid-cols-[220px_minmax(0,1fr)_300px] xl:grid-cols-[240px_minmax(0,1fr)_330px] gap-6 items-start">
-          <aside className="hidden lg:block sticky top-24">
-            <LeftRail
-              filter={filter}
-              onFilter={setFilter}
+      <div className="social-page-container page-container py-4 sm:py-6">
+        <div className="grid items-start gap-5 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[230px_minmax(0,720px)_310px] xl:gap-6">
+          <aside className="sticky top-24 hidden lg:block">
+            <CommunityRail
+              activeTab={activeTab}
+              onSelectTab={selectTab}
               isAuthenticated={isAuthenticated}
               onSavedClick={() => {
-                if (!isAuthenticated) return toast('Sign in to view saved posts');
-                navigate('/wishlist');
+                if (!isAuthenticated) {
+                  openAuth('Sign in to view saved stories');
+                  return;
+                }
+                navigate('/saved');
               }}
             />
           </aside>
 
-          <section className="min-w-0">
-            <FeedHeader
+          <main className="min-w-0">
+            <FeedIntro
+              firstName={firstName}
               search={search}
               setSearch={setSearch}
               onSearch={handleSearch}
+              onClear={clearSearch}
+              hasSearch={Boolean(urlSearch)}
               isAuthenticated={isAuthenticated}
-              user={user}
             />
 
-            <StoriesBar />
-
-            <div className="mt-5 mb-5">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
-                  <h1 className="font-poppins font-bold text-2xl sm:text-3xl text-brand-dark">Food Feed</h1>
-                  <p className="text-brand-muted text-sm mt-1">Fresh stories, cooking videos, upcoming meals, and deal drops from local kitchens.</p>
-                </div>
-                <Link to="/vendors" className="hidden sm:flex items-center gap-1.5 text-sm text-primary font-semibold hover:underline">
-                  <Users size={15} /> Browse vendors
-                </Link>
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-                {TABS.map(({ key, label, icon: Icon }) => (
-                  <button
-                    key={key}
-                    onClick={() => setFilter({ type: key })}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                      filter.type === key
-                        ? 'bg-primary text-white shadow-soft'
-                        : 'bg-white text-brand-muted border border-orange-100 hover:border-primary hover:text-primary'
-                    }`}
-                  >
-                    {Icon && <Icon size={14} />}{label}
-                  </button>
-                ))}
-              </div>
+            <div className="mt-4 overflow-hidden rounded-[1.8rem] border border-orange-100 bg-white shadow-card">
+              <StoriesBar />
             </div>
 
-            {posts.length === 0 && loading ? (
-              Array.from({ length: 3 }).map((_, i) => <PostSkeleton key={i} />)
-            ) : posts.length === 0 ? (
-              <div className="rounded-[2rem] bg-white border border-orange-100 shadow-card text-center py-16 px-6">
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-                  className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-4"
+            <div className="mt-4">
+              <FeedComposer />
+            </div>
+
+            <div className="mb-5 flex items-center gap-1 overflow-x-auto border-b border-orange-100 scrollbar-hide" role="tablist" aria-label="Feed filters">
+              {FEED_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab.key}
+                  onClick={() => selectTab(tab)}
+                  className={`relative flex-shrink-0 px-4 py-3 text-sm font-semibold transition-colors ${
+                    activeTab === tab.key ? 'text-primary' : 'text-brand-muted hover:text-brand-dark'
+                  }`}
                 >
-                  <ChefHat size={28} className="text-primary" />
-                </motion.div>
-                <h3 className="font-poppins font-semibold text-brand-dark mb-1">No posts in this feed yet</h3>
-                <p className="text-brand-muted text-sm">Try another filter or come back when more kitchens share updates.</p>
+                  {tab.label}
+                  {activeTab === tab.key && (
+                    <motion.span
+                      layoutId="feedTab"
+                      className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary"
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {loading && posts.length === 0 ? (
+              <div className="space-y-5">
+                <PostSkeleton />
+                <PostSkeleton />
               </div>
+            ) : feedError ? (
+              <FeedEmptyState
+                icon={Compass}
+                title="The kitchen is quiet for a moment"
+                description={feedError}
+                actionLabel="Try again"
+                onAction={retry}
+              />
+            ) : posts.length === 0 ? (
+              <FeedEmptyState
+                icon={activeTab === 'following' ? Users : ChefHat}
+                title={activeTab === 'following' ? 'Follow your first kitchen' : 'No stories here yet'}
+                description={
+                  activeTab === 'following'
+                    ? 'Follow kitchens you love and their newest recipes, prep stories, and offers will appear here.'
+                    : 'Try another filter or check back soon for something delicious.'
+                }
+                actionLabel={activeTab === 'following' ? 'Discover kitchens' : 'Back to For you'}
+                onAction={() =>
+                  activeTab === 'following' ? navigate('/vendors') : selectTab(FEED_TABS[0])
+                }
+              />
             ) : (
               <>
                 <div className="space-y-5">
                   {timelineItems.map((item) => {
-                    if (item.type === 'post') {
-                      return <PostCard key={item.key} post={item.post} />;
-                    }
+                    if (item.type === 'post') return <PostCard key={item.key} post={item.post} />;
                     if (item.type === 'vendors') {
-                      return <InlineVendorsCard key={item.key} vendors={vendors.slice(0, 3)} />;
+                      return <KitchensDiscovery key={item.key} vendors={vendors.slice(0, 3)} />;
                     }
-                    if (item.type === 'categories') {
-                      return <InlineCategoriesCard key={item.key} categories={categories.slice(0, 5)} />;
-                    }
-                    return <InlineDealsCard key={item.key} products={products.slice(0, 3)} />;
+                    return <DishesDiscovery key={item.key} products={products.slice(0, 3)} />;
                   })}
                 </div>
 
-                <div ref={sentinelRef} className="h-4" />
+                <div ref={sentinelRef} className="h-4" aria-hidden="true" />
 
                 {loading && hasMore && (
-                  <div className="space-y-4 mt-4">
-                    <PostSkeleton />
+                  <div className="mt-5 space-y-5">
                     <PostSkeleton />
                   </div>
                 )}
 
                 {!hasMore && posts.length > 0 && (
-                  <p className="text-center text-brand-muted text-xs py-6">
-                    You&apos;ve seen all posts for now. Fresh meals will show up again soon.
+                  <p className="py-7 text-center text-xs text-brand-muted">
+                    You&apos;re all caught up. Fresh kitchen stories will appear here.
                   </p>
                 )}
               </>
             )}
-          </section>
+          </main>
 
-          <aside className="hidden lg:block sticky top-24">
-            <RightRail vendors={vendors} products={products} categories={categories} />
+          <aside className="sticky top-24 hidden xl:block">
+            <CommunityRailRight
+              vendors={vendors}
+              products={products}
+              topics={trendingTopics}
+            />
           </aside>
         </div>
       </div>
@@ -252,252 +409,289 @@ export default function FeedPage() {
   );
 }
 
-function FeedHeader({ search, setSearch, onSearch, isAuthenticated, user }) {
+function FeedIntro({ firstName, search, setSearch, onSearch, onClear, hasSearch, isAuthenticated }) {
   return (
-    <div className="sticky top-20 z-30 mb-5">
-      <div className="bg-white/75 backdrop-blur-2xl border border-orange-100 shadow-card rounded-[1.7rem] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <form onSubmit={onSearch} className="relative flex-1">
-            <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search posts, meals, vendors..."
-              className="w-full h-11 rounded-full bg-white border border-orange-100 pl-11 pr-4 text-sm text-brand-dark placeholder-brand-muted focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 transition-all"
-            />
-          </form>
-
-          <div className="hidden sm:flex items-center gap-2">
-            <NotificationDropdown />
-            <button
-              onClick={() => toast('Messaging UI coming soon')}
-              className="w-11 h-11 rounded-full bg-white border border-orange-100 text-brand-muted hover:text-primary hover:border-primary/30 transition-colors flex items-center justify-center"
-            >
-              <MessageCircleMore size={18} />
-            </button>
-            <div className="flex items-center gap-2 rounded-full bg-white border border-orange-100 px-2 py-1.5">
-              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center overflow-hidden">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt={user?.firstName} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-sm font-bold">{user?.firstName?.[0] || 'G'}</span>
-                )}
-              </div>
-              <div className="hidden xl:block pr-1">
-                <p className="text-xs font-semibold text-brand-dark">{isAuthenticated ? `${user?.firstName || 'Foodie'}` : 'Guest'}</p>
-                <p className="text-[11px] text-brand-muted">{isAuthenticated ? 'Food lover' : 'Explore feed'}</p>
-              </div>
-            </div>
-          </div>
+    <section className="mb-4">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-primary">Your food community</p>
+          <h1 className="font-poppins text-2xl font-bold tracking-tight text-brand-dark sm:text-3xl">
+            {getGreeting()}, {firstName}
+          </h1>
+          <p className="mt-1 text-sm text-brand-muted">See what local kitchens are cooking, sharing, and serving today.</p>
         </div>
+        {isAuthenticated && (
+          <div className="hidden sm:block">
+            <NotificationDropdown />
+          </div>
+        )}
       </div>
-    </div>
+
+      <form onSubmit={onSearch} className="relative">
+        <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search stories, recipes, and kitchens..."
+          className="h-12 w-full rounded-2xl border border-orange-100 bg-white pl-11 pr-11 text-sm text-brand-dark shadow-card placeholder-brand-muted focus:border-primary/40 focus:outline-none focus:ring-4 focus:ring-primary/10"
+        />
+        {hasSearch && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-brand-muted transition-colors hover:bg-brand-bg hover:text-brand-dark"
+            aria-label="Clear search"
+          >
+            <X size={15} />
+          </button>
+        )}
+      </form>
+    </section>
   );
 }
 
-function LeftRail({ filter, onFilter, isAuthenticated, onSavedClick }) {
+function CommunityRail({ activeTab, onSelectTab, isAuthenticated, onSavedClick }) {
   const items = [
-    { label: 'Stories Shortcut', icon: Radio, action: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-    { label: 'Trending', icon: Flame, action: () => onFilter({ type: '' }) },
-    { label: 'Following', icon: Users, action: () => onFilter({ type: 'behind_scenes' }) },
-    { label: 'Nearby Vendors', icon: MapPin, action: () => onFilter({ search: 'nearby' }) },
-    { label: 'Saved Posts', icon: Bookmark, action: onSavedClick },
-    { label: 'Deals', icon: Tag, action: () => onFilter({ type: 'promotion' }) },
-    { label: 'Recipes', icon: UtensilsCrossed, action: () => onFilter({ type: 'recipe' }) },
+    { label: 'For you', icon: Compass, active: activeTab === 'for-you', action: () => onSelectTab(FEED_TABS[0]) },
+    { label: 'Following', icon: Users, active: activeTab === 'following', action: () => onSelectTab(FEED_TABS[1]) },
+    { label: 'Discover', icon: Sparkles, to: '/discover' },
+    { label: 'Kitchens', icon: Store, to: '/vendors' },
+    { label: 'Saved stories', icon: Bookmark, action: onSavedClick },
   ];
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-[1.8rem] bg-white border border-orange-100 shadow-card p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-muted mb-3">Explore</p>
-        <div className="space-y-1.5">
-          {items.map(({ label, icon: Icon, action }) => (
-            <button
-              key={label}
-              onClick={action}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-medium text-brand-dark hover:bg-brand-bg transition-colors"
-            >
-              <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Icon size={16} />
-              </span>
-              <span className="text-left">{label}</span>
-            </button>
-          ))}
+    <div className="space-y-4">
+      <div className="rounded-[1.8rem] border border-orange-100 bg-white p-3 shadow-card">
+        <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-brand-muted">Community</p>
+        <div className="space-y-1">
+          {items.map(({ label, icon: Icon, to, active, action }) => {
+            const content = (
+              <>
+                <span className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${active ? 'bg-primary text-white' : 'bg-brand-bg text-primary'}`}>
+                  <Icon size={16} aria-hidden="true" />
+                </span>
+                <span className="text-sm font-semibold">{label}</span>
+              </>
+            );
+            const className = `flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-brand-dark transition-colors hover:bg-brand-bg ${active ? 'bg-primary/5 text-primary' : ''}`;
+
+            return to ? (
+              <Link key={label} to={to} className={className}>{content}</Link>
+            ) : (
+              <button key={label} type="button" onClick={action} className={className}>{content}</button>
+            );
+          })}
         </div>
       </div>
 
-      <div className="rounded-[1.8rem] bg-gradient-to-br from-brand-dark to-[#6F463F] text-white p-4 shadow-card">
-        <p className="text-xs uppercase tracking-[0.16em] text-white/60 mb-2">Today&apos;s mood</p>
-        <h3 className="font-poppins font-bold text-lg leading-tight">Scroll. Discover. Order.</h3>
-        <p className="text-sm text-white/70 mt-2">Fresh homemade dishes and kitchen updates from women-led vendors.</p>
+      <div className="overflow-hidden rounded-[1.8rem] bg-brand-dark p-4 text-white shadow-card">
+        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
+          <Heart size={16} aria-hidden="true" />
+        </div>
+        <p className="font-poppins text-base font-bold">Keep the good stories close</p>
+        <p className="mt-1 text-xs leading-relaxed text-white/65">
+          {isAuthenticated
+            ? 'Save recipes and follow the kitchens you want to hear from next.'
+            : 'Create an account to save recipes and follow your favourite kitchens.'}
+        </p>
+        <button type="button" onClick={onSavedClick} className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary-light hover:text-white">
+          {isAuthenticated ? 'View saved stories' : 'Get started'} <ChevronRight size={12} />
+        </button>
       </div>
     </div>
   );
 }
 
-function RightRail({ vendors, products, categories }) {
+function CommunityRailRight({ vendors, products, topics }) {
   return (
     <div className="space-y-4">
-      <SidebarCard title="Trending Foods" subtitle="Most clicked dishes">
-        <div className="space-y-3">
-          {products.slice(0, 4).map((product) => (
-            <Link key={product.id} to={`/products/${product.id}`} className="flex items-center gap-3 group">
-              <img
-                src={product.images?.[0] || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=120'}
-                alt={product.name}
-                className="w-12 h-12 rounded-2xl object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-brand-dark truncate group-hover:text-primary transition-colors">{product.name}</p>
-                <p className="text-xs text-brand-muted truncate">{product.vendor?.businessName}</p>
-              </div>
-              <span className="text-xs font-bold text-primary">{formatPrice(Number(product.discountPrice) || Number(product.price))}</span>
-            </Link>
-          ))}
-        </div>
-      </SidebarCard>
-
-      <SidebarCard title="Top Vendors" subtitle="Who&apos;s cooking today">
-        <div className="space-y-3">
+      <SidebarCard title="Kitchens to follow" subtitle="Fresh from the community">
+        <div className="space-y-3.5">
           {vendors.slice(0, 3).map((vendor) => (
-            <div key={vendor.id} className="flex items-center gap-3">
-              <Link to={`/vendors/${vendor.id}`} className="flex items-center gap-3 min-w-0 flex-1">
-                <img
-                  src={vendor.logo || vendor.coverImage || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=120'}
-                  alt={vendor.businessName}
-                  className="w-11 h-11 rounded-2xl object-cover"
-                />
+            <div key={vendor.id} className="flex items-center gap-2.5">
+              <Link to={`/vendors/${vendor.id}`} className="flex min-w-0 flex-1 items-center gap-2.5">
+                <Avatar src={vendor.logo || vendor.coverImage} alt={vendor.businessName} />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-brand-dark truncate">{vendor.businessName}</p>
-                  <p className="text-xs text-brand-muted truncate">{vendor.isOpen ? 'Cooking now' : 'Closed now'}</p>
+                  <p className="truncate text-sm font-semibold text-brand-dark">{vendor.businessName}</p>
+                  <p className="truncate text-[11px] text-brand-muted">
+                    {vendor.isOpen ? 'Open now' : vendor.address || 'Local kitchen'}
+                  </p>
                 </div>
               </Link>
               <FollowButton vendorId={vendor.id} size="sm" variant="outline" />
             </div>
           ))}
         </div>
+        <Link to="/vendors" className="mt-4 flex items-center justify-center gap-1 border-t border-orange-50 pt-3 text-xs font-bold text-primary hover:underline">
+          Explore kitchens <ChevronRight size={12} />
+        </Link>
       </SidebarCard>
 
-      <SidebarCard title="Live Orders" subtitle="Fast-moving kitchen activity">
-        <div className="space-y-2">
-          {products.slice(0, 3).map((product, index) => (
-            <div key={product.id} className="flex items-center gap-3 rounded-2xl bg-brand-bg px-3 py-2.5">
-              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-brand-dark truncate">{product.vendor?.businessName}</p>
-                <p className="text-xs text-brand-muted truncate">New order for {product.name}</p>
+      <SidebarCard title="Trending conversations" subtitle="What the community is sharing">
+        {topics.length ? (
+          <div className="space-y-1">
+            {topics.map(({ name, count }, index) => (
+              <Link
+                key={name}
+                to={`/?search=${encodeURIComponent(name)}`}
+                className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-brand-bg"
+              >
+                <span className="w-5 text-xs font-bold text-brand-muted/60">{String(index + 1).padStart(2, '0')}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-brand-dark">#{name}</span>
+                <span className="text-[10px] text-brand-muted">{count}</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-brand-muted">Follow kitchens and join a conversation to see topics here.</p>
+        )}
+      </SidebarCard>
+
+      <SidebarCard title="Popular dishes" subtitle="Trending from local kitchens">
+        <div className="space-y-3">
+          {products.slice(0, 3).map((product) => (
+            <Link key={product.id} to={`/products/${product.id}`} className="group flex items-center gap-3">
+              <img
+                src={product.images?.[0] || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=120'}
+                alt={product.name}
+                className="h-11 w-11 rounded-xl object-cover"
+                loading="lazy"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-brand-dark group-hover:text-primary">{product.name}</p>
+                <p className="truncate text-[11px] text-brand-muted">{product.vendor?.businessName}</p>
               </div>
-              <span className="text-[11px] text-brand-muted ml-auto">{index + 1}m</span>
-            </div>
-          ))}
-        </div>
-      </SidebarCard>
-
-      <SidebarCard title="Popular Categories" subtitle="Jump into cravings">
-        <div className="flex flex-wrap gap-2">
-          {categories.slice(0, 6).map((category) => (
-            <Link
-              key={category.id}
-              to={`/products?category=${category.id}`}
-              className="px-3 py-2 rounded-full bg-brand-bg text-xs font-semibold text-brand-dark hover:text-primary hover:bg-primary/10 transition-colors"
-            >
-              {category.icon || '🍽️'} {category.name}
+              <span className="text-xs font-bold text-primary">
+                {formatPrice(Number(product.discountPrice) || Number(product.price))}
+              </span>
             </Link>
           ))}
         </div>
       </SidebarCard>
+
+      <div className="rounded-[1.8rem] border border-orange-100 bg-gradient-to-br from-primary/10 to-accent/10 p-4">
+        <div className="flex items-center gap-2 text-primary">
+          <MapPin size={15} aria-hidden="true" />
+          <p className="text-xs font-bold uppercase tracking-[0.14em]">Open now</p>
+        </div>
+        <p className="mt-2 text-sm font-semibold text-brand-dark">
+          {vendors.filter((vendor) => vendor.isOpen).length || 'No'} kitchens are serving right now
+        </p>
+        <Link to="/vendors" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
+          See who is open <ArrowUpRight size={12} />
+        </Link>
+      </div>
     </div>
   );
 }
 
 function SidebarCard({ title, subtitle, children }) {
   return (
-    <div className="rounded-[1.8rem] bg-white border border-orange-100 shadow-card p-4">
+    <section className="rounded-[1.8rem] border border-orange-100 bg-white p-4 shadow-card">
       <div className="mb-3">
-        <h3 className="font-poppins font-bold text-base text-brand-dark">{title}</h3>
-        <p className="text-xs text-brand-muted mt-0.5">{subtitle}</p>
+        <h2 className="font-poppins text-base font-bold text-brand-dark">{title}</h2>
+        <p className="mt-0.5 text-xs text-brand-muted">{subtitle}</p>
       </div>
       {children}
+    </section>
+  );
+}
+
+function FeedEmptyState({ icon: Icon, title, description, actionLabel, onAction }) {
+  return (
+    <div className="surface-card px-6 py-14 text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <Icon size={24} aria-hidden="true" />
+      </div>
+      <h2 className="heading-section">{title}</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-brand-muted">{description}</p>
+      <button type="button" onClick={onAction} className="btn-primary mt-6 inline-flex items-center gap-2">
+        {actionLabel}
+        <ChevronRight size={15} aria-hidden="true" />
+      </button>
     </div>
   );
 }
 
-function InlineVendorsCard({ vendors }) {
+function KitchensDiscovery({ vendors }) {
   if (!vendors.length) return null;
   return (
-    <div className="rounded-[2rem] bg-gradient-to-br from-white to-orange-50 border border-orange-100 shadow-card p-5">
-      <div className="flex items-center justify-between mb-4">
+    <section className="rounded-[2rem] border border-orange-100 bg-gradient-to-br from-white to-orange-50 p-5 shadow-card">
+      <div className="mb-4 flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-muted">Discovery</p>
-          <h3 className="font-poppins font-bold text-xl text-brand-dark">Trending vendors near you</h3>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">People to follow</p>
+          <h2 className="mt-1 font-poppins text-xl font-bold text-brand-dark">Kitchens worth following</h2>
         </div>
-        <Link to="/vendors" className="text-sm font-semibold text-primary inline-flex items-center gap-1">See all <ChevronRight size={14} /></Link>
+        <Link to="/vendors" className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
+          See all <ChevronRight size={13} />
+        </Link>
       </div>
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         {vendors.map((vendor) => (
-          <Link key={vendor.id} to={`/vendors/${vendor.id}`} className="rounded-3xl bg-white border border-orange-100 p-3 hover:shadow-soft transition-all">
+          <Link key={vendor.id} to={`/vendors/${vendor.id}`} className="group rounded-3xl border border-orange-100 bg-white p-3 transition-all hover:-translate-y-0.5 hover:shadow-soft">
             <img
               src={vendor.coverImage || vendor.logo || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300'}
               alt={vendor.businessName}
-              className="w-full h-28 rounded-2xl object-cover mb-3"
+              className="mb-3 h-24 w-full rounded-2xl object-cover"
+              loading="lazy"
             />
-            <p className="font-semibold text-sm text-brand-dark truncate">{vendor.businessName}</p>
-            <p className="text-xs text-brand-muted truncate">{vendor.address || 'Homemade kitchen'}</p>
+            <p className="truncate text-sm font-semibold text-brand-dark group-hover:text-primary">{vendor.businessName}</p>
+            <p className="truncate text-xs text-brand-muted">{vendor.address || 'Homemade kitchen'}</p>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
-function InlineCategoriesCard({ categories }) {
-  if (!categories.length) return null;
-  return (
-    <div className="rounded-[2rem] bg-white border border-orange-100 shadow-card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Sparkles size={16} className="text-primary" />
-        <h3 className="font-poppins font-bold text-xl text-brand-dark">Popular categories</h3>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {categories.map((category) => (
-          <Link
-            key={category.id}
-            to={`/products?category=${category.id}`}
-            className="px-4 py-2 rounded-full bg-brand-bg border border-orange-100 text-sm font-semibold text-brand-dark hover:text-primary hover:border-primary/30 transition-colors"
-          >
-            {category.icon || '🍽️'} {category.name}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function InlineDealsCard({ products }) {
+function DishesDiscovery({ products }) {
   if (!products.length) return null;
   return (
-    <div className="rounded-[2rem] bg-gradient-to-br from-primary to-orange-500 text-white shadow-card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Flame size={18} />
-        <div>
-          <h3 className="font-poppins font-bold text-xl">Flash deals</h3>
-          <p className="text-sm text-white/80">Fast-moving offers and limited meals.</p>
+    <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-card">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <UtensilsCrossed size={16} aria-hidden="true" />
+          </span>
+          <div>
+            <h2 className="font-poppins text-lg font-bold text-brand-dark">Dishes everyone is talking about</h2>
+            <p className="text-xs text-brand-muted">Tap a dish to see the full menu and order.</p>
+          </div>
         </div>
+        <Flame size={18} className="text-primary" aria-hidden="true" />
       </div>
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         {products.map((product) => (
-          <Link key={product.id} to={`/products/${product.id}`} className="rounded-3xl bg-white/12 border border-white/15 p-3 backdrop-blur-sm hover:bg-white/16 transition-colors">
+          <Link key={product.id} to={`/products/${product.id}`} className="group rounded-3xl border border-orange-100 p-3 transition-all hover:-translate-y-0.5 hover:shadow-soft">
             <img
               src={product.images?.[0] || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300'}
               alt={product.name}
-              className="w-full h-28 rounded-2xl object-cover mb-3"
+              className="mb-3 h-24 w-full rounded-2xl object-cover"
+              loading="lazy"
             />
-            <p className="font-semibold text-sm truncate">{product.name}</p>
-            <p className="text-xs text-white/75 truncate">{product.vendor?.businessName}</p>
-            <p className="text-sm font-bold mt-2">{formatPrice(Number(product.discountPrice) || Number(product.price))}</p>
+            <p className="truncate text-sm font-semibold text-brand-dark group-hover:text-primary">{product.name}</p>
+            <p className="mt-1 text-xs text-brand-muted">{product.vendor?.businessName}</p>
+            <p className="mt-2 text-sm font-bold text-primary">{formatPrice(Number(product.discountPrice) || Number(product.price))}</p>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
+}
+
+function Avatar({ src, alt }) {
+  return src ? (
+    <img src={src} alt={alt} className="h-10 w-10 flex-shrink-0 rounded-xl object-cover" />
+  ) : (
+    <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+      <ChefHat size={16} aria-hidden="true" />
+    </span>
+  );
+}
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
 }

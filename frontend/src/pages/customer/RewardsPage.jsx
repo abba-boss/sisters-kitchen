@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, Gift, Flame, Star, ShoppingBag, MessageSquare, Users, Calendar, TrendingUp, ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Gift, ChevronRight } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { rewardService } from '../../services/rewardService';
 import { formatDateTime } from '../../utils/formatters';
@@ -33,14 +33,14 @@ export default function RewardsPage() {
   const [claiming, setClaiming] = useState(false);
   const [tab, setTab] = useState('overview'); // overview | history
 
-  useEffect(() => { fetchWallet(); }, []);
-
   const fetchWallet = () => {
     rewardService.getWallet()
       .then(({ data }) => setWallet(data.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => { fetchWallet(); }, []);
 
   const handleClaimDaily = async () => {
     setClaiming(true);

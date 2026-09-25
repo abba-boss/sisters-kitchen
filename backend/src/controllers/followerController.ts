@@ -70,7 +70,7 @@ export const getVendorFollowers = async (req: Request, res: Response): Promise<v
       user: { id: f.follower.id, firstName: f.follower.firstName, lastName: f.follower.lastName, avatar: f.follower.avatar },
     }));
 
-    res.json({ success: true, data: followers, meta: { total, page: Number(page), limit: Number(limit) } });
+    res.json({ success: true, data: followers, meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
   } catch (err: any) { res.status(500).json({ success: false, message: err.message }); }
 };
 

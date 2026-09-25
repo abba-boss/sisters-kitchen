@@ -10,6 +10,11 @@ let io: SocketIOServer;
 const userSocketMap = new Map<string, Set<string>>();
 
 export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
+  const configuredOrigins = (process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   io = new SocketIOServer(httpServer, {
     cors: {
       origin: (origin, callback) => {
@@ -17,6 +22,7 @@ export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
         if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
           return callback(null, true);
         }
+        if (configuredOrigins.includes(origin)) return callback(null, true);
         callback(new Error(`Socket CORS blocked: ${origin}`));
       },
       credentials: true,
@@ -131,10 +137,10 @@ export const emitNotification = (userId: string, notification: any) => {
 
 // ─── V2 Social Commerce emit helpers ───────────────────────────
 
-/** Broadcast a new post to followers (uses a "feed" room per vendor) */
-export const emitNewPost = (vendorId: string, post: any) => {
+/** Broadcast a new approved post to every connected public feed. */
+export const emitNewPost = (_vendorId: string, post: any) => {
   if (!io) return;
-  io.to(`feed:vendor:${vendorId}`).emit("post:new", { post });
+  io.emit("post:new", { post });
 };
 
 /** Like / unlike event on a post (visible to post author + followers) */

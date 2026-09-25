@@ -11,11 +11,15 @@ import toast from 'react-hot-toast';
  * can control navigation themselves.
  */
 export const useAuth = () => {
-  const { user, isAuthenticated, setAuth, logout: storeLogout } = useAuthStore();
+  const { user, isAuthenticated, logout: storeLogout } = useAuthStore();
   const navigate = useNavigate();
 
   const logout = async () => {
-    try { await authService.logout(); } catch {}
+    try {
+      await authService.logout();
+    } catch {
+      // Local logout should still complete if the network request fails.
+    }
     storeLogout();
     toast.success('Logged out successfully');
     navigate('/');

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -6,14 +6,12 @@ import {
   MapPin,
   Phone,
   Clock,
-  CheckCircle,
   MessageSquare,
   ShoppingBag,
   Share2,
   CalendarClock,
   Store,
   Users,
-  UserRoundPlus,
   ShieldCheck,
   Sparkles,
   UtensilsCrossed,
@@ -23,8 +21,6 @@ import {
   ArrowRight,
   Truck,
   Info,
-  HeartHandshake,
-  TimerReset,
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import ProductCard from '../../components/common/ProductCard';
@@ -147,15 +143,13 @@ export default function VendorProfilePage() {
     { label: 'Orders', value: vendor.totalOrders || 0, icon: Store },
     { label: 'Reviews', value: vendor.totalReviews || 0, icon: MessageSquare },
     { label: 'Avg Rating', value: Number(vendor.rating || 0).toFixed(1), icon: Star },
-    { label: 'Repeat Customers', value: Math.max(0, Math.round((vendor.totalOrders || 0) * 0.32)), icon: HeartHandshake },
   ];
 
   const heroMeta = [
     { icon: Users, label: 'Followers', value: followersCount },
-    { icon: UserRoundPlus, label: 'Following', value: Math.max(6, Math.round((posts.length || 1) * 1.5)) },
     { icon: ShoppingBag, label: 'Orders', value: vendor.totalOrders || 0 },
     { icon: Star, label: 'Rating', value: Number(vendor.rating || 0).toFixed(1) },
-    { icon: TimerReset, label: 'Response Time', value: vendor.isOpen ? '10-20 min' : 'Within hours' },
+    { icon: Camera, label: 'Stories', value: stories.length },
     { icon: CalendarClock, label: 'Member Since', value: formatDate(vendor.createdAt) },
   ];
 
@@ -176,14 +170,14 @@ export default function VendorProfilePage() {
     { key: 'about', label: 'About' },
   ];
 
-  const upcomingMeals = useMemo(() => {
+  const upcomingMeals = (() => {
     const labels = ['Tomorrow', 'Friday', 'Weekend'];
     return availableProducts.slice(0, 3).map((product, index) => ({
       ...product,
       slot: labels[index] || `Day ${index + 1}`,
-      remaining: Math.max(6, product.stock || 12),
+      remaining: product.stock ?? null,
     }));
-  }, [availableProducts]);
+  })();
 
   return (
     <MainLayout>
@@ -282,7 +276,7 @@ export default function VendorProfilePage() {
                   </div>
                 </div>
                 <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-                  {highlightItems.map(({ label, icon: Icon, count }, index) => (
+                  {highlightItems.map(({ label, icon: Icon, count }) => (
                     <motion.button
                       key={label}
                       whileHover={{ y: -2 }}
@@ -367,7 +361,7 @@ export default function VendorProfilePage() {
                       <div className="flex items-center justify-between mb-4">
                         <div>
                           <h2 className="font-poppins font-bold text-2xl text-brand-dark">Upcoming Meals</h2>
-                          <p className="text-sm text-brand-muted">Reserve limited portions before they sell out.</p>
+                          <p className="text-sm text-brand-muted">See what this kitchen is preparing next.</p>
                         </div>
                       </div>
 
@@ -403,12 +397,12 @@ export default function VendorProfilePage() {
                                 <p className="text-sm text-brand-muted mt-1">{meal.description || 'Special menu drop from this kitchen.'}</p>
                                 <div className="flex flex-wrap items-center gap-4 mt-3 text-sm">
                                   <span className="font-bold text-primary">{formatPrice(Number(meal.discountPrice) || Number(meal.price))}</span>
-                                  <span className="text-brand-muted">{meal.remaining} portions remaining</span>
+                                  {meal.remaining != null && <span className="text-brand-muted">{meal.remaining} in stock</span>}
                                 </div>
                               </div>
-                              <button className="btn-primary whitespace-nowrap py-3 px-5 text-sm">
-                                Reserve
-                              </button>
+                              <Link to={`/products/${meal.id}`} className="btn-primary whitespace-nowrap py-3 px-5 text-sm">
+                                View dish
+                              </Link>
                             </motion.div>
                           ))}
                         </div>

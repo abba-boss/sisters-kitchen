@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ImagePlus, Upload, Loader, CheckCircle2, Tag, MapPin, ShoppingBag } from 'lucide-react';
 import { postService } from '../../services/postService';
+import { productService } from '../../services/productService';
 import { uploadImage } from '../../services/cloudinaryService';
 import { useFeedStore } from '../../store/feedStore';
 import toast from 'react-hot-toast';
@@ -24,6 +25,9 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
   const [tags,      setTags]      = useState('');
   const [location,  setLocation]  = useState('');
   const [mediaSlots, setMediaSlots] = useState([]); // { src, file, url, uploading, done }
+  const [products, setProducts] = useState([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [saving,    setSaving]    = useState(false);
   const [allowComments, setAllowComments] = useState(true);
   const fileRef = useRef(null);
@@ -31,10 +35,25 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
 
   const resetForm = () => {
     setStep(1); setType('image'); setCaption(''); setTags('');
-    setLocation(''); setMediaSlots([]); setAllowComments(true);
+    setLocation(''); setMediaSlots([]); setSelectedProductId(''); setAllowComments(true);
   };
 
   const handleClose = () => { resetForm(); onClose?.(); };
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    let cancelled = false;
+    setLoadingProducts(true);
+    productService.getMyProducts()
+      .then(({ data }) => {
+        if (!cancelled) setProducts(data.data || []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingProducts(false);
+      });
+    return () => { cancelled = true; };
+  }, [isOpen]);
 
   // Image picking
   const handleFilePick = async (e) => {
@@ -94,6 +113,9 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
       fd.append('caption', caption.trim());
       fd.append('type',    type);
       fd.append('allowComments', String(allowComments));
+       if (selectedProductId && (type === 'promotion' || type === 'availability')) {
+         fd.append('productId', selectedProductId);
+       }
       fd.append('tags', JSON.stringify(tags.split(',').map((t) => t.trim()).filter(Boolean)));
       if (location.trim()) fd.append('location', location.trim());
       if (uploadedUrls.length) fd.append('mediaUrls', JSON.stringify(uploadedUrls));
@@ -180,7 +202,7 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
                           <ImagePlus size={13} /> Photos / Videos
                           <span className="text-brand-muted font-normal ml-1">({mediaSlots.length}/10)</span>
                         </label>
-                        <input ref={fileRef} type="file" accept="image/*,video/*" multiple onChange={handleFilePick} className="hidden" />
+                        <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFilePick} className="hidden" />
                         <div className="flex flex-wrap gap-2">
                           <AnimatePresence>
                             {mediaSlots.map((slot, i) => (
@@ -242,6 +264,28 @@ export default function CreatePostModal({ isOpen, onClose, onCreated }) {
                         {charCount}/{charMax}
                       </p>
                     </div>
+
+                    {(type === 'promotion' || type === 'availability') && (
+                      <div>
+                        <label className="text-xs font-semibold text-brand-dark mb-1.5 flex items-center gap-1">
+                          <ShoppingBag size={12} /> Link a dish <span className="text-brand-muted font-normal">(optional)</span>
+                        </label>
+                        <select
+                          value={selectedProductId}
+                          onChange={(e) => setSelectedProductId(e.target.value)}
+                          disabled={loadingProducts}
+                          className="w-full border border-orange-100 bg-white rounded-xl px-3 py-2.5 text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                        >
+                          <option value="">{loadingProducts ? 'Loading your menu...' : 'No specific dish'}</option>
+                          {products.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name}{product.isAvailable ? '' : ' (unavailable)'}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[11px] text-brand-muted">Linking a dish lets customers discover it without leaving the story.</p>
+                      </div>
+                    )}
 
                     {/* Tags */}
                     <div>

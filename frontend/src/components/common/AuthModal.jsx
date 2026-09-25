@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChefHat, Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
+import { ChefHat, Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { useAuthModalStore } from '../../store/authModalStore';
@@ -73,7 +73,7 @@ export default function AuthModal() {
       size="md"
       showClose={!loading}
       title={mode === 'login' ? 'Welcome back' : 'Create account'}
-      description={message || 'Sign in to continue shopping'}
+      description={message || 'Sign in to follow kitchens, save stories, and join the conversation.'}
     >
       <div className="flex items-center justify-center -mt-2 mb-5">
         <div className="w-11 h-11 bg-primary rounded-2xl flex items-center justify-center shadow-soft">
@@ -229,7 +229,7 @@ export default function AuthModal() {
       )}
 
       <p className="text-center text-xs text-brand-muted mt-4 leading-relaxed">
-        Your cart and preferences are saved when you sign in.
+        Your saved stories, followed kitchens, and preferences stay with your account.
       </p>
     </Modal>
   );

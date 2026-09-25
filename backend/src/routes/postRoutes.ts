@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {
-  createPost, getPublicFeed, getVendorPosts, getMyPosts,
+  createPost, getPublicFeed, getFollowingFeed, getVendorPosts, getMyPosts,
   getPostById, updatePost, deletePost,
   toggleLike, getLikeStatus,
   addComment, getComments, deleteComment,
@@ -16,6 +16,7 @@ const router = Router();
 
 // ── Public ────────────────────────────────────────────────────────
 router.get("/feed",            getPublicFeed);
+router.get("/following",       authenticate, getFollowingFeed);
 router.get("/vendor/:vendorId", getVendorPosts);
 router.get("/:id",             getPostById);
 router.get("/:id/comments",    getComments);

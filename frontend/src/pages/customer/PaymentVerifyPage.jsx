@@ -21,8 +21,14 @@ export default function PaymentVerifyPage() {
     paymentService.verify(reference)
       .then(({ data }) => {
         const verifiedOrderId = data.data?.orderId;
+        if (!verifiedOrderId) {
+          setStatus('failed');
+          return;
+        }
+
         setOrderId(verifiedOrderId);
 
+        // Only clear the pending cart after the provider confirms a valid order.
         const pending = consumePendingCheckout();
         if (pending) {
           if (pending.clearAll) clearCart();

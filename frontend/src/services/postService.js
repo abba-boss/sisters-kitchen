@@ -3,6 +3,7 @@ import api from './api';
 export const postService = {
   // Feed & listing
   getFeed:        (params) => api.get('/posts/feed', { params }),
+  getFollowingFeed: (params) => api.get('/posts/following', { params }),
   getVendorPosts: (vendorId, params) => api.get(`/posts/vendor/${vendorId}`, { params }),
   getMyPosts:     (params) => api.get('/posts/my/posts', { params }),
   getById:        (id) => api.get(`/posts/${id}`),

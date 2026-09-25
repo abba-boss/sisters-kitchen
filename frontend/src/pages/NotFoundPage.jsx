@@ -30,8 +30,8 @@ export default function NotFoundPage() {
             <Link to="/" className="btn-primary inline-flex items-center justify-center gap-2">
               <Home size={16} aria-hidden="true" /> Back to Feed
             </Link>
-            <Link to="/shop" className="btn-secondary inline-flex items-center justify-center gap-2">
-              <Search size={16} aria-hidden="true" /> Browse Shop
+            <Link to="/discover" className="btn-secondary inline-flex items-center justify-center gap-2">
+              <Search size={16} aria-hidden="true" /> Explore kitchens
             </Link>
           </div>
         </motion.div>

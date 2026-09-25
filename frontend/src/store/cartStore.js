@@ -1,55 +1,64 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+const getLineKey = (item) =>
+  item.lineKey || `${item.id}:${JSON.stringify(item._customization || {})}`;
+
 /**
  * Multi-vendor cart.
  * Items are stored flat. At checkout, the user picks one vendor's items
  * to order (or we create one order per vendor group).
- *
- * Structure:
- *   items: [{ id, name, price, discountPrice, images, vendor, quantity, ... }]
- *
- * vendorGroups() returns items grouped by vendorId so the UI can show
- * separate sections and the checkout can create one order per vendor.
  */
 export const useCartStore = create(
   persist(
     (set, get) => ({
       items: [],
 
-      // ── Add item — no single-vendor restriction ──────────────
+      // Add item while keeping different preparation preferences separate.
       addItem: (product, quantity = 1) => {
         if (product.vendor?.isOpen === false) {
           return { conflict: false, error: 'closed' };
         }
-        const { items } = get();
-        const existing = items.find((i) => i.id === product.id);
+
+        const lineKey = getLineKey(product);
+        const nextItem = { ...product, lineKey, quantity };
+        const items = get().items;
+        const existing = items.find((item) => getLineKey(item) === lineKey);
+
         if (existing) {
           set({
-            items: items.map((i) =>
-              i.id === product.id
-                ? { ...i, quantity: i.quantity + quantity }
-                : i
+            items: items.map((item) =>
+              getLineKey(item) === lineKey
+                ? { ...item, quantity: item.quantity + quantity }
+                : item
             ),
           });
         } else {
-          set({ items: [...items, { ...product, quantity }] });
+          set({ items: [...items, nextItem] });
         }
         return { conflict: false };
       },
 
-      removeItem: (productId) => {
-        set({ items: get().items.filter((i) => i.id !== productId) });
+      removeItem: (productId, lineKey) => {
+        set({
+          items: get().items.filter((item) =>
+            lineKey
+              ? getLineKey(item) !== lineKey
+              : item.id !== productId
+          ),
+        });
       },
 
-      updateQuantity: (productId, quantity) => {
+      updateQuantity: (productId, quantity, lineKey) => {
         if (quantity <= 0) {
-          get().removeItem(productId);
+          get().removeItem(productId, lineKey);
           return;
         }
         set({
-          items: get().items.map((i) =>
-            i.id === productId ? { ...i, quantity } : i
+          items: get().items.map((item) =>
+            (lineKey ? getLineKey(item) === lineKey : item.id === productId)
+              ? { ...item, quantity }
+              : item
           ),
         });
       },
@@ -57,17 +66,17 @@ export const useCartStore = create(
       clearCart: () => set({ items: [] }),
 
       clearVendorItems: (vendorId) => {
-        set({ items: get().items.filter((i) => i.vendor?.id !== vendorId) });
+        set({ items: get().items.filter((item) => item.vendor?.id !== vendorId) });
       },
 
-      // ── Getters ──────────────────────────────────────────────
+      // Getters
       getTotalItems: () =>
-        get().items.reduce((sum, i) => sum + i.quantity, 0),
+        get().items.reduce((sum, item) => sum + item.quantity, 0),
 
       getSubtotal: () =>
-        get().items.reduce((sum, i) => {
-          const price = Number(i.discountPrice) || Number(i.price);
-          return sum + price * i.quantity;
+        get().items.reduce((sum, item) => {
+          const price = Number(item.discountPrice) || Number(item.price);
+          return sum + price * item.quantity;
         }, 0),
 
       getTotal: () => {
@@ -75,31 +84,31 @@ export const useCartStore = create(
         return get().getSubtotal() + 500 * groups.length;
       },
 
-      // Group items by vendor
       getVendorGroups: () => {
         const groups = {};
         get().items.forEach((item) => {
-          const vid = item.vendor?.id || 'unknown';
-          if (!groups[vid]) {
-            groups[vid] = {
-              vendorId:     vid,
-              vendorName:   item.vendor?.businessName || 'Unknown Vendor',
-              vendorLogo:   item.vendor?.logo || null,
-              items:        [],
-              subtotal:     0,
-              total:        0,
+          const vendorId = item.vendor?.id || 'unknown';
+          if (!groups[vendorId]) {
+            groups[vendorId] = {
+              vendorId,
+              vendorName: item.vendor?.businessName || 'Unknown Vendor',
+              vendorLogo: item.vendor?.logo || null,
+              items: [],
+              subtotal: 0,
+              total: 0,
             };
           }
-          groups[vid].items.push(item);
+          groups[vendorId].items.push(item);
           const price = Number(item.discountPrice) || Number(item.price);
-          groups[vid].subtotal += price * item.quantity;
+          groups[vendorId].subtotal += price * item.quantity;
         });
-        // Add delivery fee per vendor group
-        Object.values(groups).forEach((g) => { g.total = g.subtotal + 500; });
+        Object.values(groups).forEach((group) => {
+          group.total = group.subtotal + 500;
+        });
         return Object.values(groups);
       },
 
-      // For backwards-compat: first vendor in cart
+      // For backwards compatibility: first vendor in cart.
       get vendorId() { return get().items[0]?.vendor?.id || null; },
       get vendorName() { return get().items[0]?.vendor?.businessName || null; },
     }),

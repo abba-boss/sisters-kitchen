@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import PostCard from '../../components/social/PostCard';

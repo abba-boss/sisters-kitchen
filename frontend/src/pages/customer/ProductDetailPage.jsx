@@ -14,9 +14,7 @@ import {
   CheckCircle,
   ShieldCheck,
   Truck,
-  Eye,
   Sparkles,
-  Info,
   PlayCircle,
   Expand,
   PackageCheck,
@@ -26,9 +24,6 @@ import {
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { PageLoader } from '../../components/common/LoadingSkeleton';
-import ErrorState from '../../components/common/ErrorState';
-import EmptyState from '../../components/common/EmptyState';
-import OptimizedImage, { FALLBACK_IMAGE } from '../../components/common/OptimizedImage';
 import StarRating from '../../components/common/StarRating';
 import ProductCard from '../../components/common/ProductCard';
 import { productService } from '../../services/productService';
@@ -41,23 +36,25 @@ import { favoriteService } from '../../services/favoriteService';
 import { formatPrice, formatDate } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
+// Preparation preferences are included in the base price. The backend remains
+// the pricing authority; these choices are saved as order notes.
 const SIZE_OPTIONS = [
   { id: 'regular', label: 'Regular', extra: 0 },
-  { id: 'large', label: 'Large', extra: 1200 },
-  { id: 'party', label: 'Party Pack', extra: 3500 },
+  { id: 'large', label: 'Large portion', extra: 0 },
+  { id: 'party', label: 'Party pack', extra: 0 },
 ];
 
 const EXTRA_OPTIONS = [
-  { id: 'cheese', label: 'Extra cheese', extra: 700 },
-  { id: 'sauce', label: 'Extra sauce', extra: 400 },
-  { id: 'meat', label: 'Extra meat', extra: 1200 },
+  { id: 'cheese', label: 'Extra cheese', extra: 0 },
+  { id: 'sauce', label: 'Extra sauce', extra: 0 },
+  { id: 'meat', label: 'Extra meat', extra: 0 },
 ];
 
 const DRINK_OPTIONS = [
   { id: 'none', label: 'No drink', extra: 0 },
-  { id: 'coke', label: 'Coke', extra: 700 },
-  { id: 'fanta', label: 'Fanta', extra: 700 },
-  { id: 'zobo', label: 'Zobo', extra: 900 },
+  { id: 'coke', label: 'Coke', extra: 0 },
+  { id: 'fanta', label: 'Fanta', extra: 0 },
+  { id: 'zobo', label: 'Zobo', extra: 0 },
 ];
 
 const COOKING_PREFS = ["Chef's choice", 'Mild spice', 'Medium spice', 'Extra spicy'];
@@ -88,6 +85,16 @@ export default function ProductDetailPage() {
   const { isAuthenticated } = useAuthStore();
   const openAuth = useAuthModalStore((s) => s.open);
 
+  const images = product?.images?.length
+    ? product.images
+    : ['https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=900'];
+  const basePrice = product ? Number(product.discountPrice) || Number(product.price) : 0;
+  const selectedSize = SIZE_OPTIONS.find((item) => item.id === sizeOption) || SIZE_OPTIONS[0];
+  const selectedDrink = DRINK_OPTIONS.find((item) => item.id === drink) || DRINK_OPTIONS[0];
+  const extrasTotal = extras.reduce((sum, id_) => sum + (EXTRA_OPTIONS.find((item) => item.id === id_)?.extra || 0), 0);
+  const liveUnitPrice = basePrice + selectedSize.extra + selectedDrink.extra + extrasTotal;
+  const liveTotal = liveUnitPrice * qty;
+
   useEffect(() => {
     setLoading(true);
     productService.getById(id)
@@ -115,6 +122,21 @@ export default function ProductDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const productPayload = useMemo(() => {
+    if (!product) return null;
+    return {
+      ...product,
+      _customization: {
+        size: selectedSize.label,
+        extras: EXTRA_OPTIONS.filter((item) => extras.includes(item.id)).map((item) => item.label),
+        drink: selectedDrink.label,
+        cookingPreference,
+        specialInstructions,
+      },
+      _displayPrice: liveUnitPrice,
+    };
+  }, [product, selectedSize, selectedDrink, extras, cookingPreference, specialInstructions, liveUnitPrice]);
+
   if (loading) return <PageLoader />;
 
   if (!product) {
@@ -128,10 +150,6 @@ export default function ProductDetailPage() {
     );
   }
 
-  const images = product.images?.length
-    ? product.images
-    : ['https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=900'];
-  const basePrice = Number(product.discountPrice) || Number(product.price);
   const originalPrice = Number(product.price);
   const wishlisted = isWishlisted(product.id);
   const discountPct = product.discountPrice
@@ -145,29 +163,11 @@ export default function ProductDetailPage() {
     count: product.reviews?.filter((rv) => rv.rating === r).length || 0,
   }));
 
-  const selectedSize = SIZE_OPTIONS.find((item) => item.id === sizeOption) || SIZE_OPTIONS[0];
-  const selectedDrink = DRINK_OPTIONS.find((item) => item.id === drink) || DRINK_OPTIONS[0];
-  const extrasTotal = extras.reduce((sum, id_) => sum + (EXTRA_OPTIONS.find((item) => item.id === id_)?.extra || 0), 0);
-  const liveUnitPrice = basePrice + selectedSize.extra + selectedDrink.extra + extrasTotal;
-  const liveTotal = liveUnitPrice * qty;
-
-  const productPayload = useMemo(() => ({
-    ...product,
-    _customization: {
-      size: selectedSize.label,
-      extras: EXTRA_OPTIONS.filter((item) => extras.includes(item.id)).map((item) => item.label),
-      drink: selectedDrink.label,
-      cookingPreference,
-      specialInstructions,
-    },
-    _displayPrice: liveUnitPrice,
-  }), [product, selectedSize, selectedDrink, extras, cookingPreference, specialInstructions, liveUnitPrice]);
-
   const socialProof = [
-    { icon: Eye, label: 'Viewing now', value: 12 + ((product.totalOrders || 0) % 18) },
-    { icon: ShoppingCart, label: 'Orders today', value: 4 + ((product.totalOrders || 0) % 9) },
-    { icon: Sparkles, label: 'Best seller', value: product.totalOrders > 10 ? 'Yes' : 'Rising' },
-    { icon: Flame, label: 'Fresh today', value: product.isFreshToday ? 'Fresh' : 'Popular' },
+    { icon: Star, label: 'Rating', value: Number(product.rating || 0).toFixed(1) },
+    { icon: ShoppingCart, label: 'Sold', value: product.totalOrders || 0 },
+    { icon: Sparkles, label: 'Stock', value: product.stock > 0 ? product.stock : 'Out' },
+    { icon: Flame, label: 'Fresh', value: product.isFreshToday ? 'Today' : 'Popular' },
   ];
 
   const detailInfo = [
@@ -235,9 +235,9 @@ export default function ProductDetailPage() {
         <nav className="flex items-center gap-2 text-sm text-brand-muted mb-6 flex-wrap">
           <Link to="/" className="hover:text-primary">Feed</Link>
           <ChevronRight size={14} />
-          <Link to="/shop" className="hover:text-primary">Shop</Link>
+          <Link to="/discover" className="hover:text-primary">Discover</Link>
           <ChevronRight size={14} />
-          <Link to="/products" className="hover:text-primary">Products</Link>
+          <Link to="/products" className="hover:text-primary">Menu</Link>
           {product.category && (
             <>
               <ChevronRight size={14} />
@@ -377,9 +377,9 @@ export default function ProductDetailPage() {
 
               <div className="grid sm:grid-cols-2 gap-3 mb-5">
                 <InfoPill icon={Star} label={`${Number(product.rating || 0).toFixed(1)} rating`} sub={`${product.totalReviews || 0} reviews`} />
-                <InfoPill icon={ShoppingCart} label={`${product.totalOrders || 0} sold`} sub="Loved by customers" />
+                <InfoPill icon={ShoppingCart} label={`${product.totalOrders || 0} sold`} sub="Orders recorded" />
                 <InfoPill icon={CheckCircle} label={product.stock > 0 ? 'Available now' : 'Limited stock'} sub="Ready for order" />
-                <InfoPill icon={Truck} label="24-35 min" sub="Estimated delivery" />
+                <InfoPill icon={Truck} label={product.preparationTime || 'Ask kitchen'} sub="Preparation time" />
                 <InfoPill icon={Clock} label={product.preparationTime || 'Prepared fresh'} sub="Kitchen prep time" />
                 <InfoPill icon={Sparkles} label={product.category?.name || 'Homemade special'} sub="Kitchen category" />
               </div>
@@ -548,14 +548,11 @@ export default function ProductDetailPage() {
                             </div>
                             <div className="text-right">
                               <StarRating rating={r.rating} size={14} />
-                              <p className="text-[11px] text-accent font-semibold mt-1">Verified purchase</p>
+                              <p className="text-[11px] text-brand-muted mt-1">Customer review</p>
                             </div>
                           </div>
                           {r.comment && <p className="text-sm text-brand-muted leading-relaxed">{r.comment}</p>}
-                          <div className="mt-4 rounded-2xl bg-brand-bg px-4 py-3">
-                            <p className="text-xs font-semibold text-brand-dark mb-1">Vendor reply</p>
-                            <p className="text-sm text-brand-muted">Thank you for ordering. We love serving this favorite dish fresh every time.</p>
-                          </div>
+
                         </motion.div>
                       ))
                     )}
@@ -589,6 +586,7 @@ export default function ProductDetailPage() {
                 <div>
                   <p className="text-xs uppercase tracking-[0.14em] text-brand-muted">Order Summary</p>
                   <h2 className="font-poppins font-bold text-2xl text-brand-dark">Customize your order</h2>
+                  <p className="mt-1 text-xs text-brand-muted">Preparation preferences are included in the listed price.</p>
                 </div>
                 <span className="text-sm font-semibold text-primary">{formatPrice(liveTotal)}</span>
               </div>
@@ -628,7 +626,7 @@ export default function ProductDetailPage() {
                           }`}
                         >
                           <span className="font-medium">{option.label}</span>
-                          <span className="text-xs font-semibold">+{formatPrice(option.extra)}</span>
+                          <span className="text-xs font-semibold">Included</span>
                         </button>
                       );
                     })}
@@ -648,7 +646,7 @@ export default function ProductDetailPage() {
                         }`}
                       >
                         <span className="font-medium">{option.label}</span>
-                        <span className="text-xs font-semibold">{option.extra > 0 ? `+${formatPrice(option.extra)}` : 'No extra'}</span>
+                        <span className="text-xs font-semibold">Included</span>
                       </button>
                     ))}
                   </div>
@@ -731,9 +729,6 @@ export default function ProductDetailPage() {
                   )}
                 </motion.button>
 
-                <button className="w-full py-4 rounded-2xl font-semibold text-base bg-white border border-orange-100 text-brand-dark hover:border-primary/30 hover:text-primary transition-colors">
-                  Buy Now
-                </button>
               </div>
             </div>
           </aside>

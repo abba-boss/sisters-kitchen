@@ -5,6 +5,7 @@ import { PostMedia, MediaType } from "../entities/PostMedia";
 import { PostLike } from "../entities/PostLike";
 import { PostComment } from "../entities/PostComment";
 import { SavedPost } from "../entities/SavedPost";
+import { Follower } from "../entities/Follower";
 import { Vendor } from "../entities/Vendor";
 import { Product } from "../entities/Product";
 import { Notification, NotificationType } from "../entities/Notification";
@@ -16,6 +17,30 @@ import {
   emitPostComment,
   emitNotification,
 } from "../config/socket";
+
+function parseTags(value: unknown): string[] {
+  if (!value) return [];
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.isArray(parsed) ? parsed.map(String).map((tag) => tag.trim()).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function sanitizePost(post: Post) {
+  return {
+    ...post,
+    author: post.author
+      ? {
+          id: post.author.id,
+          firstName: post.author.firstName,
+          lastName: post.author.lastName,
+          avatar: post.author.avatar,
+        }
+      : null,
+  };
+}
 
 // ─── helper: persist + push a notification ──────────────────────
 async function pushNotification(
@@ -58,13 +83,21 @@ export const createPost = async (
       tags, location, productId, allowComments = true, scheduledAt,
     } = req.body;
 
+    if (status === PostStatus.PUBLISHED && vendor.status !== "approved") {
+      res.status(403).json({
+        success: false,
+        message: "Your kitchen must be approved before publishing stories",
+      });
+      return;
+    }
+
     const postRepo = AppDataSource.getRepository(Post);
     const post = postRepo.create({
       caption: caption?.trim(),
       type,
       status,
       allowComments: allowComments !== "false",
-      tags: tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : [],
+      tags: parseTags(tags),
       location: location?.trim(),
       vendor,
       author: req.user,
@@ -126,12 +159,13 @@ export const createPost = async (
       relations: ["media", "vendor", "author", "product"],
     });
 
-    // Emit to followers' feed rooms
-    if (status === PostStatus.PUBLISHED) {
+    // Emit only posts that are immediately visible in the public feed.
+    const scheduledForLater = fullPost.scheduledAt && fullPost.scheduledAt.getTime() > Date.now();
+    if (status === PostStatus.PUBLISHED && !scheduledForLater) {
       emitNewPost(vendor.id, fullPost);
     }
 
-    res.status(201).json({ success: true, message: "Post created", data: fullPost });
+    res.status(201).json({ success: true, message: "Post created", data: sanitizePost(fullPost) });
   } catch (err: any) {
     console.error("createPost error:", err);
     res.status(500).json({ success: false, message: err.message });
@@ -155,11 +189,17 @@ export const getPublicFeed = async (
       .leftJoinAndSelect("post.author", "author")
       .leftJoinAndSelect("post.product", "product")
       .where("post.status = :status", { status: PostStatus.PUBLISHED })
-      .andWhere("vendor.status = 'approved'");
+      .andWhere("vendor.status = 'approved'")
+      .andWhere("(post.scheduledAt IS NULL OR post.scheduledAt <= :now)", { now: new Date() });
 
     if (type) qb.andWhere("post.type = :type", { type });
     if (vendorId) qb.andWhere("vendor.id = :vendorId", { vendorId });
-    if (search) qb.andWhere("post.caption LIKE :s", { s: `%${search}%` });
+    if (search) {
+      qb.andWhere(
+        "(post.caption LIKE :search OR vendor.businessName LIKE :search OR product.name LIKE :search OR post.tags LIKE :search)",
+        { search: `%${search}%` }
+      );
+    }
     if (tag) qb.andWhere("post.tags LIKE :tag", { tag: `%${tag}%` });
 
     const [posts, total] = await qb
@@ -168,17 +208,63 @@ export const getPublicFeed = async (
       .take(Number(limit))
       .getManyAndCount();
 
-    // Strip sensitive author fields
-    const sanitized = posts.map((p) => ({
-      ...p,
-      author: p.author
-        ? { id: p.author.id, firstName: p.author.firstName, lastName: p.author.lastName, avatar: p.author.avatar }
-        : null,
-    }));
+    // Strip sensitive author fields before returning public DTOs.
+    const sanitized = posts.map(sanitizePost);
 
     res.json({
       success: true,
       data: sanitized,
+      meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── FOLLOWING FEED ──────────────────────────────────────────────
+export const getFollowingFeed = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { page = 1, limit = 12 } = req.query;
+    const followerRepo = AppDataSource.getRepository(Follower);
+    const followed = await followerRepo.find({
+      where: { follower: { id: req.user!.id } },
+      relations: ["vendor"],
+    });
+    const vendorIds = followed.map((row) => row.vendor.id);
+
+    if (vendorIds.length === 0) {
+      res.json({
+        success: true,
+        data: [],
+        meta: { total: 0, page: Number(page), limit: Number(limit), pages: 0 },
+      });
+      return;
+    }
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const qb = postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.media", "media")
+      .leftJoinAndSelect("post.vendor", "vendor")
+      .leftJoinAndSelect("post.author", "author")
+      .leftJoinAndSelect("post.product", "product")
+      .where("post.status = :status", { status: PostStatus.PUBLISHED })
+      .andWhere("vendor.status = 'approved'")
+      .andWhere("(post.scheduledAt IS NULL OR post.scheduledAt <= :now)", { now: new Date() })
+      .andWhere("vendor.id IN (:...vendorIds)", { vendorIds });
+
+    const [posts, total] = await qb
+      .orderBy("post.createdAt", "DESC")
+      .skip((Number(page) - 1) * Number(limit))
+      .take(Number(limit))
+      .getManyAndCount();
+
+    res.json({
+      success: true,
+      data: posts.map(sanitizePost),
       meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (err: any) {
@@ -193,7 +279,7 @@ export const getVendorPosts = async (
 ): Promise<void> => {
   try {
     const { vendorId } = req.params;
-    const { page = 1, limit = 12, status } = req.query;
+    const { page = 1, limit = 12 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
     const postRepo = AppDataSource.getRepository(Post);
@@ -203,13 +289,11 @@ export const getVendorPosts = async (
       .leftJoinAndSelect("post.vendor", "vendor")
       .leftJoinAndSelect("post.author", "author")
       .leftJoinAndSelect("post.product", "product")
-      .where("vendor.id = :vendorId", { vendorId });
+      .where("vendor.id = :vendorId", { vendorId })
+      .andWhere("vendor.status = 'approved'");
 
-    if (status) {
-      qb.andWhere("post.status = :status", { status });
-    } else {
-      qb.andWhere("post.status = :status", { status: PostStatus.PUBLISHED });
-    }
+    qb.andWhere("post.status = :status", { status: PostStatus.PUBLISHED });
+    qb.andWhere("(post.scheduledAt IS NULL OR post.scheduledAt <= :now)", { now: new Date() });
 
     const [posts, total] = await qb
       .orderBy("post.createdAt", "DESC")
@@ -219,7 +303,7 @@ export const getVendorPosts = async (
 
     res.json({
       success: true,
-      data: posts,
+      data: posts.map(sanitizePost),
       meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (err: any) {
@@ -260,7 +344,7 @@ export const getMyPosts = async (
 
     res.json({
       success: true,
-      data: posts,
+      data: posts.map(sanitizePost),
       meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (err: any) {
@@ -279,7 +363,7 @@ export const getPostById = async (
       where: { id: req.params.id as string, status: PostStatus.PUBLISHED },
       relations: ["media", "vendor", "author", "product"],
     });
-    if (!post) {
+    if (!post || (post.scheduledAt && post.scheduledAt.getTime() > Date.now())) {
       res.status(404).json({ success: false, message: "Post not found" });
       return;
     }
@@ -287,7 +371,7 @@ export const getPostById = async (
     await postRepo.update(post.id, { viewsCount: () => "viewsCount + 1" });
     post.viewsCount += 1;
 
-    res.json({ success: true, data: post });
+    res.json({ success: true, data: sanitizePost(post) });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -318,7 +402,7 @@ export const updatePost = async (
       caption:       caption?.trim()    ?? post.caption,
       type:          type               ?? post.type,
       status:        status             ?? post.status,
-      tags:          tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : post.tags,
+      tags:          tags !== undefined ? parseTags(tags) : post.tags,
       location:      location?.trim()   ?? post.location,
       allowComments: allowComments !== undefined ? allowComments !== "false" : post.allowComments,
       scheduledAt:   scheduledAt ? new Date(scheduledAt) : post.scheduledAt,
@@ -523,7 +607,7 @@ export const getComments = async (
     res.json({
       success: true,
       data: sanitized,
-      meta: { total, page: Number(page), limit: Number(limit) },
+      meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -620,8 +704,8 @@ export const getSavedPosts = async (
 
     res.json({
       success: true,
-      data: saved.map((s) => s.post),
-      meta: { total, page: Number(page), limit: Number(limit) },
+      data: saved.map((s) => sanitizePost(s.post)),
+      meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
  * Usage: <FollowButton vendorId="..." size="sm|md" variant="outline|fill" />
  */
 export default function FollowButton({ vendorId, size = 'md', variant = 'fill', className = '' }) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const openAuth = useAuthModalStore((s) => s.open);
 
   const [following,   setFollowing]   = useState(false);
@@ -71,6 +71,7 @@ export default function FollowButton({ vendorId, size = 'md', variant = 'fill', 
       onClick={handle}
       disabled={loading}
       className={`${baseClass} ${variantClass}`}
+      aria-label={`${following ? 'Unfollow' : 'Follow'} this kitchen. ${count} followers`}
     >
       {loading ? (
         <Loader size={size === 'sm' ? 12 : 14} className="animate-spin" />

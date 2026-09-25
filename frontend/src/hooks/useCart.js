@@ -14,8 +14,8 @@ export const useCart = () => {
     return true;
   };
 
-  const removeFromCart = (productId) => {
-    store.removeItem(productId);
+  const removeFromCart = (productId, lineKey) => {
+    store.removeItem(productId, lineKey);
     toast.success('Removed from cart');
   };
 
@@ -41,7 +41,7 @@ export const useCart = () => {
     total,
     addToCart,
     removeFromCart,
-    updateQuantity: store.updateQuantity,
+    updateQuantity: (productId, quantity, lineKey) => store.updateQuantity(productId, quantity, lineKey),
     clearCart:       store.clearCart,
     clearVendorItems: store.clearVendorItems,
   };

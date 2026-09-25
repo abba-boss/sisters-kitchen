@@ -73,7 +73,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void
     res.json({
       success: true,
       data: sanitized,
-      meta: { total, page: Number(page), limit: Number(limit) },
+      meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -124,7 +124,7 @@ export const getAllVendorsAdmin = async (req: AuthRequest, res: Response): Promi
     res.json({
       success: true,
       data: vendors,
-      meta: { total, page: Number(page), limit: Number(limit) },
+      meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

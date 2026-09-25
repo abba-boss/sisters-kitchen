@@ -12,6 +12,8 @@ import { useRewardStore } from './store/rewardStore';
 import { authService } from './services/authService';
 import { rewardService } from './services/rewardService';
 import DailyRewardModal from './components/social/DailyRewardModal';
+import CreatePostModal from './components/social/CreatePostModal';
+import { useCreatePostStore } from './store/createPostStore';
 import { favoriteService } from './services/favoriteService';
 import { useWishlistStore } from './store/wishlistStore';
 
@@ -29,7 +31,6 @@ import AuthModal from './components/common/AuthModal';
 import RouteFallback from './components/common/RouteFallback';
 
 // Lazy — heavier or less-frequent routes
-const ShopPage = lazy(() => import('./pages/customer/ShopPage'));
 const DiscoverPage = lazy(() => import('./pages/social/DiscoverPage'));
 const ProductDetailPage = lazy(() => import('./pages/customer/ProductDetailPage'));
 const VendorsPage = lazy(() => import('./pages/customer/VendorsPage'));
@@ -49,6 +50,7 @@ const RewardsPage = lazy(() => import('./pages/customer/RewardsPage'));
 
 const PostDetailPage = lazy(() => import('./pages/social/PostDetailPage'));
 const PostEditPage = lazy(() => import('./pages/social/PostEditPage'));
+const SavedPostsPage = lazy(() => import('./pages/social/SavedPostsPage'));
 
 const VendorDashboard = lazy(() => import('./pages/vendor/VendorDashboard'));
 const VendorProducts = lazy(() => import('./pages/vendor/VendorProducts'));
@@ -71,11 +73,18 @@ const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
 // ─── Socket + Notification wiring ────────────────────────────
 function AuthBootstrap() {
   const { isAuthenticated, _hasHydrated, updateUser, logout } = useAuthStore();
-  const { setBalance, setShowDailyModal } = useRewardStore();
+  const { setBalance } = useRewardStore();
   const { setItems: setWishlistItems } = useWishlistStore();
+  const clearNotifications = useNotificationStore((state) => state.clear);
 
   useEffect(() => {
-    if (!_hasHydrated || !isAuthenticated) return;
+    if (!_hasHydrated) return;
+    if (!isAuthenticated) {
+      setWishlistItems([]);
+      setBalance(0);
+      clearNotifications();
+      return;
+    }
     authService.getMe()
       .then(({ data }) => updateUser(data.data))
       .catch(() => logout());
@@ -88,14 +97,9 @@ function AuthBootstrap() {
     rewardService.getWallet()
       .then(({ data }) => {
         setBalance(Number(data.data.balance));
-        const last = data.data.lastDailyRewardAt;
-        const claimedToday = last && new Date(last).toDateString() === new Date().toDateString();
-        if (!claimedToday) {
-          setTimeout(() => setShowDailyModal(true), 2000);
-        }
       })
       .catch(() => {});
-  }, [_hasHydrated, isAuthenticated]);
+  }, [_hasHydrated, clearNotifications, isAuthenticated, logout, setBalance, setWishlistItems, updateUser]);
 
   return null;
 }
@@ -134,6 +138,9 @@ function DailyRewardWrapper() {
 }
 
 export default function App() {
+  const createPostOpen = useCreatePostStore((state) => state.isOpen);
+  const closeCreatePost = useCreatePostStore((state) => state.close);
+
   return (
     <BrowserRouter>
       <Toaster
@@ -166,6 +173,7 @@ export default function App() {
         }}
       />
       <AuthModal />
+      <CreatePostModal isOpen={createPostOpen} onClose={closeCreatePost} />
       <AuthBootstrap />
       <AppProviders />
       <DailyRewardWrapper />
@@ -183,8 +191,8 @@ function AnimatedRoutes() {
           {/* Landing = Feed */}
           <Route path="/" element={<FeedPage />} />
           <Route path="/feed" element={<Navigate to="/" replace />} />
-          {/* Marketplace */}
-          <Route path="/shop" element={<ShopPage />} />
+          {/* Commerce stays contextual to food stories and kitchens */}
+          <Route path="/shop" element={<Navigate to="/products" replace />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           {/* Explore */}
@@ -204,6 +212,7 @@ function AnimatedRoutes() {
           <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
           <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
           <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+          <Route path="/saved" element={<ProtectedRoute><SavedPostsPage /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
           <Route path="/payments" element={<ProtectedRoute><PaymentHistoryPage /></ProtectedRoute>} />
           <Route path="/rewards" element={<ProtectedRoute><RewardsPage /></ProtectedRoute>} />

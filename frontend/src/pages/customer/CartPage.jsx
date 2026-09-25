@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart, Trash2, Plus, Minus, ArrowRight,
   Store, Lock, ShieldCheck, CheckCircle2, Clock3,
-  MapPin, Sparkles, Truck, Wallet, Gift, ChevronDown,
+  MapPin, Sparkles, Truck, Gift, ChevronDown,
   Bookmark, Tag, Soup, IceCream2, CupSoda, PackageCheck,
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
@@ -28,7 +28,6 @@ export default function CartPage() {
   const navigate = useNavigate();
   const checkoutVendorRef = useRef(null);
   const [collapsedGroups, setCollapsedGroups] = useState({});
-  const [deliveryMode, setDeliveryMode] = useState('delivery');
   const [notes, setNotes] = useState({});
   const [savedForLater, setSavedForLater] = useState({});
   const [suggestions, setSuggestions] = useState([]);
@@ -70,14 +69,12 @@ export default function CartPage() {
     () => items.reduce((sum, item) => sum + item.quantity, 0),
     [items]
   );
-  const deliveryFee = deliveryMode === 'delivery' ? vendorGroups.length * 500 : 0;
-  const serviceFee = items.length > 0 ? Math.round(subtotal * 0.035) : 0;
-  const rewardsApplied = Math.min(rewardBalance, Math.round(subtotal * 0.08));
+  const deliveryFee = vendorGroups.length * 500;
   const discountAmount = items.reduce((sum, item) => {
     if (!item.discountPrice) return sum;
     return sum + (Number(item.price) - Number(item.discountPrice)) * item.quantity;
   }, 0);
-  const grandTotal = Math.max(0, subtotal + deliveryFee + serviceFee - rewardsApplied);
+  const grandTotal = subtotal + deliveryFee;
   const estimatedPoints = Math.floor(subtotal / 200);
   const addressPreview = user?.address || 'Set your delivery address at checkout';
   const suggestionGroups = useMemo(() => ([
@@ -153,7 +150,7 @@ export default function CartPage() {
                           </Link>
                           <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-brand-muted">
                             <span className="inline-flex items-center gap-1"><Clock3 size={12} className="text-primary" /> {18 + group.items.length * 4}-{26 + group.items.length * 6} min</span>
-                            <span className="inline-flex items-center gap-1"><Truck size={12} className="text-primary" /> {deliveryMode === 'delivery' ? 'Delivery' : 'Pickup ready'}</span>
+                            <span className="inline-flex items-center gap-1"><Truck size={12} className="text-primary" /> Delivery</span>
                             <span className="inline-flex items-center gap-1"><PackageCheck size={12} className="text-primary" /> {group.items.length} item{group.items.length !== 1 ? 's' : ''}</span>
                           </div>
                         </div>
@@ -227,7 +224,7 @@ export default function CartPage() {
                                         </div>
                                       </div>
                                       <button
-                                        onClick={() => removeFromCart(item.id)}
+                                        onClick={() => removeFromCart(item.id, item.lineKey)}
                                         className="w-10 h-10 rounded-2xl bg-brand-bg text-brand-muted hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center"
                                       >
                                         <Trash2 size={16} />
@@ -254,7 +251,7 @@ export default function CartPage() {
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                       <div className="flex items-center gap-1.5 bg-brand-bg rounded-2xl p-1">
                                         <button
-                                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                          onClick={() => updateQuantity(item.id, item.quantity - 1, item.lineKey)}
                                           className="w-9 h-9 rounded-xl bg-white shadow-card flex items-center justify-center hover:bg-primary hover:text-white transition-all text-brand-muted"
                                         >
                                           <Minus size={14} />
@@ -263,7 +260,7 @@ export default function CartPage() {
                                           {item.quantity}
                                         </span>
                                         <button
-                                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                          onClick={() => updateQuantity(item.id, item.quantity + 1, item.lineKey)}
                                           className="w-9 h-9 rounded-xl bg-white shadow-card flex items-center justify-center hover:bg-primary hover:text-white transition-all text-brand-muted"
                                         >
                                           <Plus size={14} />
@@ -307,7 +304,7 @@ export default function CartPage() {
                             <p className="text-xs uppercase tracking-[0.12em] text-brand-muted">Kitchen total</p>
                             <p className="font-semibold text-brand-dark">
                               {formatPrice(group.subtotal)}
-                              <span className="text-brand-muted font-normal"> + {formatPrice(deliveryMode === 'delivery' ? 500 : 0)} {deliveryMode === 'delivery' ? 'delivery' : 'pickup'}</span>
+                              <span className="text-brand-muted font-normal"> + {formatPrice(500)} delivery</span>
                             </p>
                           </div>
                           {vendorGroups.length > 1 && (
@@ -400,29 +397,18 @@ export default function CartPage() {
                 <div className="rounded-[1.5rem] border border-orange-100 bg-brand-bg/60 p-4 mb-5">
                   <div className="flex gap-3 items-start">
                     <div className="w-10 h-10 rounded-2xl bg-white text-primary flex items-center justify-center shadow-soft">
-                      {deliveryMode === 'delivery' ? <MapPin size={17} /> : <Store size={17} />}
+                      <MapPin size={17} />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-brand-dark">{deliveryMode === 'delivery' ? 'Delivery to your address' : 'Pickup from kitchen'}</p>
+                      <p className="font-semibold text-brand-dark">Delivery to your address</p>
                       <p className="text-sm text-brand-muted mt-1">
-                        {deliveryMode === 'delivery' ? addressPreview : 'You will choose a pickup-ready order at checkout.'}
+                        {addressPreview}
                       </p>
                       <p className="text-xs text-primary font-semibold mt-2">
-                        {deliveryMode === 'delivery'
-                          ? `${18 + vendorGroups.length * 6}-${28 + vendorGroups.length * 8} min estimated arrival`
-                          : 'Pickup windows confirmed at checkout'}
+                        Delivery window confirmed by each kitchen
                       </p>
                     </div>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 mb-5">
-                  <ToggleButton active={deliveryMode === 'delivery'} onClick={() => setDeliveryMode('delivery')}>
-                    <Truck size={15} /> Delivery
-                  </ToggleButton>
-                  <ToggleButton active={deliveryMode === 'pickup'} onClick={() => setDeliveryMode('pickup')}>
-                    <Store size={15} /> Pickup
-                  </ToggleButton>
                 </div>
 
                 {vendorGroups.length > 1 && (
@@ -445,15 +431,9 @@ export default function CartPage() {
                     label={`Delivery fee${vendorGroups.length > 1 ? ` (${vendorGroups.length} kitchens)` : ''}`}
                     value={formatPrice(deliveryFee)}
                   />
-                  <SummaryRow label="Service fee" value={formatPrice(serviceFee)} />
-                  <SummaryRow label="Discounts" value={`-${formatPrice(discountAmount)}`} positive />
-                  <SummaryRow
-                    label="Wallet & rewards"
-                    value={`-${formatPrice(rewardsApplied)}`}
-                    positive
-                    icon={Wallet}
-                  />
-                  <div className="rounded-[1.2rem] bg-accent/10 text-accent px-4 py-3 text-xs font-semibold flex items-center gap-2">
+
+                  <SummaryRow label="Product savings included" value={`-${formatPrice(discountAmount)}`} positive />
+                   <div className="rounded-[1.2rem] bg-accent/10 text-accent px-4 py-3 text-xs font-semibold flex items-center gap-2">
                     <Gift size={14} />
                     Earn approximately {estimatedPoints} points after checkout.
                   </div>
@@ -503,7 +483,7 @@ export default function CartPage() {
                   <TrustPill icon={ShieldCheck} label="Secure checkout" />
                   <TrustPill icon={CheckCircle2} label="Freshly prepared" />
                   <TrustPill icon={Truck} label="Track your order" />
-                  <TrustPill icon={Gift} label={`Wallet ${formatPrice(rewardBalance)}`} />
+                  <TrustPill icon={Gift} label={`${Math.floor(rewardBalance)} Kitchen Coins`} />
                 </div>
 
                 <Link
@@ -615,19 +595,6 @@ function SummaryRow({ label, value, positive = false, icon: Icon }) {
       </span>
       <span className={`font-semibold ${positive ? 'text-accent' : 'text-brand-dark'}`}>{value}</span>
     </div>
-  );
-}
-
-function ToggleButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
-        active ? 'bg-primary text-white' : 'bg-brand-bg text-brand-muted hover:text-primary'
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,9 +6,6 @@ import {
   Truck,
   ShoppingBag,
   Store,
-  Coins,
-  ChevronDown,
-  ChevronUp,
   ShieldCheck,
   MapPin,
   Clock3,
@@ -22,28 +19,37 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
+import { PageLoader } from '../../components/common/LoadingSkeleton';
 import { useCart } from '../../hooks/useCart';
 import { useAuthStore } from '../../store/authStore';
 import { useRewardStore } from '../../store/rewardStore';
 import { orderService } from '../../services/orderService';
 import { paymentService } from '../../services/paymentService';
-import { rewardService } from '../../services/rewardService';
 import { formatPrice } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
 const PAYMENT_METHODS = [
-  { value: 'wallet',           label: 'Wallet Balance',       icon: Wallet,      disabled: true, helper: 'Rewards apply automatically. Full wallet checkout is coming soon.' },
+  { value: 'wallet',           label: 'Kitchen Coins',        icon: Wallet,      disabled: true, helper: 'Coins are earned automatically on every order.' },
   { value: 'paystack',         label: 'Pay Online (Paystack)', icon: CreditCard },
   { value: 'cash_on_delivery', label: 'Cash on Delivery',      icon: Truck      },
 ];
 
-// 10 coins = ₦100 discount
-const COIN_RATE = 10;
+const buildItemNotes = (item) => {
+  const customization = item._customization || {};
+  return [
+    customization.size && `Size: ${customization.size}`,
+    customization.extras?.length && `Extras: ${customization.extras.join(', ')}`,
+    customization.drink && `Drink: ${customization.drink}`,
+    customization.cookingPreference && `Spice: ${customization.cookingPreference}`,
+    customization.specialInstructions && `Note: ${customization.specialInstructions}`,
+    item.notes,
+  ].filter(Boolean).join(' · ');
+};
 
 export default function CheckoutPage() {
-  const { items, vendorGroups, clearCart, clearVendorItems } = useCart();
+  const { vendorGroups, clearCart, clearVendorItems } = useCart();
   const { user }                         = useAuthStore();
-  const { balance, decrementBalance }    = useRewardStore();
+  const { balance } = useRewardStore();
   const navigate                         = useNavigate();
   const location                         = useLocation();
   const [searchParams]                   = useSearchParams();
@@ -66,19 +72,12 @@ export default function CheckoutPage() {
     paymentMethod:   'paystack',
   });
   const [loading,       setLoading]       = useState(false);
-  const [coinsToRedeem, setCoinsToRedeem] = useState(0);
-  const [showCoins,     setShowCoins]     = useState(false);
-  const [deliveryOption, setDeliveryOption] = useState('standard');
   const [successState, setSuccessState] = useState(null);
 
-  // Max redeemable: all balance, but coin discount can't exceed subtotal
-  const maxRedeemable = Math.min(balance, Math.floor(subtotal / 100) * COIN_RATE);
-  const coinDiscount  = Math.floor(coinsToRedeem / COIN_RATE) * 100;
-  const serviceFee    = Math.round(subtotal * 0.03);
-  const total         = Math.max(0, subtotal + deliveryFee - coinDiscount);
-  const grandTotal    = Math.max(0, subtotal + deliveryFee + serviceFee - coinDiscount);
+  // The server is the pricing authority: subtotal plus one delivery fee per kitchen.
+  const grandTotal    = subtotal + deliveryFee;
   const estimatedPoints = Math.floor(subtotal / 200);
-  const estimatedEta = `${22 + groupsToCheckout.length * 4}-${34 + groupsToCheckout.length * 6} min`;
+  const estimatedEta = 'coordinated by each kitchen';
   const savedAddresses = [
     {
       id: 'primary',
@@ -98,7 +97,13 @@ export default function CheckoutPage() {
     },
   ].filter((item) => item.address);
 
-  if (checkoutItems.length === 0) { navigate('/cart'); return null; }
+  useEffect(() => {
+    if (checkoutItems.length === 0) {
+      navigate('/cart', { replace: true });
+    }
+  }, [checkoutItems.length, navigate]);
+
+  if (checkoutItems.length === 0) return <PageLoader />;
 
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   const paymentMethodForSubmit = form.paymentMethod === 'wallet' ? 'paystack' : form.paymentMethod;
@@ -125,21 +130,15 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      // Redeem coins first if applicable
-      if (coinsToRedeem > 0) {
-        try {
-          await rewardService.redeem({ amount: coinsToRedeem });
-          decrementBalance(coinsToRedeem);
-        } catch {
-          toast.error('Could not redeem coins — proceeding without discount');
-        }
-      }
-
       const orderIds = [];
       for (const group of groupsToCheckout) {
         const { data } = await orderService.create({
           vendorId:        group.vendorId,
-          items:           group.items.map((i) => ({ productId: i.id, quantity: i.quantity })),
+          items:           group.items.map((i) => ({
+             productId: i.id,
+             quantity: i.quantity,
+             notes: buildItemNotes(i) || undefined,
+           })),
           deliveryAddress: form.deliveryAddress,
           deliveryPhone:   form.deliveryPhone,
           notes:           form.notes,
@@ -297,88 +296,14 @@ export default function CheckoutPage() {
               <h2 className="font-poppins font-semibold text-brand-dark mb-4 flex items-center gap-2">
                 <Truck size={18} className="text-primary" /> Delivery Options
               </h2>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <DeliveryOptionCard
-                  active={deliveryOption === 'standard'}
-                  onClick={() => setDeliveryOption('standard')}
-                  title="Standard Delivery"
-                  subtitle={`${estimatedEta} delivery window`}
-                  badge="Included"
-                />
-                <DeliveryOptionCard
-                  active={deliveryOption === 'priority'}
-                  onClick={() => setDeliveryOption('priority')}
-                  title="Priority Delivery"
-                  subtitle="Fastest queue placement"
-                  badge="Same order flow"
-                />
+              <div className="rounded-[1.4rem] border border-orange-100 bg-brand-bg/60 p-4">
+                <p className="text-sm font-semibold text-brand-dark">Standard delivery</p>
+                <p className="mt-1 text-sm text-brand-muted">Each kitchen confirms its own delivery window after you place the order.</p>
               </div>
               <p className="text-xs text-brand-muted mt-3">
                 Delivery timing is coordinated with vendor availability during order confirmation. Existing order logic remains unchanged.
               </p>
             </div>
-
-            {/* Kitchen Coins redemption */}
-            {balance >= COIN_RATE && (
-              <div className="rounded-[2rem] border border-orange-100 bg-white shadow-card overflow-hidden">
-                <button type="button"
-                  onClick={() => setShowCoins(!showCoins)}
-                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-brand-bg/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-yellow-50 rounded-xl flex items-center justify-center text-xl">🪙</div>
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-brand-dark">Kitchen Coins</p>
-                      <p className="text-xs text-brand-muted">
-                        You have <strong className="text-yellow-600">{Math.floor(balance)} coins</strong>
-                        {coinsToRedeem > 0 && <span className="text-accent ml-1">· saving {formatPrice(coinDiscount)}</span>}
-                      </p>
-                    </div>
-                  </div>
-                  {showCoins ? <ChevronUp size={18} className="text-brand-muted" /> : <ChevronDown size={18} className="text-brand-muted" />}
-                </button>
-
-                <AnimatePresence>
-                  {showCoins && (
-                    <motion.div
-                      initial={{ height:0, opacity:0 }}
-                      animate={{ height:'auto', opacity:1 }}
-                      exit={{ height:0, opacity:0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-5 pb-5 space-y-3 border-t border-orange-50">
-                        <p className="text-xs text-brand-muted mt-3">
-                          Redeem coins for a discount. <strong>10 coins = ₦100 off.</strong> Max: {Math.floor(maxRedeemable)} coins (₦{Math.floor(maxRedeemable/COIN_RATE)*100} off).
-                        </p>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="range"
-                            min={0}
-                            max={maxRedeemable}
-                            step={COIN_RATE}
-                            value={coinsToRedeem}
-                            onChange={(e) => setCoinsToRedeem(Number(e.target.value))}
-                            className="flex-1 accent-primary"
-                          />
-                          <span className="text-sm font-bold text-primary w-20 text-right">
-                            {coinsToRedeem} 🪙
-                          </span>
-                        </div>
-                        {coinsToRedeem > 0 ? (
-                          <div className="flex items-center justify-between bg-accent/10 rounded-xl px-4 py-2.5">
-                            <span className="text-sm text-accent font-medium">Discount applied</span>
-                            <span className="text-sm font-bold text-accent">-{formatPrice(coinDiscount)}</span>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-brand-muted text-center">
-                            Drag slider to use coins
-                          </p>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
 
             {/* Payment Method */}
             <div className="rounded-[2rem] border border-orange-100 bg-white shadow-card p-5 sm:p-6">
@@ -502,33 +427,16 @@ export default function CheckoutPage() {
                 <span>Delivery{groupsToCheckout.length>1?` ×${groupsToCheckout.length}`:''}</span>
                 <span>{formatPrice(deliveryFee)}</span>
               </div>
-              <div className="flex justify-between text-brand-muted">
-                <span>Service fee</span>
-                <span>{formatPrice(serviceFee)}</span>
-              </div>
-              {coinDiscount > 0 && (
-                <motion.div initial={{opacity:0,x:10}} animate={{opacity:1,x:0}}
-                  className="flex justify-between text-accent font-medium">
-                  <span>🪙 Coins discount</span>
-                  <span>-{formatPrice(coinDiscount)}</span>
-                </motion.div>
-              )}
               <div className="flex justify-between font-poppins font-bold text-brand-dark pt-2 border-t border-orange-100">
                 <span>Total</span>
                 <span className="text-primary text-lg">{formatPrice(grandTotal)}</span>
               </div>
             </div>
 
-            {coinDiscount > 0 && (
-              <p className="text-xs text-accent text-center mt-3 font-medium">
-                🎉 You're saving {formatPrice(coinDiscount)} with Kitchen Coins!
-              </p>
-            )}
-
             <div className="grid grid-cols-2 gap-3 mt-5">
               <TrustPill icon={ShieldCheck} label="Secure payment" />
               <TrustPill icon={Clock3} label={estimatedEta} />
-              <TrustPill icon={Wallet} label={`${Math.floor(balance)} coins`} />
+              <TrustPill icon={Wallet} label={`${Math.floor(balance)} Kitchen Coins`} />
               <TrustPill icon={CheckCircle2} label="Freshly prepared" />
             </div>
           </div>
@@ -596,28 +504,6 @@ function ProgressStep({ number, title, text, active }) {
       <p className="font-semibold text-brand-dark">{title}</p>
       <p className="text-sm text-brand-muted mt-1">{text}</p>
     </div>
-  );
-}
-
-function DeliveryOptionCard({ active, onClick, title, subtitle, badge }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`text-left rounded-[1.4rem] border p-4 transition-all ${
-        active ? 'border-primary bg-primary/5' : 'border-orange-100 hover:border-primary/30'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-semibold text-brand-dark">{title}</p>
-          <p className="text-sm text-brand-muted mt-1">{subtitle}</p>
-        </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-primary border border-orange-100">
-          {badge}
-        </span>
-      </div>
-    </button>
   );
 }
 

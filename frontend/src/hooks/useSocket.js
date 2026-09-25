@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { connectSocket, disconnectSocket, getSocket } from '../services/socketService';
 import { useAuthStore } from '../store/authStore';
 
@@ -21,21 +21,32 @@ export const useSocketConnection = () => {
 
 /**
  * Subscribe to a socket event while the component is mounted.
- * @param {string} event
- * @param {function} handler
- * @param {any[]} deps
+ * The socket instance is tracked independently so subscribers re-attach after
+ * login, logout, or an access-token refresh.
  */
 export const useSocketEvent = (event, handler, deps = []) => {
   const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+  const [socket, setSocket] = useState(getSocket);
 
   useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
+    handlerRef.current = handler;
+  }, [handler]);
 
-    const cb = (...args) => handlerRef.current(...args);
-    socket.on(event, cb);
-    return () => socket.off(event, cb);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const updateSocket = () => setSocket(getSocket());
+    window.addEventListener('sisters-kitchen:socket-changed', updateSocket);
+    updateSocket();
+
+    return () => window.removeEventListener('sisters-kitchen:socket-changed', updateSocket);
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+
+    const callback = (...args) => handlerRef.current(...args);
+    socket.on(event, callback);
+    return () => socket.off(event, callback);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event, ...deps]);
+  }, [event, socket, ...deps]);
 };

@@ -24,7 +24,7 @@ const POST_TYPE_BADGE = {
   customer_highlight: { label: '⭐ Customer Love', bg: 'bg-pink-50 text-pink-500' },
 };
 
-export default function PostCard({ post, showVendor = true, onDelete }) {
+export default function PostCard({ post, showVendor = true, onDelete, onSaveChange }) {
   const { isAuthenticated, user } = useAuthStore();
   const openAuth   = useAuthModalStore((s) => s.open);
   const { toggleLike, bumpComments, removePost } = useFeedStore();
@@ -74,7 +74,8 @@ export default function PostCard({ post, showVendor = true, onDelete }) {
     try {
       const { data } = await postService.toggleSave(post.id);
       setSaved(data.saved);
-      toast.success(data.saved ? 'Post saved ✨' : 'Removed from saved');
+      onSaveChange?.(post.id, data.saved);
+      toast.success(data.saved ? 'Story saved ✨' : 'Removed from saved stories');
     } catch { toast.error('Failed to save post'); }
   }, [isAuthenticated, post.id]);
 
@@ -186,7 +187,7 @@ export default function PostCard({ post, showVendor = true, onDelete }) {
       {/* ── Caption ──────────────────────────────── */}
       {post.caption && (
         <div className="px-4 pt-3 pb-1">
-          <ExpandableCaption caption={post.caption} vendorName={post.vendor?.businessName} />
+          <ExpandableCaption caption={post.caption} />
         </div>
       )}
 
@@ -218,15 +219,17 @@ export default function PostCard({ post, showVendor = true, onDelete }) {
             className="inline-flex items-center gap-2 bg-primary text-white text-sm font-semibold px-4 py-2.5 rounded-full hover:bg-primary-dark transition-colors shadow-soft"
           >
             <ShoppingBag size={15} />
-            Order Now
+            View dish
           </Link>
         )}
-        <Link
-          to={`/vendors/${post.vendor?.id}`}
-          className="inline-flex items-center gap-2 bg-white border border-orange-100 text-brand-dark text-sm font-semibold px-4 py-2.5 rounded-full hover:border-primary/30 hover:text-primary transition-colors"
-        >
-          View Store
-        </Link>
+        {post.vendor?.id && (
+          <Link
+            to={`/vendors/${post.vendor.id}`}
+            className="inline-flex items-center gap-2 bg-white border border-orange-100 text-brand-dark text-sm font-semibold px-4 py-2.5 rounded-full hover:border-primary/30 hover:text-primary transition-colors"
+          >
+            Visit kitchen
+          </Link>
+        )}
       </div>
 
       {/* ── Actions ──────────────────────────────── */}
@@ -263,16 +266,19 @@ export default function PostCard({ post, showVendor = true, onDelete }) {
           </motion.button>
 
           {/* Comments */}
-          <button
-            onClick={() => setShowComments(!showComments)}
-            className="flex items-center gap-1.5 group"
-          >
-            <MessageCircle size={22}
-              className={`transition-colors ${showComments ? 'text-primary' : 'text-brand-muted group-hover:text-primary'}`} />
-            <span className="text-sm font-semibold text-brand-muted">
-              {post.commentsCount > 0 ? post.commentsCount : ''}
-            </span>
-          </button>
+          {post.allowComments !== false && (
+            <button
+              onClick={() => setShowComments(!showComments)}
+              className="flex items-center gap-1.5 group"
+              aria-label={showComments ? 'Hide comments' : 'Open comments'}
+            >
+              <MessageCircle size={22}
+                className={`transition-colors ${showComments ? 'text-primary' : 'text-brand-muted group-hover:text-primary'}`} />
+              <span className="text-sm font-semibold text-brand-muted">
+                {post.commentsCount > 0 ? post.commentsCount : ''}
+              </span>
+            </button>
+          )}
 
           {/* Share */}
           <button onClick={handleShare} className="group">
@@ -292,7 +298,7 @@ export default function PostCard({ post, showVendor = true, onDelete }) {
 
       {/* ── Comments panel ───────────────────────── */}
       <AnimatePresence>
-        {showComments && (
+        {showComments && post.allowComments !== false && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -333,7 +339,14 @@ function SpecialLayoutBar({ post, heroProduct, upcomingLabel }) {
           <p className="font-poppins font-bold text-brand-dark">Tomorrow&apos;s kitchen schedule</p>
           <p className="text-sm text-brand-muted flex items-center gap-1"><CalendarClock size={13} /> {upcomingLabel}</p>
         </div>
-        <button className="text-sm font-semibold text-accent bg-white px-4 py-2 rounded-full shadow-soft">Reserve</button>
+        {post.vendor?.id && (
+          <Link
+            to={`/vendors/${post.vendor.id}`}
+            className="text-sm font-semibold text-accent bg-white px-4 py-2 rounded-full shadow-soft hover:bg-accent hover:text-white transition-colors"
+          >
+            Check the kitchen
+          </Link>
+        )}
       </div>
     );
   }
@@ -366,7 +379,7 @@ function SpecialLayoutBar({ post, heroProduct, upcomingLabel }) {
 }
 
 // ── Expandable caption ──────────────────────────────────────────
-function ExpandableCaption({ caption, vendorName }) {
+function ExpandableCaption({ caption }) {
   const [expanded, setExpanded] = useState(false);
   const LIMIT = 150;
   const isLong = caption.length > LIMIT;
