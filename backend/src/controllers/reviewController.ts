@@ -7,6 +7,20 @@ import { AuthRequest } from "../middleware/auth";
 import { creditCoins, REWARD_RATES } from "./rewardController";
 import { RewardTxType } from "../entities/RewardTransaction";
 
+function sanitizeReview(review: Review) {
+  return {
+    ...review,
+    user: review.user
+      ? {
+          id: review.user.id,
+          firstName: review.user.firstName,
+          lastName: review.user.lastName,
+          avatar: review.user.avatar,
+        }
+      : null,
+  };
+}
+
 export const createReview = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { rating, comment, productId, vendorId } = req.body;
@@ -66,7 +80,7 @@ export const createReview = async (req: AuthRequest, res: Response): Promise<voi
       );
     } catch {}
 
-    res.status(201).json({ success: true, message: "Review submitted", data: review });
+    res.status(201).json({ success: true, message: "Review submitted", data: sanitizeReview(review) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -80,7 +94,7 @@ export const getProductReviews = async (req: Request, res: Response): Promise<vo
       relations: ["user"],
       order: { createdAt: "DESC" },
     });
-    res.json({ success: true, data: reviews });
+    res.json({ success: true, data: reviews.map(sanitizeReview) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -94,7 +108,7 @@ export const getVendorReviews = async (req: Request, res: Response): Promise<voi
       relations: ["user"],
       order: { createdAt: "DESC" },
     });
-    res.json({ success: true, data: reviews });
+    res.json({ success: true, data: reviews.map(sanitizeReview) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

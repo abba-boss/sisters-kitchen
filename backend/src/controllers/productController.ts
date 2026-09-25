@@ -25,6 +25,23 @@ function isProductPubliclyAvailable(product: Product): boolean {
   );
 }
 
+function sanitizeProductPublic(product: Product) {
+  return {
+    ...product,
+    reviews: (product.reviews || []).map((review) => ({
+      ...review,
+      user: review.user
+        ? {
+            id: review.user.id,
+            firstName: review.user.firstName,
+            lastName: review.user.lastName,
+            avatar: review.user.avatar,
+          }
+        : null,
+    })),
+  };
+}
+
 // ─── List / Search ─────────────────────────────────────────────
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -74,7 +91,7 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
       });
       return;
     }
-    res.json({ success: true, data: product });
+    res.json({ success: true, data: sanitizeProductPublic(product) });
   } catch (e: any) { res.status(500).json({ success: false, message: e.message }); }
 };
 

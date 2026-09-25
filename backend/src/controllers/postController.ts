@@ -162,7 +162,7 @@ export const createPost = async (
     // Emit only posts that are immediately visible in the public feed.
     const scheduledForLater = fullPost.scheduledAt && fullPost.scheduledAt.getTime() > Date.now();
     if (status === PostStatus.PUBLISHED && !scheduledForLater) {
-      emitNewPost(vendor.id, fullPost);
+      emitNewPost(vendor.id, sanitizePost(fullPost));
     }
 
     res.status(201).json({ success: true, message: "Post created", data: sanitizePost(fullPost) });
