@@ -9,6 +9,10 @@ dotenv.config();
 import { AppDataSource } from "../config/database";
 import { Post, PostType, PostStatus } from "../entities/Post";
 import { PostMedia, MediaType } from "../entities/PostMedia";
+import { Story, StoryMediaType } from "../entities/Story";
+import { Follower } from "../entities/Follower";
+import { PostLike } from "../entities/PostLike";
+import { SavedPost } from "../entities/SavedPost";
 import { Vendor } from "../entities/Vendor";
 import { User } from "../entities/User";
 
@@ -44,6 +48,12 @@ const POSTS_DATA = [
   { type: PostType.IMAGE,       caption: "Pizza Friday! Our suya chicken pizza is back on the menu. Only 20 pies available today — first come, first served 🍕🌶️", tags: ["pizza","friday","limited"] },
 ];
 
+const STORIES_DATA = [
+  { caption: "Fresh batch just came out of the oven 🔥",              link: null },
+  { caption: "Prepping for the evening rush — see you soon! ✨",      link: null },
+  { caption: "Today's special is live on the menu. Tap to order 👇", link: "/products" },
+];
+
 async function seedPosts() {
   try {
     await AppDataSource.initialize();
@@ -61,7 +71,13 @@ async function seedPosts() {
 
     console.log(`Seeding posts for ${vendors.length} vendors…`);
 
+    const customers = await AppDataSource.getRepository(User).find({
+      where: { role: "customer" as any },
+    });
+
+    const savedPosts: Post[] = [];
     let created = 0;
+    let storiesCreated = 0;
     for (let vi = 0; vi < vendors.length; vi++) {
       const vendor = vendors[vi];
 
@@ -91,10 +107,55 @@ async function seedPosts() {
           );
         }
 
+        savedPosts.push(post);
         created++;
         process.stdout.write(`  📸 ${vendor.businessName} — "${tmpl.caption.substring(0, 40)}…"\n`);
       }
     }
+
+    // ── Stories so the story rail has content on a fresh install ──
+    const storyRepo = AppDataSource.getRepository(Story);
+    for (let vi = 0; vi < vendors.length; vi++) {
+      const tmpl = STORIES_DATA[vi % STORIES_DATA.length];
+      await storyRepo.save(
+        storyRepo.create({
+          mediaUrl:   FOOD_IMAGES[vi % FOOD_IMAGES.length],
+          mediaType:  StoryMediaType.IMAGE,
+          caption:    tmpl.caption,
+          link:       tmpl.link,
+          expiresAt:  new Date(Date.now() + 24 * 60 * 60 * 1000),
+          isActive:   true,
+          viewsCount: Math.floor(Math.random() * 40),
+          vendor:     vendors[vi],
+          author:     vendors[vi].user,
+        })
+      );
+      storiesCreated++;
+    }
+    console.log(`  📱 ${storiesCreated} stories seeded (expire in 24h)`);
+
+    // ── Social graph so Following / Saved / Liked are not empty ──
+    const followerRepo = AppDataSource.getRepository(Follower);
+    const likeRepo     = AppDataSource.getRepository(PostLike);
+    const savedRepo    = AppDataSource.getRepository(SavedPost);
+
+    let follows = 0, likes = 0, saved = 0;
+    for (const customer of customers) {
+      const target = vendors.find((v) => v.user.id !== customer.id);
+      if (target) {
+        await followerRepo.save(followerRepo.create({ follower: customer, vendor: target }));
+        follows++;
+      }
+      for (const post of savedPosts.slice(0, 4)) {
+        await likeRepo.save(likeRepo.create({ user: customer, post }));
+        likes++;
+      }
+      for (const post of savedPosts.slice(0, 2)) {
+        await savedRepo.save(savedRepo.create({ user: customer, post }));
+        saved++;
+      }
+    }
+    console.log(`  👥 ${follows} follows · ❤️ ${likes} likes · 🔖 ${saved} saved posts`);
 
     console.log(`\n✅ ${created} posts seeded across ${vendors.length} vendors`);
     process.exit(0);

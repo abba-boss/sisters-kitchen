@@ -189,9 +189,14 @@ export const redeemCoins = async (req: AuthRequest, res: Response): Promise<void
 
     const { Order, OrderStatus } = await import("../entities/Order");
     const orderRepo = AppDataSource.getRepository(Order);
-    const order = await orderRepo.findOne({ where: { id: orderId } });
+    const order = await orderRepo
+      .createQueryBuilder("order")
+      .leftJoin("order.user", "user")
+      .addSelect("user.id")
+      .where("order.id = :orderId", { orderId })
+      .getOne();
 
-    if (!order || order.user.id !== req.user!.id) {
+    if (!order || order.user?.id !== req.user!.id) {
       res.status(404).json({ success: false, message: "Order not found" });
       return;
     }
