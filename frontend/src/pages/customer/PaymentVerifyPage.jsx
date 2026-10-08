@@ -3,10 +3,12 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
 import { paymentService } from '../../services/paymentService';
+import { useCart } from '../../hooks/useCart';
 
 export default function PaymentVerifyPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { clearCart, clearVendorItems } = useCart();
   const [status, setStatus] = useState('loading'); // loading | success | failed
   const [orderId, setOrderId] = useState(null);
 
@@ -18,6 +20,17 @@ export default function PaymentVerifyPage() {
       .then(({ data }) => {
         setOrderId(data.data?.orderId);
         setStatus('success');
+        
+        // NOW clear cart after successful payment verification
+        const pendingVendorId = sessionStorage.getItem('pendingVendorId');
+        if (pendingVendorId === 'all') {
+          clearCart();
+        } else if (pendingVendorId) {
+          clearVendorItems(pendingVendorId);
+        }
+        sessionStorage.removeItem('pendingOrderIds');
+        sessionStorage.removeItem('pendingVendorId');
+        
         setTimeout(() => navigate(`/orders/${data.data?.orderId}`), 3000);
       })
       .catch(() => setStatus('failed'));

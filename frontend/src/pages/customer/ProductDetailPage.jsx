@@ -212,15 +212,20 @@ export default function ProductDetailPage() {
 
             <p className="text-brand-muted leading-relaxed text-sm mb-5">{product.description}</p>
 
-            <div className="flex flex-wrap gap-4 mb-5 text-sm text-brand-muted">
+            <div className="flex flex-wrap gap-4 mb-5 text-sm">
               {product.preparationTime && (
-                <span className="flex items-center gap-1.5 bg-brand-bg px-3 py-1.5 rounded-full">
+                <span className="flex items-center gap-1.5 bg-brand-bg text-brand-muted px-3 py-1.5 rounded-full">
                   <Clock size={14} className="text-primary" /> {product.preparationTime}
                 </span>
               )}
-              {product.stock > 0 && (
-                <span className="flex items-center gap-1.5 bg-accent/10 text-accent px-3 py-1.5 rounded-full">
-                  <CheckCircle size={14} /> In stock
+              {product.stock !== undefined && product.stock > 0 && (
+                <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-semibold ${
+                  product.stock <= 5 
+                    ? 'bg-orange-50 text-orange-600' 
+                    : 'bg-accent/10 text-accent'
+                }`}>
+                  <CheckCircle size={14} /> {product.stock} Available in Stock
+                  {product.stock <= 5 && ' - Order Now!'}
                 </span>
               )}
             </div>
@@ -234,27 +239,57 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* Quantity */}
-            <div className="flex items-center gap-4 mb-6">
-              <span className="text-sm font-semibold text-brand-dark">Qty:</span>
-              <div className="flex items-center gap-3 bg-brand-bg rounded-2xl p-1">
-                <button onClick={() => setQty(Math.max(1, qty - 1))}
-                  className="w-9 h-9 rounded-xl bg-white shadow-card flex items-center justify-center hover:bg-primary hover:text-white transition-all">
-                  <Minus size={16} />
-                </button>
-                <span className="font-bold text-brand-dark w-6 text-center">{qty}</span>
-                <button onClick={() => setQty(qty + 1)}
-                  className="w-9 h-9 rounded-xl bg-white shadow-card flex items-center justify-center hover:bg-primary hover:text-white transition-all">
-                  <Plus size={16} />
-                </button>
+            {/* Stock Availability Warning */}
+            {product.stock <= 0 && (
+              <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-2xl">
+                <p className="text-sm font-semibold text-red-600">⚠️ Out of Stock</p>
+                <p className="text-xs text-red-500 mt-1">This item is currently unavailable</p>
               </div>
-            </div>
+            )}
+            {product.stock > 0 && product.stock <= 10 && (
+              <div className="mb-5 p-4 bg-orange-50 border border-orange-200 rounded-2xl">
+                <p className="text-sm font-semibold text-orange-600">🔥 Only {product.stock} left in stock!</p>
+                <p className="text-xs text-orange-500 mt-1">Order soon before it sells out</p>
+              </div>
+            )}
+
+            {/* Quantity */}
+            {product.stock > 0 && (
+              <div className="flex items-center gap-4 mb-6">
+                <span className="text-sm font-semibold text-brand-dark">Qty:</span>
+                <div className="flex items-center gap-3 bg-brand-bg rounded-2xl p-1">
+                  <button onClick={() => setQty(Math.max(1, qty - 1))}
+                    className="w-9 h-9 rounded-xl bg-white shadow-card flex items-center justify-center hover:bg-primary hover:text-white transition-all">
+                    <Minus size={16} />
+                  </button>
+                  <span className="font-bold text-brand-dark w-6 text-center">{qty}</span>
+                  <button 
+                    onClick={() => setQty(Math.min(product.stock, qty + 1))}
+                    disabled={qty >= product.stock}
+                    className="w-9 h-9 rounded-xl bg-white shadow-card flex items-center justify-center hover:bg-primary hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Plus size={16} />
+                  </button>
+                </div>
+                {qty >= product.stock && (
+                  <span className="text-xs text-orange-500">Max available</span>
+                )}
+              </div>
+            )}
 
             <motion.button
               onClick={handleAddToCart}
-              whileTap={{ scale: 0.97 }}
-              className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-semibold text-base transition-all ${addedToCart ? 'bg-accent text-white' : 'btn-primary'}`}>
-              {addedToCart ? (
+              disabled={product.stock <= 0}
+              whileTap={{ scale: product.stock > 0 ? 0.97 : 1 }}
+              className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-semibold text-base transition-all ${
+                product.stock <= 0 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                  : addedToCart 
+                    ? 'bg-accent text-white' 
+                    : 'btn-primary'
+              }`}>
+              {product.stock <= 0 ? (
+                <>Out of Stock</>
+              ) : addedToCart ? (
                 <><CheckCircle size={20} /> Added to Cart!</>
               ) : (
                 <><ShoppingCart size={20} /> Add to Cart — {formatPrice(price * qty)}</>

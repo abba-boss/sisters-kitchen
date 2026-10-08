@@ -17,6 +17,7 @@ export default function VendorProfile() {
   const [logoPreview, setLogoPreview] = useState(null);
   const [coverPreview, setCoverPreview] = useState(null);
   const [selectedDays, setSelectedDays] = useState([]);
+  const [showLocationHelp, setShowLocationHelp] = useState(false);
   const logoRef = useRef();
   const coverRef = useRef();
 
@@ -25,7 +26,21 @@ export default function VendorProfile() {
       .then(({ data }) => {
         const v = data.data;
         setVendor(v);
-        setForm({ businessName: v.businessName || '', description: v.description || '', address: v.address || '', phone: v.phone || '', whatsapp: v.whatsapp || '', openingTime: v.openingTime || '', closingTime: v.closingTime || '', bankName: v.bankName || '', accountNumber: v.accountNumber || '', accountName: v.accountName || '' });
+        setForm({ 
+          businessName: v.businessName || '', 
+          description: v.description || '', 
+          address: v.address || '', 
+          phone: v.phone || '', 
+          whatsapp: v.whatsapp || '', 
+          openingTime: v.openingTime || '', 
+          closingTime: v.closingTime || '', 
+          bankName: v.bankName || '', 
+          accountNumber: v.accountNumber || '', 
+          accountName: v.accountName || '',
+          pickupLatitude: v.pickupLatitude || '',
+          pickupLongitude: v.pickupLongitude || '',
+          pickupInstructions: v.pickupInstructions || '',
+        });
         setSelectedDays(v.availableDays || []);
       })
       .catch(() => {})
@@ -154,6 +169,83 @@ export default function VendorProfile() {
               <input type="text" name={name} value={form[name] || ''} onChange={handleChange} placeholder={placeholder} className="input-field" />
             </div>
           ))}
+        </div>
+
+        {/* Pickup Location */}
+        <div className="card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-brand-dark text-sm">Self-Pickup Location (Optional)</h2>
+            <button
+              type="button"
+              onClick={() => setShowLocationHelp(!showLocationHelp)}
+              className="text-xs text-primary font-semibold hover:underline"
+            >
+              {showLocationHelp ? 'Hide Help' : 'Need Help?'}
+            </button>
+          </div>
+          
+          {showLocationHelp && (
+            <div className="bg-brand-bg rounded-xl p-3 text-xs text-brand-muted space-y-1">
+              <p><strong>How to get coordinates:</strong></p>
+              <ol className="list-decimal list-inside space-y-0.5 pl-2">
+                <li>Open Google Maps and find your location</li>
+                <li>Right-click on the location → Click "What's here?"</li>
+                <li>Copy the coordinates (e.g., 6.5244, 3.3792)</li>
+                <li>First number is Latitude, second is Longitude</li>
+              </ol>
+            </div>
+          )}
+
+          <p className="text-xs text-brand-muted">
+            Enable customers to pick up orders from your location. They'll see a map and QR code for verification.
+          </p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-brand-dark mb-1 block">Latitude</label>
+              <input 
+                type="number" 
+                step="any"
+                name="pickupLatitude" 
+                value={form.pickupLatitude || ''} 
+                onChange={handleChange} 
+                placeholder="6.5244" 
+                className="input-field" 
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-brand-dark mb-1 block">Longitude</label>
+              <input 
+                type="number" 
+                step="any"
+                name="pickupLongitude" 
+                value={form.pickupLongitude || ''} 
+                onChange={handleChange} 
+                placeholder="3.3792" 
+                className="input-field" 
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-brand-dark mb-1 block">Pickup Instructions</label>
+            <textarea 
+              name="pickupInstructions" 
+              value={form.pickupInstructions || ''} 
+              onChange={handleChange} 
+              rows={3} 
+              className="input-field resize-none" 
+              placeholder="e.g., Enter through the side gate, look for the red door..."
+            />
+          </div>
+
+          {form.pickupLatitude && form.pickupLongitude && (
+            <div className="bg-accent/10 rounded-xl p-3">
+              <p className="text-xs text-accent font-medium">
+                ✨ Self-pickup enabled! Customers can now choose pickup at checkout.
+              </p>
+            </div>
+          )}
         </div>
 
         <button type="submit" disabled={saving} className="btn-primary w-full flex items-center justify-center gap-2 py-4">

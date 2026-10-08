@@ -31,6 +31,12 @@ import adminRoutes from "./routes/adminRoutes";
 import analyticsRoutes from "./routes/analyticsRoutes";
 import statsRoutes from "./routes/statsRoutes";
 
+// V2 social routes
+import postRoutes from "./routes/postRoutes";
+import followerRoutes from "./routes/followerRoutes";
+import storyRoutes from "./routes/storyRoutes";
+import rewardRoutes from "./routes/rewardRoutes";
+
 dotenv.config();
 
 const app = express();
@@ -113,6 +119,12 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/stats", statsRoutes);
+
+// V2 social routes
+app.use("/api/posts",     postRoutes);
+app.use("/api/followers", followerRoutes);
+app.use("/api/stories",   storyRoutes);
+app.use("/api/rewards",   rewardRoutes);
 
 // ── Error handling ─────────────────────────────────────────────
 app.use(notFound);

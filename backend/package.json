@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "seed": "ts-node src/utils/seed.ts",
+    "seed:posts": "ts-node src/utils/seedPosts.ts",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js"
   },
   "keywords": [],
@@ -28,6 +29,7 @@
     "morgan": "^1.11.0",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.12.0",
+    "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "socket.io": "^4.8.3",
     "typeorm": "^0.3.20",

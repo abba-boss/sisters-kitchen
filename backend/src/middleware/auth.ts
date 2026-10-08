@@ -54,3 +54,22 @@ export const authorize = (...roles: UserRole[]) => {
     next();
   };
 };
+
+// Attach user if token is present, but never block the request
+export const optionalAuth = async (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      const token   = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+      const userRepo = AppDataSource.getRepository(User);
+      const user = await userRepo.findOne({ where: { id: decoded.userId, isActive: true } });
+      if (user) req.user = user;
+    }
+  } catch { /* ignore — optional */ }
+  next();
+};

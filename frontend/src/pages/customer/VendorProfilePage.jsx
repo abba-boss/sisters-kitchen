@@ -102,6 +102,22 @@ export default function VendorProfilePage() {
       .finally(() => setSidebarLoading(false));
   }, [id]);
 
+  // Compute derived values with safe defaults for when vendor is null
+  const products = vendor?.products || [];
+  const availableProducts = vendor?.isOpen ? products.filter((p) => p.isAvailable) : [];
+  const videoPosts = posts.filter((post) => post.media?.some((m) => m.type === 'video'));
+  const filteredReviews = reviewFilter ? reviews.filter((rv) => rv.rating === reviewFilter) : reviews;
+
+  // Move useMemo before any conditional returns
+  const upcomingMeals = useMemo(() => {
+    const labels = ['Tomorrow', 'Friday', 'Weekend'];
+    return availableProducts.slice(0, 3).map((product, index) => ({
+      ...product,
+      slot: labels[index] || `Day ${index + 1}`,
+      remaining: Math.max(6, product.stock || 12),
+    }));
+  }, [availableProducts]);
+
   const handleReview = async (e) => {
     e.preventDefault();
     if (!isAuthenticated) { toast.error('Please login to leave a review'); return; }
@@ -122,7 +138,7 @@ export default function VendorProfilePage() {
 
   if (!vendor) {
     return (
-      <MainLayout>
+      <MainLayout hideFooter>
         <div className="page-container py-20 text-center">
           <p className="text-brand-muted">Vendor not found.</p>
           <Link to="/vendors" className="btn-primary mt-4 inline-block">Browse Vendors</Link>
@@ -132,10 +148,6 @@ export default function VendorProfilePage() {
   }
 
   const cover = vendor.coverImage || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1400';
-  const products = vendor.products || [];
-  const availableProducts = vendor.isOpen ? products.filter((p) => p.isAvailable) : [];
-  const videoPosts = posts.filter((post) => post.media?.some((m) => m.type === 'video'));
-  const filteredReviews = reviewFilter ? reviews.filter((rv) => rv.rating === reviewFilter) : reviews;
   const ratingDist = [5, 4, 3, 2, 1].map((r) => ({
     r,
     count: reviews.filter((rv) => rv.rating === r).length,
@@ -176,17 +188,8 @@ export default function VendorProfilePage() {
     { key: 'about', label: 'About' },
   ];
 
-  const upcomingMeals = useMemo(() => {
-    const labels = ['Tomorrow', 'Friday', 'Weekend'];
-    return availableProducts.slice(0, 3).map((product, index) => ({
-      ...product,
-      slot: labels[index] || `Day ${index + 1}`,
-      remaining: Math.max(6, product.stock || 12),
-    }));
-  }, [availableProducts]);
-
   return (
-    <MainLayout>
+    <MainLayout hideFooter>
       <div className="relative">
         <div className="relative h-[320px] sm:h-[400px] lg:h-[460px] overflow-hidden">
           <img src={cover} alt={vendor.businessName} className="w-full h-full object-cover" />

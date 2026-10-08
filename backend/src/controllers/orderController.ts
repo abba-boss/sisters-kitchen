@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
-import { Order, OrderStatus } from "../entities/Order";
+import { Order, OrderStatus, FulfillmentType } from "../entities/Order";
 import { OrderItem } from "../entities/OrderItem";
 import { Product } from "../entities/Product";
 import { Vendor } from "../entities/Vendor";
@@ -9,6 +9,7 @@ import { AuthRequest } from "../middleware/auth";
 import { generateOrderNumber } from "../utils/helpers";
 import { UserRole } from "../entities/User";
 import { emitOrderUpdate, emitNotification, emitToAdmins } from "../config/socket";
+import crypto from "crypto";
 
 // ─── Notification helper ──────────────────────────────────────
 async function createAndEmitNotification(
@@ -32,13 +33,33 @@ async function createAndEmitNotification(
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { items, deliveryAddress, deliveryPhone, notes, vendorId } = req.body;
+    const { items, deliveryAddress, deliveryPhone, notes, vendorId, fulfillmentType = FulfillmentType.DELIVERY } = req.body;
 
     const vendorRepo = AppDataSource.getRepository(Vendor);
     const vendor = await vendorRepo.findOne({ where: { id: vendorId }, relations: ["user"] });
 
     if (!vendor) {
       res.status(404).json({ success: false, message: "Vendor not found" });
+      return;
+    }
+
+    // ── Validate pickup location if pickup order ──────────────
+    if (fulfillmentType === FulfillmentType.PICKUP) {
+      if (!vendor.pickupLatitude || !vendor.pickupLongitude) {
+        res.status(400).json({ 
+          success: false, 
+          message: "This vendor does not offer pickup service yet. Please choose delivery or contact the vendor." 
+        });
+        return;
+      }
+    }
+
+    // ── Validate delivery address if delivery order ───────────
+    if (fulfillmentType === FulfillmentType.DELIVERY && !deliveryAddress) {
+      res.status(400).json({ 
+        success: false, 
+        message: "Delivery address is required for delivery orders" 
+      });
       return;
     }
 
@@ -52,14 +73,40 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         res.status(404).json({ success: false, message: `Product ${item.productId} not found` });
         return;
       }
+
+      // ── Stock Validation ──────────────────────────────────────
+      if (product.stock < item.quantity) {
+        res.status(400).json({ 
+          success: false, 
+          message: `Insufficient stock for "${product.name}". Available: ${product.stock}, Requested: ${item.quantity}` 
+        });
+        return;
+      }
+
+      // ── Decrement Stock ───────────────────────────────────────
+      product.stock -= item.quantity;
+      await productRepo.save(product);
+
       const price = Number(product.discountPrice) || Number(product.price);
       const itemSubtotal = price * item.quantity;
       subtotal += itemSubtotal;
       orderItems.push({ product, quantity: item.quantity, price, subtotal: itemSubtotal, notes: item.notes });
     }
 
-    const deliveryFee = 500;
+    // ── Calculate delivery fee based on fulfillment type ──────
+    const deliveryFee = fulfillmentType === FulfillmentType.PICKUP ? 0 : 500;
     const total = subtotal + deliveryFee;
+
+    // ── Generate pickup token and PIN if pickup order ─────────────────
+    // Token: Long secure string for QR code
+    // PIN: Short 6-digit code for manual entry
+    const pickupToken = fulfillmentType === FulfillmentType.PICKUP 
+      ? crypto.randomBytes(32).toString('hex')
+      : null;
+    
+    const pickupPin = fulfillmentType === FulfillmentType.PICKUP
+      ? Math.floor(100000 + Math.random() * 900000).toString() // 6-digit number
+      : null;
 
     const orderRepo = AppDataSource.getRepository(Order);
     const order = orderRepo.create({
@@ -70,10 +117,13 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       subtotal,
       deliveryFee,
       total,
-      deliveryAddress,
+      deliveryAddress: fulfillmentType === FulfillmentType.DELIVERY ? deliveryAddress : null,
       deliveryPhone,
       notes,
       status: OrderStatus.PENDING,
+      fulfillmentType,
+      pickupToken,
+      pickupPin,
     });
 
     await orderRepo.save(order);
@@ -198,6 +248,18 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
 
     await orderRepo.save(order);
 
+    // ── Restore Stock on Cancellation ─────────────────────────
+    if (status === OrderStatus.CANCELLED && prevStatus !== OrderStatus.CANCELLED) {
+      const productRepo = AppDataSource.getRepository(Product);
+      for (const item of order.items) {
+        const product = await productRepo.findOne({ where: { id: item.product.id } });
+        if (product) {
+          product.stock += item.quantity;
+          await productRepo.save(product);
+        }
+      }
+    }
+
     // Update vendor earnings on delivery
     if (status === OrderStatus.DELIVERED) {
       const vendorRepo = AppDataSource.getRepository(Vendor);
@@ -254,6 +316,129 @@ export const getAllOrders = async (req: AuthRequest, res: Response): Promise<voi
       .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();
 
     res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+export const verifyPickup = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+    const { id: orderId } = req.params;
+
+    if (!token) {
+      res.status(400).json({ success: false, message: "Pickup token is required" });
+      return;
+    }
+
+    const orderRepo = AppDataSource.getRepository(Order);
+    const order = await orderRepo.findOne({
+      where: { id: orderId as string },
+      relations: ["user", "vendor", "vendor.user", "items", "items.product", "payments"],
+    });
+
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+
+    // ── Validate vendor ownership ─────────────────────────────
+    if (order.vendor?.user?.id !== req.user!.id) {
+      res.status(403).json({ success: false, message: "You are not authorized to verify this order" });
+      return;
+    }
+
+    // ── Validate fulfillment type ─────────────────────────────
+    if (order.fulfillmentType !== FulfillmentType.PICKUP) {
+      res.status(400).json({ success: false, message: "This is not a pickup order" });
+      return;
+    }
+
+    // ── Validate token or PIN ────────────────────────────────────────
+    // Accept either: long token (from QR scan) OR short PIN (manual entry)
+    const tokenMatches = order.pickupToken === token;
+    const pinMatches = order.pickupPin === token;
+    
+    if (!tokenMatches && !pinMatches) {
+      res.status(400).json({ success: false, message: "Invalid pickup code" });
+      return;
+    }
+
+    // ── Check if already verified ─────────────────────────────
+    if (order.pickupVerifiedAt) {
+      res.status(400).json({ 
+        success: false, 
+        message: "This order has already been picked up",
+        data: { verifiedAt: order.pickupVerifiedAt }
+      });
+      return;
+    }
+
+    // ── Validate order status ─────────────────────────────────
+    if (order.status !== OrderStatus.READY) {
+      res.status(400).json({ 
+        success: false, 
+        message: `Order must be in 'ready' status. Current status: ${order.status}` 
+      });
+      return;
+    }
+
+    // ── Validate payment ──────────────────────────────────────
+    // For pickup orders: Allow COD (pay on pickup) or already paid orders
+    const hasPaidPayment = order.payments?.some(p => p.status === 'success');
+    const hasCODPayment = order.payments?.some(p => p.method === 'cash_on_delivery');
+    
+    if (!hasPaidPayment && !hasCODPayment) {
+      res.status(400).json({ 
+        success: false, 
+        message: "Order must have a payment method before pickup" 
+      });
+      return;
+    }
+
+    // ── Mark as verified and delivered ────────────────────────
+    order.pickupVerifiedAt = new Date();
+    order.pickupVerifiedBy = req.user!.id;
+    order.status = OrderStatus.DELIVERED;
+    await orderRepo.save(order);
+
+    // ── Mark COD payment as success on pickup ─────────────────
+    if (hasCODPayment && !hasPaidPayment) {
+      const Payment = AppDataSource.getRepository(await import("../entities/Payment").then(m => m.Payment));
+      const codPayment = order.payments?.find(p => p.method === 'cash_on_delivery');
+      if (codPayment) {
+        codPayment.status = 'success' as any;
+        await Payment.save(codPayment);
+      }
+    }
+
+    // Update vendor stats
+    const vendorRepo = AppDataSource.getRepository(Vendor);
+    const vendor = await vendorRepo.findOne({ where: { id: order.vendor.id } });
+    if (vendor) {
+      vendor.totalOrders += 1;
+      vendor.totalEarnings = Number(vendor.totalEarnings) + Number(order.total);
+      await vendorRepo.save(vendor);
+    }
+
+    // Emit real-time update
+    emitOrderUpdate(order);
+
+    // Notify customer
+    await createAndEmitNotification(
+      order.user.id,
+      "Order Picked Up! 🎉",
+      `Your order #${order.orderNumber} has been picked up. Enjoy your meal!`,
+      NotificationType.ORDER_DELIVERED,
+      order.id
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Pickup verified successfully! Order marked as delivered.",
+      data: order 
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

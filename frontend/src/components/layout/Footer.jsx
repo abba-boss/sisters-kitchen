@@ -33,7 +33,13 @@ export default function Footer() {
           <div>
             <h4 className="font-poppins font-semibold text-white mb-4">Explore</h4>
             <ul className="space-y-2.5">
-              {[['/', 'Home'], ['/products', 'Browse Food'], ['/vendors', 'Our Vendors'], ['/categories', 'Categories'], ['/about', 'About Us']].map(([to, label]) => (
+              {[
+                ['/shop', 'Shop'],
+                ['/feed', 'Food Feed'],
+                ['/products', 'Discover'],
+                ['/vendors', 'Vendors'],
+                ['/rewards', 'Rewards 🪙'],
+              ].map(([to, label]) => (
                 <li key={to}>
                   <Link to={to} className="text-sm text-white/60 hover:text-primary transition-colors">{label}</Link>
                 </li>

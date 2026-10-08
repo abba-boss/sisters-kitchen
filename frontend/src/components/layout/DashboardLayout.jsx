@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Package, ShoppingBag, Star, Settings,
   Bell, LogOut, Menu, X, ChefHat, Users, BarChart3,
-  Store, TrendingUp, PlusSquare, CreditCard
+  Store, TrendingUp, PlusSquare, CreditCard, Rss, Radio
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
@@ -12,12 +12,14 @@ import NotificationDropdown from '../common/NotificationDropdown';
 
 const vendorLinks = [
   { to: '/vendor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/vendor/products', icon: Package, label: 'My Products' },
-  { to: '/vendor/products/new', icon: PlusSquare, label: 'Add Product' },
-  { to: '/vendor/orders', icon: ShoppingBag, label: 'Orders' },
-  { to: '/vendor/earnings', icon: TrendingUp, label: 'Earnings' },
-  { to: '/vendor/reviews', icon: Star, label: 'Reviews' },
-  { to: '/vendor/profile', icon: Settings, label: 'Store Profile' },
+  { to: '/vendor/products',  icon: Package,         label: 'My Products' },
+  { to: '/vendor/products/new', icon: PlusSquare,   label: 'Add Product' },
+  { to: '/vendor/orders',    icon: ShoppingBag,     label: 'Orders' },
+  { to: '/vendor/posts',     icon: Rss,             label: 'Posts' },
+  { to: '/vendor/stories',   icon: Radio,           label: 'Stories' },
+  { to: '/vendor/earnings',  icon: TrendingUp,      label: 'Earnings' },
+  { to: '/vendor/reviews',   icon: Star,            label: 'Reviews' },
+  { to: '/vendor/profile',   icon: Settings,        label: 'Store Profile' },
 ];
 
 const adminLinks = [

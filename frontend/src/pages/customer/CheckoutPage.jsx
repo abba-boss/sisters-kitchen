@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Truck, ShoppingBag, Store } from 'lucide-react';
+import { CreditCard, Truck, ShoppingBag, Store, MapPin } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { useCart } from '../../hooks/useCart';
 import { useAuthStore } from '../../store/authStore';
@@ -32,15 +32,18 @@ export default function CheckoutPage() {
 
   const checkoutItems = groupsToCheckout.flatMap((g) => g.items);
   const subtotal = groupsToCheckout.reduce((s, g) => s + g.subtotal, 0);
-  const deliveryFee = 500 * groupsToCheckout.length;
-  const total = subtotal + deliveryFee;
 
   const [form, setForm] = useState({
     deliveryAddress: user?.address || '',
     deliveryPhone:   user?.phone   || '',
     notes:           '',
     paymentMethod:   'paystack',
+    fulfillmentType: 'delivery', // 'delivery' or 'pickup'
   });
+  
+  // Calculate delivery fee based on fulfillment type
+  const deliveryFee = form.fulfillmentType === 'pickup' ? 0 : (500 * groupsToCheckout.length);
+  const total = subtotal + deliveryFee;
   const [loading, setLoading] = useState(false);
 
   if (checkoutItems.length === 0) { navigate('/cart'); return null; }
@@ -49,7 +52,19 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
-    if (!form.deliveryAddress.trim()) { toast.error('Please enter your delivery address'); return; }
+    
+    // Validate delivery address only if delivery is selected
+    if (form.fulfillmentType === 'delivery' && !form.deliveryAddress.trim()) {
+      toast.error('Please enter your delivery address');
+      return;
+    }
+    
+    // Validate vendor has pickup location if pickup is selected
+    if (form.fulfillmentType === 'pickup' && groupsToCheckout.length > 1) {
+      toast.error('Pickup orders can only be placed with one vendor at a time');
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -60,25 +75,50 @@ export default function CheckoutPage() {
         const orderData = {
           vendorId:        group.vendorId,
           items:           group.items.map((i) => ({ productId: i.id, quantity: i.quantity })),
-          deliveryAddress: form.deliveryAddress,
+          deliveryAddress: form.fulfillmentType === 'delivery' ? form.deliveryAddress : null,
           deliveryPhone:   form.deliveryPhone,
           notes:           form.notes,
+          fulfillmentType: form.fulfillmentType,
         };
-        const { data } = await orderService.create(orderData);
-        orderIds.push(data.data.id);
+        
+        try {
+          const { data } = await orderService.create(orderData);
+          orderIds.push(data.data.id);
+        } catch (orderError) {
+          // Handle stock errors specifically
+          const errorMsg = orderError.response?.data?.message || 'Failed to create order';
+          if (errorMsg.includes('Insufficient stock')) {
+            toast.error(errorMsg, { duration: 5000 });
+          } else if (errorMsg.includes('not found')) {
+            toast.error('One or more products are no longer available');
+          } else if (errorMsg.includes('does not offer pickup')) {
+            toast.error('This vendor does not offer pickup service. Please choose delivery.');
+          } else {
+            toast.error(errorMsg);
+          }
+          setLoading(false);
+          return; // Stop processing if any order fails
+        }
       }
 
       if (form.paymentMethod === 'paystack' && orderIds.length === 1) {
         // Single vendor — redirect to Paystack
-        const { data: payRes } = await paymentService.initialize({
-          orderId: orderIds[0],
-          method:  'paystack',
-        });
-        // Clear only the checked-out vendor items
-        if (targetVendorId) clearVendorItems(targetVendorId);
-        else clearCart();
+        try {
+          const { data: payRes } = await paymentService.initialize({
+            orderId: orderIds[0],
+            method:  'paystack',
+          });
+          
+          // Store pending checkout info for verification page to clear cart
+          sessionStorage.setItem('pendingOrderIds', JSON.stringify(orderIds));
+          sessionStorage.setItem('pendingVendorId', targetVendorId || 'all');
 
-        window.location.href = payRes.data.authorizationUrl;
+          window.location.href = payRes.data.authorizationUrl;
+        } catch (paymentError) {
+          toast.error('Payment initialization failed. Please try again.');
+          setLoading(false);
+          return;
+        }
       } else {
         // COD or multiple vendors — initialize each as COD
         for (const orderId of orderIds) {
@@ -115,26 +155,95 @@ export default function CheckoutPage() {
           {/* ── Form ──────────────────────────────────── */}
           <form onSubmit={handlePlaceOrder} className="lg:col-span-2 space-y-6">
 
-            {/* Delivery */}
+            {/* Fulfillment Type */}
             <div className="card p-6">
               <h2 className="font-poppins font-semibold text-brand-dark mb-4 flex items-center gap-2">
-                <Truck size={18} className="text-primary" /> Delivery Details
+                <ShoppingBag size={18} className="text-primary" /> Fulfillment Method
               </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-brand-dark mb-1.5 block">
-                    Delivery Address <span className="text-red-500">*</span>
+              <div className="space-y-3">
+                {[
+                  { value: 'delivery', label: 'Delivery', icon: Truck, desc: 'Have your order delivered to your doorstep' },
+                  { value: 'pickup', label: 'Self-Pickup', icon: MapPin, desc: 'Pick up your order from the vendor location' },
+                ].map(({ value, label, icon: Icon, desc }) => (
+                  <label key={value}
+                    className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                      form.fulfillmentType === value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-orange-100 hover:border-primary/40'
+                    }`}>
+                    <input
+                      type="radio" name="fulfillmentType" value={value}
+                      checked={form.fulfillmentType === value}
+                      onChange={handleChange} className="hidden"
+                    />
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      form.fulfillmentType === value ? 'border-primary' : 'border-orange-200'
+                    }`}>
+                      {form.fulfillmentType === value && (
+                        <div className="w-2.5 h-2.5 bg-primary rounded-full" />
+                      )}
+                    </div>
+                    <Icon size={18} className="text-primary mt-0.5" />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-brand-dark block">{label}</span>
+                      <span className="text-xs text-brand-muted">{desc}</span>
+                      {value === 'pickup' && groupsToCheckout.length > 1 && (
+                        <span className="text-xs text-orange-500 block mt-1">
+                          ⚠️ Pickup available for single vendor only
+                        </span>
+                      )}
+                    </div>
                   </label>
-                  <textarea
-                    name="deliveryAddress"
-                    value={form.deliveryAddress}
-                    onChange={handleChange}
-                    placeholder="Enter your full delivery address"
-                    rows={2}
-                    className="input-field resize-none"
-                    required
-                  />
+                ))}
+              </div>
+              {form.fulfillmentType === 'pickup' && (
+                <div className="mt-4 p-3 bg-accent/10 rounded-xl">
+                  <p className="text-xs text-accent font-medium flex items-center gap-1.5">
+                    ✨ No delivery fee for pickup orders!
+                  </p>
                 </div>
+              )}
+            </div>
+
+            {/* Delivery */}
+            {form.fulfillmentType === 'delivery' && (
+              <div className="card p-6">
+                <h2 className="font-poppins font-semibold text-brand-dark mb-4 flex items-center gap-2">
+                  <Truck size={18} className="text-primary" /> Delivery Details
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-brand-dark mb-1.5 block">
+                      Delivery Address <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="deliveryAddress"
+                      value={form.deliveryAddress}
+                      onChange={handleChange}
+                      placeholder="Enter your full delivery address"
+                      rows={2}
+                      className="input-field resize-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-brand-dark mb-1.5 block">Phone Number</label>
+                    <input
+                      type="tel" name="deliveryPhone"
+                      value={form.deliveryPhone} onChange={handleChange}
+                      placeholder="+234 ..." className="input-field"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Contact Info for Pickup */}
+            {form.fulfillmentType === 'pickup' && (
+              <div className="card p-6">
+                <h2 className="font-poppins font-semibold text-brand-dark mb-4 flex items-center gap-2">
+                  <MapPin size={18} className="text-primary" /> Contact Information
+                </h2>
                 <div>
                   <label className="text-sm font-medium text-brand-dark mb-1.5 block">Phone Number</label>
                   <input
@@ -142,18 +251,21 @@ export default function CheckoutPage() {
                     value={form.deliveryPhone} onChange={handleChange}
                     placeholder="+234 ..." className="input-field"
                   />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-brand-dark mb-1.5 block">
-                    Order Notes <span className="text-brand-muted text-xs font-normal">(optional)</span>
-                  </label>
-                  <textarea
-                    name="notes" value={form.notes} onChange={handleChange}
-                    placeholder="Special instructions for the vendor…"
-                    rows={2} className="input-field resize-none"
-                  />
+                  <p className="text-xs text-brand-muted mt-1">Vendor may contact you when order is ready</p>
                 </div>
               </div>
+            )}
+
+            {/* Order Notes */}
+            <div className="card p-6">
+              <h2 className="font-poppins font-semibold text-brand-dark mb-4">
+                Order Notes <span className="text-brand-muted text-xs font-normal">(optional)</span>
+              </h2>
+              <textarea
+                name="notes" value={form.notes} onChange={handleChange}
+                placeholder="Special instructions for the vendor…"
+                rows={2} className="input-field resize-none"
+              />
             </div>
 
             {/* Payment */}
@@ -259,8 +371,16 @@ export default function CheckoutPage() {
                 <span>{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-brand-muted">
-                <span>Delivery Fee{groupsToCheckout.length > 1 ? ` ×${groupsToCheckout.length}` : ''}</span>
-                <span>{formatPrice(deliveryFee)}</span>
+                <span>
+                  {form.fulfillmentType === 'pickup' ? (
+                    <>Delivery Fee <span className="text-accent font-medium">(Free for pickup!)</span></>
+                  ) : (
+                    <>Delivery Fee{groupsToCheckout.length > 1 ? ` ×${groupsToCheckout.length}` : ''}</>
+                  )}
+                </span>
+                <span className={form.fulfillmentType === 'pickup' ? 'line-through text-brand-muted' : ''}>
+                  {formatPrice(deliveryFee)}
+                </span>
               </div>
               <div className="flex justify-between font-poppins font-bold text-brand-dark pt-2 border-t border-orange-100">
                 <span>Total</span>

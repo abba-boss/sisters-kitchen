@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
   createOrder, getMyOrders, getOrderById,
-  getVendorOrders, updateOrderStatus, getAllOrders,
+  getVendorOrders, updateOrderStatus, getAllOrders, verifyPickup,
 } from "../controllers/orderController";
 import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../entities/User";
@@ -15,5 +15,6 @@ router.get("/vendor-orders", authenticate, authorize(UserRole.VENDOR), getVendor
 router.get("/all", authenticate, authorize(UserRole.ADMIN), getAllOrders);
 router.get("/:id", authenticate, getOrderById);
 router.patch("/:id/status", authenticate, authorize(UserRole.VENDOR, UserRole.ADMIN), updateOrderStatus);
+router.post("/:id/verify-pickup", authenticate, authorize(UserRole.VENDOR), verifyPickup);
 
 export default router;

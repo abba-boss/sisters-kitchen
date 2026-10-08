@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, ChevronDown, Flame, Heart, Clock, Star, Truck, Store, TrendingUp } from 'lucide-react';
+import { Search, MapPin, ChevronDown, Flame, Star, Truck, Store, TrendingUp } from 'lucide-react';
 import { productService } from '../../services/productService';
 import { useAuthStore } from '../../store/authStore';
 import { formatPrice } from '../../utils/formatters';

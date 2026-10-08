@@ -30,6 +30,8 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
       price_desc: { "product.price": "DESC" },
       rating:     { "product.rating": "DESC" },
       popular:    { "product.totalOrders": "DESC" },
+      newest:     { "product.createdAt": "DESC" },
+      fresh:      { "product.updatedAt": "DESC" },
     };
     const orderBy = orderMap[sort as string] || { "product.createdAt": "DESC" };
     Object.entries(orderBy).forEach(([col, dir]) => qb.addOrderBy(col, dir as any));
@@ -235,4 +237,37 @@ export const deleteProduct = async (req: AuthRequest, res: Response): Promise<vo
     await productRepo.remove(product);
     res.json({ success: true, message: "Product deleted" });
   } catch (e: any) { res.status(500).json({ success: false, message: e.message }); }
+};
+
+// ─── Patch (admin toggle availability / any field) ──────────────
+export const patchProduct = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const productRepo = AppDataSource.getRepository(Product);
+    const product = await productRepo.findOne({
+      where: { id: req.params.id as string },
+      relations: ["vendor", "vendor.user"],
+    });
+    if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
+
+    const isAdmin  = req.user!.role === "admin";
+    const isOwner  = product.vendor?.user?.id === req.user!.id;
+    if (!isAdmin && !isOwner) {
+      res.status(403).json({ success: false, message: "Not authorized" }); return;
+    }
+
+    // Only patch the fields that were explicitly sent
+    const allowed: (keyof Product)[] = [
+      "isAvailable", "isFeatured", "isFreshToday", "stock", "price", "discountPrice"
+    ];
+    for (const field of allowed) {
+      if (req.body[field] !== undefined) {
+        (product as any)[field] = req.body[field];
+      }
+    }
+
+    await productRepo.save(product);
+    res.json({ success: true, message: "Product updated", data: product });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 };

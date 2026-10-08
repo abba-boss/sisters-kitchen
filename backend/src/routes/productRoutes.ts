@@ -8,6 +8,7 @@ import {
   updateProduct,
   deleteProduct,
   getVendorProducts,
+  patchProduct,
 } from "../controllers/productController";
 import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../entities/User";
@@ -33,6 +34,13 @@ router.put(
   authorize(UserRole.VENDOR),
   uploadMultiple.array("images", 5),
   updateProduct
+);
+// PATCH — partial update (admin can toggle availability, vendor can update minor fields)
+router.patch(
+  "/:id",
+  authenticate,
+  authorize(UserRole.VENDOR, UserRole.ADMIN),
+  patchProduct
 );
 router.delete("/:id", authenticate, authorize(UserRole.VENDOR, UserRole.ADMIN), deleteProduct);
 

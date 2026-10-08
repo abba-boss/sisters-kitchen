@@ -1,12 +1,13 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
 import { Payment, PaymentStatus, PaymentMethod } from "../entities/Payment";
-import { Order, OrderStatus } from "../entities/Order";
+import { Order, OrderStatus, FulfillmentType } from "../entities/Order";
 import { Notification, NotificationType } from "../entities/Notification";
 import { AuthRequest } from "../middleware/auth";
 import { emitOrderUpdate, emitNotification } from "../config/socket";
 import { v4 as uuidv4 } from "uuid";
 import https from "https";
+import crypto from "crypto";
 
 // ─── Helper: create notification ──────────────────────────────
 async function notify(userId: string, title: string, message: string, type: NotificationType, refId: string) {
@@ -192,6 +193,72 @@ export const getPaymentReceipt = async (req: AuthRequest, res: Response): Promis
 
     if (!payment) { res.status(404).json({ success: false, message: "Payment not found" }); return; }
     res.json({ success: true, data: payment });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── Paystack Webhook Handler ─────────────────────────────────
+export const paystackWebhook = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Verify webhook signature
+    const hash = crypto
+      .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY!)
+      .update(JSON.stringify(req.body))
+      .digest('hex');
+    
+    if (hash !== req.headers['x-paystack-signature']) {
+      res.status(401).json({ success: false, message: 'Invalid signature' });
+      return;
+    }
+
+    const { event, data } = req.body;
+    
+    // Handle successful charge
+    if (event === 'charge.success') {
+      const paymentRepo = AppDataSource.getRepository(Payment);
+      const payment = await paymentRepo.findOne({
+        where: { reference: data.reference },
+        relations: ['order', 'order.user', 'order.vendor', 'order.vendor.user', 'user'],
+      });
+      
+      if (!payment) {
+        res.status(404).json({ success: false, message: 'Payment not found' });
+        return;
+      }
+
+      // Only process if payment is still pending
+      if (payment.status === PaymentStatus.PENDING) {
+        payment.status = PaymentStatus.SUCCESS;
+        payment.paystackReference = data.reference;
+        payment.metadata = data;
+        await paymentRepo.save(payment);
+        
+        // Update order status
+        const orderRepo = AppDataSource.getRepository(Order);
+        const order = await orderRepo.findOne({
+          where: { id: payment.order.id },
+          relations: ['user', 'vendor', 'vendor.user'],
+        });
+        
+        if (order && order.status === OrderStatus.PENDING) {
+          order.status = OrderStatus.CONFIRMED;
+          await orderRepo.save(order);
+          emitOrderUpdate(order);
+          
+          // Notify customer
+          await notify(
+            payment.user.id,
+            "Payment Successful 💳",
+            `Payment of ₦${payment.amount} confirmed for order #${order.orderNumber}`,
+            NotificationType.PAYMENT_SUCCESS,
+            order.id
+          );
+        }
+      }
+    }
+    
+    res.status(200).json({ success: true });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -19,20 +19,21 @@ const fileFilter = (
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ) => {
-  const allowed = /jpeg|jpg|png|gif|webp/;
+  const allowedExt  = /jpeg|jpg|png|gif|webp|mp4|mov|webm|ogg/;
+  const allowedMime = /image\/(jpeg|jpg|png|gif|webp)|video\/(mp4|quicktime|webm|ogg)/;
   if (
-    allowed.test(path.extname(file.originalname).toLowerCase()) &&
-    allowed.test(file.mimetype)
+    allowedExt.test(path.extname(file.originalname).toLowerCase()) &&
+    allowedMime.test(file.mimetype)
   ) {
     cb(null, true);
   } else {
-    cb(new Error("Only image files (jpg, png, gif, webp) are allowed"));
+    cb(new Error("Only image (jpg/png/gif/webp) or video (mp4/mov/webm) files are allowed"));
   }
 };
 
 const options: multer.Options = {
   storage,
-  limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB (videos need more space)
   fileFilter,
 };
 

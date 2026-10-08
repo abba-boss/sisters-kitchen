@@ -115,9 +115,9 @@ export default function LoginPage() {
             </summary>
             <div className="mt-3 space-y-2 text-xs bg-brand-bg rounded-xl p-3">
               {[
-                ['Customer', 'customer@sisterskitchen.ng',       'Customer@2024'],
-                ['Vendor',   'mama.ngozi@sisterskitchen.ng',     'Vendor@2024'  ],
-                ['Admin',    'admin@sisterskitchen.ng',          'Admin@2024'   ],
+                ['Customer', 'customer@sisterskitchen.ng',    'Customer@2024'],
+                ['Vendor',   'mama.ngozi@sisterskitchen.ng',  'Vendor@2024'  ],
+                ['Admin',    'admin@sisterskitchen.ng',       'Admin@2024'   ],
               ].map(([role, email, pwd]) => (
                 <button key={role} type="button"
                   onClick={() => setForm({ email, password: pwd })}

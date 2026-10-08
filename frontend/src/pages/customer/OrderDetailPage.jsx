@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { PageLoader } from '../../components/common/LoadingSkeleton';
+import PickupOrderCard from '../../components/customer/PickupOrderCard';
 import { orderService } from '../../services/orderService';
 import { joinOrderRoom, leaveOrderRoom } from '../../services/socketService';
 import { useSocketEvent } from '../../hooks/useSocket';
@@ -73,6 +74,7 @@ export default function OrderDetailPage() {
 
   const currentStep = order.status === 'cancelled' ? -1 : STATUS_STEPS.indexOf(order.status);
   const progressPercent = currentStep < 0 ? 0 : (currentStep / (STATUS_STEPS.length - 1)) * 100;
+  const isPickupOrder = order.fulfillmentType === 'pickup';
 
   return (
     <MainLayout>
@@ -93,12 +95,20 @@ export default function OrderDetailPage() {
             <span className={`badge ${getOrderStatusColor(order.status)} text-sm`}>
               {getOrderStatusLabel(order.status)}
             </span>
+            {isPickupOrder && (
+              <span className="badge bg-primary/10 text-primary text-sm">
+                Self-Pickup
+              </span>
+            )}
             <span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${isLive ? 'bg-accent/10 text-accent' : 'bg-gray-100 text-gray-500'}`}>
               {isLive ? <Wifi size={11} /> : <WifiOff size={11} />}
               {isLive ? 'Live' : 'Offline'}
             </span>
           </div>
         </div>
+
+        {/* Pickup Order Card */}
+        {isPickupOrder && <PickupOrderCard order={order} />}
 
         {/* Progress Tracker */}
         {order.status !== 'cancelled' && (
@@ -172,21 +182,23 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Delivery Info */}
-        <div className="card p-5 mb-4">
-          <h2 className="font-semibold text-brand-dark mb-3 text-sm">Delivery Details</h2>
-          <div className="space-y-2 text-sm text-brand-muted">
-            <div className="flex items-start gap-2">
-              <MapPin size={15} className="text-primary mt-0.5 flex-shrink-0" />
-              <span>{order.deliveryAddress}</span>
-            </div>
-            {order.deliveryPhone && (
-              <div className="flex items-center gap-2">
-                <Phone size={15} className="text-primary" />
-                <span>{order.deliveryPhone}</span>
+        {!isPickupOrder && order.deliveryAddress && (
+          <div className="card p-5 mb-4">
+            <h2 className="font-semibold text-brand-dark mb-3 text-sm">Delivery Details</h2>
+            <div className="space-y-2 text-sm text-brand-muted">
+              <div className="flex items-start gap-2">
+                <MapPin size={15} className="text-primary mt-0.5 flex-shrink-0" />
+                <span>{order.deliveryAddress}</span>
               </div>
-            )}
+              {order.deliveryPhone && (
+                <div className="flex items-center gap-2">
+                  <Phone size={15} className="text-primary" />
+                  <span>{order.deliveryPhone}</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Items */}
         <div className="card p-5 mb-4">
@@ -211,7 +223,11 @@ export default function OrderDetailPage() {
               <span>Subtotal</span><span>{formatPrice(order.subtotal)}</span>
             </div>
             <div className="flex justify-between text-brand-muted">
-              <span>Delivery Fee</span><span>{formatPrice(order.deliveryFee)}</span>
+              <span>
+                Delivery Fee
+                {isPickupOrder && <span className="text-accent font-medium ml-1">(Pickup)</span>}
+              </span>
+              <span>{formatPrice(order.deliveryFee)}</span>
             </div>
             <div className="flex justify-between font-poppins font-bold text-brand-dark pt-2 border-t border-orange-100">
               <span>Total</span>

@@ -38,6 +38,15 @@ export class Vendor {
   @Column({ nullable: true })
   address: string;
 
+  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
+  pickupLatitude: number;
+
+  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
+  pickupLongitude: number;
+
+  @Column({ type: "text", nullable: true })
+  pickupInstructions: string;
+
   @Column({ nullable: true })
   phone: string;
 

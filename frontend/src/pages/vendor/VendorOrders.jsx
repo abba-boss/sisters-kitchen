@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, CheckCircle, XCircle, Clock, Wifi } from 'lucide-react';
+import { ShoppingBag, CheckCircle, XCircle, Clock, Wifi, QrCode, MapPin, Truck } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import EmptyState from '../../components/common/EmptyState';
+import PickupVerificationModal from '../../components/vendor/PickupVerificationModal';
 import { orderService } from '../../services/orderService';
 import { useSocketEvent } from '../../hooks/useSocket';
 import { formatPrice, formatDateTime, getOrderStatusColor, getOrderStatusLabel } from '../../utils/formatters';
@@ -25,6 +26,7 @@ export default function VendorOrders() {
   const [statusFilter, setStatusFilter] = useState('');
   const [updating, setUpdating] = useState(null);
   const [liveOrder, setLiveOrder] = useState(null);
+  const [verifyModalOrder, setVerifyModalOrder] = useState(null);
 
   const fetchOrders = useCallback(() => {
     setLoading(true);
@@ -61,6 +63,15 @@ export default function VendorOrders() {
     } catch { toast.error('Failed to update order'); }
     finally { setUpdating(null); }
   };
+
+  const handleVerifySuccess = (updatedOrder) => {
+    setOrders((prev) => prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
+    setVerifyModalOrder(null);
+    fetchOrders();
+  };
+
+  const isPickupOrder = (order) => order.fulfillmentType === 'pickup';
+  const canVerifyPickup = (order) => isPickupOrder(order) && order.status === 'ready' && !order.pickupVerifiedAt;
 
   const statuses = ['', 'pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
 
@@ -109,17 +120,41 @@ export default function VendorOrders() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-brand-dark text-sm">#{order.orderNumber}</span>
                         <span className={`badge ${getOrderStatusColor(order.status)}`}>{getOrderStatusLabel(order.status)}</span>
+                        {isPickupOrder(order) ? (
+                          <span className="badge bg-primary/10 text-primary text-xs">
+                            <MapPin size={11} className="inline mr-0.5" /> Pickup
+                          </span>
+                        ) : (
+                          <span className="badge bg-blue-50 text-blue-600 text-xs">
+                            <Truck size={11} className="inline mr-0.5" /> Delivery
+                          </span>
+                        )}
                         {order.id === liveOrder?.id && <span className="badge bg-primary/10 text-primary text-xs animate-pulse">New!</span>}
                       </div>
                       <p className="text-xs text-brand-muted mt-0.5">
                         {order.user?.firstName} {order.user?.lastName} · {formatDateTime(order.createdAt)}
                       </p>
                       <p className="text-xs text-brand-muted">{order.items?.length} item(s) · <strong>{formatPrice(order.total)}</strong></p>
-                      {order.deliveryAddress && <p className="text-xs text-brand-muted mt-1">📍 {order.deliveryAddress}</p>}
+                      {!isPickupOrder(order) && order.deliveryAddress && <p className="text-xs text-brand-muted mt-1">📍 {order.deliveryAddress}</p>}
                       {order.notes && <p className="text-xs text-brand-muted italic mt-0.5">Note: {order.notes}</p>}
+                      {order.pickupVerifiedAt && (
+                        <p className="text-xs text-accent font-medium mt-1 flex items-center gap-1">
+                          <CheckCircle size={11} /> Picked up at {new Date(order.pickupVerifiedAt).toLocaleTimeString()}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    {/* Verify Pickup Button */}
+                    {canVerifyPickup(order) && (
+                      <button
+                        onClick={() => setVerifyModalOrder(order)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all bg-accent/10 text-accent hover:bg-accent hover:text-white"
+                      >
+                        <QrCode size={14} /> Verify Pickup
+                      </button>
+                    )}
+                    {/* Regular Status Actions */}
                     {STATUS_ACTIONS[order.status]?.map(({ status, label, icon: Icon, color }) => (
                       <button key={status}
                         onClick={() => handleStatusUpdate(order.id, status)}
@@ -134,6 +169,15 @@ export default function VendorOrders() {
             ))}
           </AnimatePresence>
         </div>
+      )}
+
+      {/* Pickup Verification Modal */}
+      {verifyModalOrder && (
+        <PickupVerificationModal
+          order={verifyModalOrder}
+          onClose={() => setVerifyModalOrder(null)}
+          onSuccess={handleVerifySuccess}
+        />
       )}
     </DashboardLayout>
   );

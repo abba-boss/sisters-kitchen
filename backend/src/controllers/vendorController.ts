@@ -7,7 +7,7 @@ import { uploadToCloudinary } from "../utils/helpers";
 
 export const getAllVendors = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { page = 1, limit = 12, search, status } = req.query;
+    const { page = 1, limit = 12, search, status, sort } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
     const vendorRepo = AppDataSource.getRepository(Vendor);
@@ -20,10 +20,18 @@ export const getAllVendors = async (req: Request, res: Response): Promise<void> 
       qb.andWhere("vendor.businessName LIKE :search", { search: `%${search}%` });
     }
 
+    // Sort options
+    if (sort === "rating") {
+      qb.orderBy("vendor.rating", "DESC").addOrderBy("vendor.totalReviews", "DESC");
+    } else if (sort === "popular") {
+      qb.orderBy("vendor.totalOrders", "DESC");
+    } else {
+      qb.orderBy("vendor.createdAt", "DESC");
+    }
+
     const [vendors, total] = await qb
       .skip(skip)
       .take(Number(limit))
-      .orderBy("vendor.createdAt", "DESC")
       .getManyAndCount();
 
     res.json({
@@ -89,6 +97,7 @@ export const updateVendorProfile = async (req: AuthRequest, res: Response): Prom
     const {
       businessName, description, address, phone, whatsapp,
       openingTime, closingTime, availableDays, bankName, accountNumber, accountName,
+      pickupLatitude, pickupLongitude, pickupInstructions,
     } = req.body;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -115,6 +124,9 @@ export const updateVendorProfile = async (req: AuthRequest, res: Response): Prom
       bankName: bankName || vendor.bankName,
       accountNumber: accountNumber || vendor.accountNumber,
       accountName: accountName || vendor.accountName,
+      pickupLatitude: pickupLatitude !== undefined ? Number(pickupLatitude) : vendor.pickupLatitude,
+      pickupLongitude: pickupLongitude !== undefined ? Number(pickupLongitude) : vendor.pickupLongitude,
+      pickupInstructions: pickupInstructions !== undefined ? pickupInstructions : vendor.pickupInstructions,
       logo: logoUrl,
       coverImage: coverUrl,
     });

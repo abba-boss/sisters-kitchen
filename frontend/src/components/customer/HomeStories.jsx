@@ -1,10 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ChevronRight, Plus } from 'lucide-react';
-import { storyService } from '../../services/storyService';
+import { ChevronRight } from 'lucide-react';
 import StoriesBar from '../social/StoriesBar';
-import { useAuthStore } from '../../store/authStore';
 
 export default function HomeStories() {
   return (

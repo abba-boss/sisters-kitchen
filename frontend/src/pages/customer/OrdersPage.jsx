@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, ChevronRight, RefreshCw } from 'lucide-react';
-import MainLayout from '../../components/layout/MainLayout';
+import AppLayout from '../../components/layout/AppLayout';
 import EmptyState from '../../components/common/EmptyState';
 import Pagination from '../../components/common/Pagination';
 import { orderService } from '../../services/orderService';
@@ -46,18 +46,17 @@ export default function OrdersPage() {
   });
 
   return (
-    <MainLayout>
-      <div className="page-container py-10">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div>
-            <h1 className="section-title">My Orders</h1>
-            <p className="text-brand-muted text-sm mt-0.5">{meta.total} orders total</p>
-          </div>
-          <button onClick={fetchOrders}
-            className="flex items-center gap-2 text-sm text-brand-muted hover:text-primary transition-colors px-3 py-2 rounded-xl hover:bg-brand-bg">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </button>
+    <AppLayout hideFooter>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="section-title">My Orders</h1>
+          <p className="text-brand-muted text-sm mt-0.5">{meta.total} orders total</p>
+        </div>
+        <button onClick={fetchOrders}
+          className="flex items-center gap-2 text-sm text-brand-muted hover:text-primary transition-colors px-3 py-2 rounded-xl hover:bg-brand-bg">
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          Refresh
+        </button>
         </div>
 
         {/* Status filter pills */}
@@ -150,7 +149,6 @@ export default function OrdersPage() {
           pages={meta.pages}
           onChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
         />
-      </div>
-    </MainLayout>
+    </AppLayout>
   );
 }

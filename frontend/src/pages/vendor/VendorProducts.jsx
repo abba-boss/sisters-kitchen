@@ -95,7 +95,23 @@ export default function VendorProducts() {
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-brand-dark text-sm mb-1 line-clamp-1">{product.name}</h3>
-                  <p className="text-xs text-brand-muted mb-3">{product.category?.name} · {product.totalOrders} orders</p>
+                  <p className="text-xs text-brand-muted mb-3">
+                    {product.category?.name} · {product.totalOrders} orders
+                    {product.stock !== undefined && (
+                      <>
+                        {' '}·{' '}
+                        <span className={
+                          product.stock === 0 
+                            ? 'text-red-500 font-semibold' 
+                            : product.stock <= 10 
+                              ? 'text-orange-500 font-semibold' 
+                              : 'text-accent'
+                        }>
+                          Stock: {product.stock}
+                        </span>
+                      </>
+                    )}
+                  </p>
                   <div className="flex items-center gap-2">
                     <Link to={`/vendor/products/${product.id}/edit`} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary hover:text-white transition-all">
                       <Edit size={13} /> Edit

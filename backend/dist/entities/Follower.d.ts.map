@@ -1,0 +1,1 @@
+{"version":3,"file":"Follower.d.ts","sourceRoot":"","sources":["../../src/entities/Follower.ts"],"names":[],"mappings":"AAIA,OAAO,EAAE,IAAI,EAAE,MAAQ,QAAQ,CAAC;AAChC,OAAO,EAAE,MAAM,EAAE,MAAM,UAAU,CAAC;AAElC,qBACa,QAAQ;IACa,EAAE,EAAE,MAAM,CAAC;IACqB,QAAQ,EAAE,IAAI,CAAC;IACf,MAAM,EAAE,MAAM,CAAC;IAC3D,SAAS,EAAE,IAAI,CAAC;CACrC"}

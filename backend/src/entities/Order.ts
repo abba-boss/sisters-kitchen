@@ -23,6 +23,11 @@ export enum OrderStatus {
   CANCELLED = "cancelled",
 }
 
+export enum FulfillmentType {
+  DELIVERY = "delivery",
+  PICKUP = "pickup",
+}
+
 @Entity("orders")
 export class Order {
   @PrimaryGeneratedColumn("uuid")
@@ -37,6 +42,25 @@ export class Order {
     default: OrderStatus.PENDING,
   })
   status: OrderStatus;
+
+  @Column({
+    type: "enum",
+    enum: FulfillmentType,
+    default: FulfillmentType.DELIVERY,
+  })
+  fulfillmentType: FulfillmentType;
+
+  @Column({ nullable: true, unique: true })
+  pickupToken: string;
+
+  @Column({ nullable: true })
+  pickupPin: string;
+
+  @Column({ type: "timestamp", nullable: true })
+  pickupVerifiedAt: Date;
+
+  @Column({ nullable: true })
+  pickupVerifiedBy: string;
 
   @Column({ type: "decimal", precision: 10, scale: 2 })
   subtotal: number;

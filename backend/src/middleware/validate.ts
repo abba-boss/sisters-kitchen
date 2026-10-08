@@ -40,7 +40,9 @@ export const validateCreateOrder = [
   body("items").isArray({ min: 1 }).withMessage("At least one item required"),
   body("items.*.productId").isUUID().withMessage("Valid product ID required"),
   body("items.*.quantity").isInt({ min: 1 }).withMessage("Quantity must be at least 1"),
-  body("deliveryAddress").trim().notEmpty().withMessage("Delivery address is required"),
+  body("fulfillmentType").optional().isIn(["delivery", "pickup"]).withMessage("Invalid fulfillment type"),
+  // Conditionally validate deliveryAddress only for delivery orders
+  body("deliveryAddress").if(body("fulfillmentType").equals("delivery")).trim().notEmpty().withMessage("Delivery address is required"),
   handleValidationErrors,
 ];
 

@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { initializePayment, verifyPayment, getMyPayments, getPaymentReceipt } from "../controllers/paymentController";
+import { initializePayment, verifyPayment, getMyPayments, getPaymentReceipt, paystackWebhook } from "../controllers/paymentController";
 import { authenticate } from "../middleware/auth";
 
 const router = Router();
 
 router.post("/initialize", authenticate, initializePayment);
 router.get("/verify/:reference", verifyPayment); // public — Paystack callback
+router.post("/webhook/paystack", paystackWebhook); // public — Paystack webhook
 router.get("/my-payments", authenticate, getMyPayments);
 router.get("/receipt/:id", authenticate, getPaymentReceipt);
 

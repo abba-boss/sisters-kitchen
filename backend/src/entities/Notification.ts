@@ -20,6 +20,11 @@ export enum NotificationType {
   PAYMENT_FAILED = "payment_failed",
   VENDOR_APPROVED = "vendor_approved",
   GENERAL = "general",
+  // V2 social notifications
+  NEW_POST_LIKE = "new_post_like",
+  NEW_POST_COMMENT = "new_post_comment",
+  NEW_FOLLOWER = "new_follower",
+  POST_MENTION = "post_mention",
 }
 
 @Entity("notifications")
