@@ -2,19 +2,14 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Clock } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
-import { useWishlistStore } from '../../store/wishlistStore';
 import { useAuthStore } from '../../store/authStore';
 import { useAuthModalStore } from '../../store/authModalStore';
 import { formatPrice } from '../../utils/formatters';
-import toast from 'react-hot-toast';
+import { cartToasts } from '../../utils/toastConfig.jsx';
 
 export default function ProductCard({ product, compact = false }) {
   const { addToCart } = useCart();
-  const { toggle, isWishlisted } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
-  const openAuth = useAuthModalStore((s) => s.open);
-
-  const wishlisted = isWishlisted(product.id);
   const price = Number(product.discountPrice) || Number(product.price);
   const originalPrice = Number(product.price);
   const hasDiscount = product.discountPrice && Number(product.discountPrice) > 0 && Number(product.discountPrice) < originalPrice;
@@ -28,21 +23,15 @@ export default function ProductCard({ product, compact = false }) {
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product);
-  };
-
-  const handleWishlist = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isAuthenticated) {
-      openAuth('Sign in to save items to your wishlist', () => {
-        toggle(product);
-        toast.success('Added to wishlist');
-      });
+    
+    // Check if product is in stock
+    if (product.stock <= 0) {
+      cartToasts.failed();
       return;
     }
-    toggle(product);
-    toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist');
+    
+    addToCart(product);
+    cartToasts.added(product.name);
   };
 
   return (
@@ -96,16 +85,6 @@ export default function ProductCard({ product, compact = false }) {
               Only {product.stock} left!
             </span>
           )}
-
-          {/* Wishlist button */}
-          <button
-            onClick={handleWishlist}
-            className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
-              wishlisted ? 'bg-primary text-white' : 'bg-white/90 backdrop-blur-sm text-brand-muted hover:bg-primary hover:text-white'
-            }`}
-          >
-            <Heart size={14} fill={wishlisted ? 'currentColor' : 'none'} />
-          </button>
 
           {/* Quick add to cart on hover */}
           {product.stock > 0 && (

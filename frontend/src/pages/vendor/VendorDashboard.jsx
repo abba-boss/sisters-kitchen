@@ -11,6 +11,8 @@ import {
   Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { StatsCardSkeleton } from '../../components/common/SkeletonLoader';
+import { EmptyAnalytics } from '../../components/common/EmptyState';
 import { vendorService } from '../../services/vendorService';
 import { orderService } from '../../services/orderService';
 import { useSocketEvent } from '../../hooks/useSocket';
@@ -163,20 +165,28 @@ export default function VendorDashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {statCards.map(({ label, value, icon: Icon, color, ic, sub }, i) => (
-          <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-            className="card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center`}>
-                <Icon size={20} className={ic} />
+        {loading ? (
+          <>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <StatsCardSkeleton key={i} />
+            ))}
+          </>
+        ) : (
+          statCards.map(({ label, value, icon: Icon, color, ic, sub }, i) => (
+            <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+              className="card p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center`}>
+                  <Icon size={20} className={ic} />
+                </div>
+                <ArrowUpRight size={16} className="text-brand-muted" />
               </div>
-              <ArrowUpRight size={16} className="text-brand-muted" />
-            </div>
-            <p className="font-poppins font-bold text-xl text-brand-dark">{loading ? '…' : value}</p>
-            <p className="text-sm text-brand-muted mt-0.5">{label}</p>
-            <p className="text-xs text-brand-muted/70 mt-0.5">{sub}</p>
-          </motion.div>
-        ))}
+              <p className="font-poppins font-bold text-xl text-brand-dark">{value}</p>
+              <p className="text-sm text-brand-muted mt-0.5">{label}</p>
+              <p className="text-xs text-brand-muted/70 mt-0.5">{sub}</p>
+            </motion.div>
+          ))
+        )}
       </div>
 
       {/* Charts Row */}

@@ -6,7 +6,8 @@ import AppLayout from '../../components/layout/AppLayout';
 import ProductCard from '../../components/common/ProductCard';
 import StoriesCarousel from '../../components/social/StoriesCarousel';
 import WhatsCooking from '../../components/customer/WhatsKooking';
-import EmptyState from '../../components/common/EmptyState';
+import { EmptySearchResults } from '../../components/common/EmptyState';
+import { ProductCardSkeleton } from '../../components/common/SkeletonLoader';
 import { productService } from '../../services/productService';
 import { ShoppingBag } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -115,18 +116,16 @@ export default function ProductsPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-orange-100 p-4 animate-pulse">
-              <div className="aspect-[4/3] bg-gray-200 rounded-xl mb-3" />
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-              <div className="h-3 bg-gray-200 rounded w-1/2" />
-            </div>
+            <ProductCardSkeleton key={i} />
           ))}
         </div>
       ) : products.length === 0 ? (
-        <EmptyState
-          icon={ShoppingBag}
-          title="No products found"
-          message="Try adjusting your search"
+        <EmptySearchResults 
+          query={search}
+          onClear={() => {
+            setSearchParams({});
+            setLocalSearch('');
+          }}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">

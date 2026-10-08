@@ -4,11 +4,9 @@ import { motion } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Star, Clock, Heart, ShoppingCart, Flame, Award, Zap, CheckCircle } from 'lucide-react';
 import { productService } from '../../services/productService';
 import { useCart } from '../../hooks/useCart';
-import { useWishlistStore } from '../../store/wishlistStore';
-import { useAuthStore } from '../../store/authStore';
-import { useAuthModalStore } from '../../store/authModalStore';
-import { favoriteService } from '../../services/favoriteService';
 import { formatPrice } from '../../utils/formatters';
+import { ProductCardSkeleton } from '../common/SkeletonLoader';
+import { CompactEmptyState } from '../common/EmptyState';
 import toast from 'react-hot-toast';
 
 const BADGE_MAP = {
@@ -22,9 +20,6 @@ export default function HomeTrending() {
   const [loading,  setLoading]  = useState(true);
   const scrollRef = useRef(null);
   const { addToCart }  = useCart();
-  const { toggle, isWishlisted } = useWishlistStore();
-  const { isAuthenticated } = useAuthStore();
-  const openAuth = useAuthModalStore((s) => s.open);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -69,9 +64,18 @@ export default function HomeTrending() {
         {loading ? (
           <div className="flex gap-4 overflow-hidden">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex-shrink-0 w-[18.5rem] skeleton rounded-[1.75rem] h-[22rem]" />
+              <div key={i} className="flex-shrink-0 w-[18.5rem]">
+                <ProductCardSkeleton />
+              </div>
             ))}
           </div>
+        ) : products.length === 0 ? (
+          <CompactEmptyState
+            icon="search"
+            message="No trending products available right now. Check back soon!"
+            action={() => navigate('/products')}
+            actionLabel="Browse All Products"
+          />
         ) : (
           <div
             ref={scrollRef}
@@ -84,19 +88,6 @@ export default function HomeTrending() {
                 badge={BADGE_MAP[i]}
                 index={i}
                 onAdd={() => addToCart(product)}
-                wishlisted={isWishlisted(product.id)}
-                onWishlist={() => {
-                  if (!isAuthenticated) { openAuth('Sign in to save items'); return; }
-                  toggle(product);
-                  favoriteService.toggle(product.id)
-                    .then(({ data }) => {
-                      toast.success(data.isFavorite ? 'Saved ❤️' : 'Removed', { id: `wl-${product.id}` });
-                    })
-                    .catch(() => {
-                      toggle(product);
-                      toast.error('Could not update wishlist', { id: `wl-${product.id}` });
-                    });
-                }}
               />
             ))}
           </div>
@@ -106,7 +97,7 @@ export default function HomeTrending() {
   );
 }
 
-function TrendingCard({ product, badge, index, onAdd, wishlisted, onWishlist }) {
+function TrendingCard({ product, badge, index, onAdd }) {
   const navigate = useNavigate();
   const price    = Number(product.discountPrice) || Number(product.price);
 
@@ -156,15 +147,6 @@ function TrendingCard({ product, badge, index, onAdd, wishlisted, onWishlist }) 
             </div>
           </div>
         </div>
-        {/* Wishlist */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onWishlist(); }}
-          className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow transition-all backdrop-blur-sm ${
-            wishlisted ? 'bg-primary text-white' : 'bg-white/90 text-brand-muted hover:bg-primary hover:text-white'
-          }`}
-        >
-          <Heart size={14} fill={wishlisted ? 'currentColor' : 'none'} />
-        </button>
       </div>
 
       {/* Info */}

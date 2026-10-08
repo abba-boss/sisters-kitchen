@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ShoppingCart, Heart, Star, Clock, Minus, Plus,
+  ShoppingCart, Star, Clock, Minus, Plus,
   Store, ChevronRight, Flame, Share2, CheckCircle
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
@@ -11,7 +11,6 @@ import StarRating from '../../components/common/StarRating';
 import { productService } from '../../services/productService';
 import { reviewService } from '../../services/reviewService';
 import { useCart } from '../../hooks/useCart';
-import { useWishlistStore } from '../../store/wishlistStore';
 import { useAuthStore } from '../../store/authStore';
 import { useAuthModalStore } from '../../store/authModalStore';
 import { formatPrice, formatDate } from '../../utils/formatters';
@@ -29,7 +28,6 @@ export default function ProductDetailPage() {
   const [ratingFilter, setRatingFilter] = useState(0);
 
   const { addToCart } = useCart();
-  const { toggle, isWishlisted } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
   const openAuth = useAuthModalStore((s) => s.open);
 
@@ -52,7 +50,6 @@ export default function ProductDetailPage() {
 
   const images = product.images?.length ? product.images : ['https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600'];
   const price = Number(product.discountPrice) || Number(product.price);
-  const wishlisted = isWishlisted(product.id);
   const discountPct = product.discountPrice
     ? Math.round(((Number(product.price) - Number(product.discountPrice)) / Number(product.price)) * 100)
     : 0;
@@ -72,18 +69,6 @@ export default function ProductDetailPage() {
       setAddedToCart(true);
       setTimeout(() => setAddedToCart(false), 2000);
     }
-  };
-
-  const handleWishlist = () => {
-    if (!isAuthenticated) {
-      openAuth('Sign in to save items to your wishlist', () => {
-        toggle(product);
-        toast.success('Added to wishlist');
-      });
-      return;
-    }
-    toggle(product);
-    toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist');
   };
 
   const handleShare = () => {
@@ -173,15 +158,9 @@ export default function ProductDetailPage() {
                   {product.name}
                 </h1>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
-                <button onClick={handleWishlist}
-                  className={`p-2.5 rounded-2xl transition-all ${wishlisted ? 'bg-primary text-white' : 'bg-brand-bg text-brand-muted hover:bg-primary/10 hover:text-primary'}`}>
-                  <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} />
-                </button>
-                <button onClick={handleShare} className="p-2.5 rounded-2xl bg-brand-bg text-brand-muted hover:bg-primary/10 hover:text-primary transition-all">
-                  <Share2 size={18} />
-                </button>
-              </div>
+              <button onClick={handleShare} className="p-2.5 rounded-2xl bg-brand-bg text-brand-muted hover:bg-primary/10 hover:text-primary transition-all flex-shrink-0">
+                <Share2 size={18} />
+              </button>
             </div>
 
             {/* Vendor */}

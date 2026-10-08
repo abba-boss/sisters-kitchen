@@ -3,16 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart,
-  Heart,
   Search,
-  Bell,
-  User,
-  ChevronDown,
   LogOut,
-  Settings,
-  Package,
-  LayoutDashboard,
-  Coins,
+  User,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
@@ -44,12 +37,6 @@ export default function Navbar() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const getDashboardLink = () => {
-    if (user?.role === 'admin') return '/admin/dashboard';
-    if (user?.role === 'vendor') return '/vendor/dashboard';
-    return '/profile';
-  };
 
   return (
     <nav
@@ -100,16 +87,6 @@ export default function Navbar() {
               <Search size={20} />
             </button>
 
-            {/* Wishlist */}
-            {isAuthenticated && (
-              <Link
-                to="/wishlist"
-                className="hidden sm:flex w-10 h-10 items-center justify-center text-brand-muted hover:text-primary transition-colors relative"
-              >
-                <Heart size={20} />
-              </Link>
-            )}
-
             {/* Cart */}
             <Link
               to="/cart"
@@ -131,23 +108,15 @@ export default function Navbar() {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-brand-bg transition-colors"
+                  className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-primary/20 transition-all"
                 >
-                  <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
-                    {user?.avatar ? (
-                      <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-primary font-semibold text-sm">
-                        {user?.firstName?.[0]}
-                      </span>
-                    )}
-                  </div>
-                  <ChevronDown
-                    size={16}
-                    className={`hidden sm:block text-brand-muted transition-transform ${
-                      dropdownOpen ? 'rotate-180' : ''
-                    }`}
-                  />
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-primary font-semibold text-sm">
+                      {user?.firstName?.[0]}
+                    </span>
+                  )}
                 </button>
 
                 <AnimatePresence>
@@ -156,54 +125,18 @@ export default function Navbar() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-lg border border-orange-100 py-2 overflow-hidden"
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-lg border border-orange-100 py-2 overflow-hidden"
                     >
                       {/* User Info */}
                       <div className="px-4 py-3 border-b border-orange-100">
-                        <p className="font-semibold text-brand-dark">
+                        <p className="font-semibold text-brand-dark text-sm">
                           {user?.firstName} {user?.lastName}
                         </p>
-                        <p className="text-sm text-brand-muted">{user?.email}</p>
+                        <p className="text-xs text-brand-muted">{user?.email}</p>
                       </div>
 
-                      {/* Menu Items */}
+                      {/* Logout Only */}
                       <div className="py-2">
-                        <Link
-                          to={getDashboardLink()}
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-bg transition-colors"
-                          onClick={() => setDropdownOpen(false)}
-                        >
-                          <LayoutDashboard size={18} className="text-brand-muted" />
-                          <span className="text-sm text-brand-dark">Dashboard</span>
-                        </Link>
-                        <Link
-                          to="/orders"
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-bg transition-colors"
-                          onClick={() => setDropdownOpen(false)}
-                        >
-                          <Package size={18} className="text-brand-muted" />
-                          <span className="text-sm text-brand-dark">My Orders</span>
-                        </Link>
-                        <Link
-                          to="/rewards"
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-bg transition-colors"
-                          onClick={() => setDropdownOpen(false)}
-                        >
-                          <Coins size={18} className="text-brand-muted" />
-                          <span className="text-sm text-brand-dark">Rewards</span>
-                        </Link>
-                        <Link
-                          to="/profile"
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-bg transition-colors"
-                          onClick={() => setDropdownOpen(false)}
-                        >
-                          <Settings size={18} className="text-brand-muted" />
-                          <span className="text-sm text-brand-dark">Settings</span>
-                        </Link>
-                      </div>
-
-                      {/* Logout */}
-                      <div className="border-t border-orange-100 pt-2">
                         <button
                           onClick={() => {
                             logout();

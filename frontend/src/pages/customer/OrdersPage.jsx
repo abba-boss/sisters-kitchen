@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, ChevronRight, RefreshCw } from 'lucide-react';
 import AppLayout from '../../components/layout/AppLayout';
-import EmptyState from '../../components/common/EmptyState';
+import { EmptyOrders } from '../../components/common/EmptyState';
+import { OrderCardSkeleton } from '../../components/common/SkeletonLoader';
 import Pagination from '../../components/common/Pagination';
 import { orderService } from '../../services/orderService';
 import { useSocketEvent } from '../../hooks/useSocket';
@@ -76,16 +77,12 @@ export default function OrdersPage() {
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="card p-5 h-24 skeleton" />
+              <OrderCardSkeleton key={i} />
             ))}
           </div>
         ) : orders.length === 0 ? (
-          <EmptyState
-            icon={Package}
-            title="No orders found"
-            message="You haven't placed any orders yet."
-            actionLabel="Order Now"
-            actionTo="/products"
+          <EmptyOrders 
+            onBrowse={() => window.location.href = '/products'}
           />
         ) : (
           <div className="space-y-3">

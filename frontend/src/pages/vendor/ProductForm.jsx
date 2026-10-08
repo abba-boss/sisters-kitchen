@@ -6,6 +6,7 @@ import {
   AlertCircle, Loader, CheckCircle2, Star, Flame
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { PageLoader, OverlayLoader } from '../../components/common/LoadingSpinner';
 import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
 import { uploadImage } from '../../services/cloudinaryService';
@@ -215,9 +216,7 @@ export default function ProductForm() {
   if (pageLoading) {
     return (
       <DashboardLayout>
-        <div className="max-w-2xl mx-auto space-y-4 animate-pulse">
-          {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-16 bg-orange-50 rounded-2xl" />)}
-        </div>
+        <PageLoader message="Loading product details..." />
       </DashboardLayout>
     );
   }

@@ -6,7 +6,7 @@ import {
   Clock, Truck, XCircle, Wifi, WifiOff
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
-import { PageLoader } from '../../components/common/LoadingSkeleton';
+import { PageLoader } from '../../components/common/LoadingSpinner';
 import PickupOrderCard from '../../components/customer/PickupOrderCard';
 import { orderService } from '../../services/orderService';
 import { joinOrderRoom, leaveOrderRoom } from '../../services/socketService';

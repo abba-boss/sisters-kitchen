@@ -3,12 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CreditCard, Truck, ShoppingBag, Store, MapPin } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
+import { ButtonLoader } from '../../components/common/LoadingSpinner';
 import { useCart } from '../../hooks/useCart';
 import { useAuthStore } from '../../store/authStore';
 import { orderService } from '../../services/orderService';
 import { paymentService } from '../../services/paymentService';
 import { formatPrice } from '../../utils/formatters';
-import toast from 'react-hot-toast';
+import toastHelper, { orderToasts, errorMessages } from '../../utils/toastConfig.jsx';
 
 const PAYMENT_METHODS = [
   { value: 'paystack',          label: 'Pay Online (Paystack)',   icon: CreditCard },
@@ -55,13 +56,13 @@ export default function CheckoutPage() {
     
     // Validate delivery address only if delivery is selected
     if (form.fulfillmentType === 'delivery' && !form.deliveryAddress.trim()) {
-      toast.error('Please enter your delivery address');
+      toastHelper.error(errorMessages.missingFields);
       return;
     }
     
     // Validate vendor has pickup location if pickup is selected
     if (form.fulfillmentType === 'pickup' && groupsToCheckout.length > 1) {
-      toast.error('Pickup orders can only be placed with one vendor at a time');
+      toastHelper.error('Pickup orders can only be placed with one vendor at a time');
       return;
     }
     
@@ -85,16 +86,18 @@ export default function CheckoutPage() {
           const { data } = await orderService.create(orderData);
           orderIds.push(data.data.id);
         } catch (orderError) {
-          // Handle stock errors specifically
-          const errorMsg = orderError.response?.data?.message || 'Failed to create order';
-          if (errorMsg.includes('Insufficient stock')) {
-            toast.error(errorMsg, { duration: 5000 });
-          } else if (errorMsg.includes('not found')) {
-            toast.error('One or more products are no longer available');
-          } else if (errorMsg.includes('does not offer pickup')) {
-            toast.error('This vendor does not offer pickup service. Please choose delivery.');
+          // Use user-friendly error message from API interceptor
+          const errorMsg = orderError.userMessage || orderError.response?.data?.message;
+          
+          // Handle specific error cases
+          if (errorMsg && errorMsg.includes('Insufficient stock')) {
+            toastHelper.error(errorMsg, { duration: 5000 });
+          } else if (errorMsg && errorMsg.includes('not found')) {
+            toastHelper.error('One or more products are no longer available');
+          } else if (errorMsg && errorMsg.includes('does not offer pickup')) {
+            toastHelper.error('This vendor does not offer pickup service. Please choose delivery.');
           } else {
-            toast.error(errorMsg);
+            toastHelper.error(errorMsg || errorMessages.orderFailed);
           }
           setLoading(false);
           return; // Stop processing if any order fails
@@ -115,7 +118,7 @@ export default function CheckoutPage() {
 
           window.location.href = payRes.data.authorizationUrl;
         } catch (paymentError) {
-          toast.error('Payment initialization failed. Please try again.');
+          toastHelper.error(errorMessages.paymentFailed);
           setLoading(false);
           return;
         }
@@ -132,15 +135,15 @@ export default function CheckoutPage() {
         else clearCart();
 
         if (form.paymentMethod === 'paystack' && orderIds.length > 1) {
-          toast.success(`${orderIds.length} orders placed! Online payment for multiple vendors coming soon.`);
+          toastHelper.success(`${orderIds.length} orders placed! Online payment for multiple vendors coming soon.`, { duration: 6000 });
         } else {
-          toast.success(`Order${orderIds.length > 1 ? 's' : ''} placed successfully! 🎉`);
+          orderToasts.placed();
         }
 
         navigate(orderIds.length === 1 ? `/orders/${orderIds[0]}` : '/orders');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to place order');
+      toastHelper.error(err.userMessage || err.response?.data?.message || errorMessages.orderFailed);
     } finally {
       setLoading(false);
     }
@@ -307,13 +310,10 @@ export default function CheckoutPage() {
 
             <button
               type="submit" disabled={loading}
-              className="btn-primary w-full flex items-center justify-center gap-2 py-4 text-base"
+              className="btn-primary w-full flex items-center justify-center gap-2 py-4 text-base disabled:opacity-70"
             >
               {loading ? (
-                <>
-                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Placing Order…
-                </>
+                <ButtonLoader />
               ) : (
                 `Place Order${groupsToCheckout.length > 1 ? 's' : ''} — ${formatPrice(total)}`
               )}

@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, CheckCircle, XCircle, Clock, Wifi, QrCode, MapPin, Truck } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import EmptyState from '../../components/common/EmptyState';
+import { EmptyOrders } from '../../components/common/EmptyState';
+import { OrderCardSkeleton } from '../../components/common/SkeletonLoader';
 import PickupVerificationModal from '../../components/vendor/PickupVerificationModal';
 import { orderService } from '../../services/orderService';
 import { useSocketEvent } from '../../hooks/useSocket';
@@ -97,9 +98,16 @@ export default function VendorOrders() {
       </div>
 
       {loading ? (
-        <div className="space-y-4">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton h-28 rounded-2xl" />)}</div>
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <OrderCardSkeleton key={i} />
+          ))}
+        </div>
       ) : orders.length === 0 ? (
-        <EmptyState icon={ShoppingBag} title="No orders" message="New orders will appear here in real-time." />
+        <EmptyOrders 
+          isVendor={true}
+          onBrowse={() => window.location.href = '/vendor/products'}
+        />
       ) : (
         <div className="space-y-4">
           <AnimatePresence initial={false}>

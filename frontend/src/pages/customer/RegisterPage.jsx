@@ -207,26 +207,27 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-brand-dark mb-1 block">Phone</label>
-              <div className="relative">
-                <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted" />
-                <input type="tel" name="phone" value={form.phone} onChange={handleChange}
-                  placeholder="+234 ..." className="input-field pl-10 text-sm" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-brand-dark mb-1 block">Phone</label>
+                <div className="relative">
+                  <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted" />
+                  <input type="tel" name="phone" value={form.phone} onChange={handleChange}
+                    placeholder="+234 ..." className="input-field pl-10 text-sm" />
+                </div>
               </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-brand-dark mb-1 block">Password *</label>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted" />
-                <input type={showPwd ? 'text' : 'password'} name="password" value={form.password}
-                  onChange={handleChange} placeholder="Min. 6 characters"
-                  className="input-field pl-10 pr-10 text-sm" />
-                <button type="button" onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-primary transition-colors">
-                  {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
+              <div>
+                <label className="text-xs font-medium text-brand-dark mb-1 block">Password *</label>
+                <div className="relative">
+                  <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted" />
+                  <input type={showPwd ? 'text' : 'password'} name="password" value={form.password}
+                    onChange={handleChange} placeholder="Min. 6 characters"
+                    className="input-field pl-10 pr-10 text-sm" />
+                  <button type="button" onClick={() => setShowPwd(!showPwd)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-primary transition-colors">
+                    {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
               </div>
             </div>
 

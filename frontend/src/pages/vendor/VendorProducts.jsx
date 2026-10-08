@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Edit, Trash2, Eye, EyeOff, Package } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import EmptyState from '../../components/common/EmptyState';
+import { EmptyProducts } from '../../components/common/EmptyState';
+import { ProductCardSkeleton } from '../../components/common/SkeletonLoader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { productService } from '../../services/productService';
 import { formatPrice } from '../../utils/formatters';
@@ -74,10 +75,14 @@ export default function VendorProducts() {
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-56 rounded-2xl" />)}
+          {Array.from({ length: 6 }).map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
         </div>
       ) : products.length === 0 ? (
-        <EmptyState icon={Package} title="No products yet" message="Start adding your delicious dishes!" actionLabel="Add First Product" actionTo="/vendor/products/new" />
+        <EmptyProducts 
+          onAdd={() => window.location.href = '/vendor/products/new'}
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {products.map((product, i) => {

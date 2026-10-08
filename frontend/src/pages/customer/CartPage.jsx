@@ -6,7 +6,7 @@ import {
   Store, Lock, ShieldCheck, ChevronRight
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
-import EmptyState from '../../components/common/EmptyState';
+import { EmptyCart } from '../../components/common/EmptyState';
 import { useCart } from '../../hooks/useCart';
 import { useAuthStore } from '../../store/authStore';
 import { useAuthModalStore } from '../../store/authModalStore';
@@ -49,12 +49,8 @@ export default function CartPage() {
         </div>
 
         {items.length === 0 ? (
-          <EmptyState
-            icon={ShoppingCart}
-            title="Your cart is empty"
-            message="Add some delicious homemade food to your cart!"
-            actionLabel="Browse Food"
-            actionTo="/products"
+          <EmptyCart 
+            onBrowse={() => navigate('/products')}
           />
         ) : (
           <div className="grid lg:grid-cols-3 gap-8">

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Check, Trash2, ExternalLink } from 'lucide-react';
+import { Bell, Check, Trash2 } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
 import { useAuthStore } from '../../store/authStore';
 import { notificationService } from '../../services/notificationService';
@@ -34,6 +34,7 @@ const TYPE_EMOJI = {
 export default function NotificationDropdown() {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const {
     notifications, unreadCount, setNotifications,
@@ -56,6 +57,29 @@ export default function NotificationDropdown() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  const handleNotificationClick = (notification) => {
+    // Mark as read
+    markAsRead(notification.id);
+    notificationService.markAsRead(notification.id).catch(() => {});
+    
+    // Navigate based on notification type
+    setOpen(false);
+    
+    if (notification.type?.includes('order')) {
+      // Order-related notifications go to orders page
+      navigate('/orders');
+    } else if (notification.type?.includes('message') || notification.type?.includes('comment')) {
+      // Message/comment notifications go to messages
+      navigate('/messages');
+    } else if (notification.type?.includes('post') || notification.type?.includes('follower')) {
+      // Social notifications go to feed
+      navigate('/feed');
+    } else {
+      // Default: go to notifications page
+      navigate('/notifications');
+    }
+  };
 
   const handleMarkRead = async (id, e) => {
     e.stopPropagation();
@@ -116,17 +140,11 @@ export default function NotificationDropdown() {
                   </span>
                 )}
               </h3>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <button onClick={handleMarkAll} className="text-xs text-primary hover:underline font-medium">
-                    Mark all read
-                  </button>
-                )}
-                <Link to="/notifications" onClick={() => setOpen(false)}
-                  className="text-brand-muted hover:text-primary transition-colors p-1">
-                  <ExternalLink size={14} />
-                </Link>
-              </div>
+              {unreadCount > 0 && (
+                <button onClick={handleMarkAll} className="text-xs text-primary hover:underline font-medium">
+                  Mark all read
+                </button>
+              )}
             </div>
 
             {/* List */}
@@ -140,9 +158,10 @@ export default function NotificationDropdown() {
                 </div>
               ) : (
                 notifications.slice(0, 12).map((n) => (
-                  <div
+                  <button
                     key={n.id}
-                    className={`flex items-start gap-3 px-4 py-3 transition-colors border-b border-orange-50/60 last:border-0 ${
+                    onClick={() => handleNotificationClick(n)}
+                    className={`w-full flex items-start gap-3 px-4 py-3 transition-colors border-b border-orange-50/60 last:border-0 text-left ${
                       !n.isRead ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-brand-bg/50'
                     }`}
                   >
@@ -172,17 +191,22 @@ export default function NotificationDropdown() {
                         <Trash2 size={11} />
                       </button>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
 
             {notifications.length > 12 && (
               <div className="p-3 border-t border-orange-50 text-center">
-                <Link to="/notifications" onClick={() => setOpen(false)}
-                  className="text-xs text-primary hover:underline font-medium">
+                <button
+                  onClick={() => {
+                    navigate('/notifications');
+                    setOpen(false);
+                  }}
+                  className="text-xs text-primary hover:underline font-medium"
+                >
                   View all {notifications.length} notifications →
-                </Link>
+                </button>
               </div>
             )}
           </motion.div>
