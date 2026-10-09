@@ -47,7 +47,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       const vendor = vendorRepo.create({
         businessName: req.body.businessName || `${firstName}'s Kitchen`,
         user,
-        status: VendorStatus.PENDING,
+        status: VendorStatus.APPROVED, // Auto-approve for development
+        isOpen: true, // Start with shop open
       });
       await vendorRepo.save(vendor);
     }
