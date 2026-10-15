@@ -85,15 +85,16 @@ export default function AdminUsers() {
         <EmptyState icon={Users} title="No users found" message="No users match your current filters." />
       ) : (
         <>
-          <div className="card overflow-hidden mb-4">
+          {/* Desktop Table (hidden on mobile) */}
+          <div className="hidden md:block card overflow-hidden mb-4">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-brand-bg">
                   <tr className="text-brand-muted text-xs font-semibold uppercase">
                     <th className="text-left px-4 py-3">User</th>
-                    <th className="text-left px-4 py-3 hidden sm:table-cell">Email</th>
+                    <th className="text-left px-4 py-3">Email</th>
                     <th className="text-left px-4 py-3">Role</th>
-                    <th className="text-left px-4 py-3 hidden md:table-cell">Joined</th>
+                    <th className="text-left px-4 py-3 hidden lg:table-cell">Joined</th>
                     <th className="text-right px-4 py-3">Status</th>
                   </tr>
                 </thead>
@@ -109,11 +110,11 @@ export default function AdminUsers() {
                           <span className="font-medium text-brand-dark">{u.firstName} {u.lastName}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-brand-muted hidden sm:table-cell">{u.email}</td>
+                      <td className="px-4 py-3 text-brand-muted">{u.email}</td>
                       <td className="px-4 py-3">
                         <span className={`badge ${roleStyles[u.role] || 'badge-warning'} capitalize`}>{u.role}</span>
                       </td>
-                      <td className="px-4 py-3 text-brand-muted text-xs hidden md:table-cell">{formatDate(u.createdAt)}</td>
+                      <td className="px-4 py-3 text-brand-muted text-xs hidden lg:table-cell">{formatDate(u.createdAt)}</td>
                       <td className="px-4 py-3 text-right">
                         <button onClick={() => handleToggle(u.id)} disabled={updating === u.id}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold ml-auto transition-all disabled:opacity-60 ${
@@ -131,6 +132,53 @@ export default function AdminUsers() {
               </table>
             </div>
           </div>
+
+          {/* Mobile Cards (visible on mobile only) */}
+          <div className="md:hidden space-y-3 mb-4">
+            {users.map((u, i) => (
+              <motion.div
+                key={u.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.025 }}
+                className="card p-4"
+              >
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold text-sm">{u.firstName?.[0]}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-brand-dark truncate">{u.firstName} {u.lastName}</p>
+                      <p className="text-xs text-brand-muted truncate">{u.email}</p>
+                    </div>
+                  </div>
+                  <span className={`badge ${roleStyles[u.role] || 'badge-warning'} capitalize flex-shrink-0`}>
+                    {u.role}
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between pt-3 border-t border-orange-50">
+                  <span className="text-xs text-brand-muted">
+                    Joined {formatDate(u.createdAt)}
+                  </span>
+                  <button
+                    onClick={() => handleToggle(u.id)}
+                    disabled={updating === u.id}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-60 ${
+                      u.isActive
+                        ? 'bg-accent/10 text-accent hover:bg-accent hover:text-white active:scale-95'
+                        : 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white active:scale-95'
+                    }`}
+                  >
+                    {u.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                    {u.isActive ? 'Active' : 'Inactive'}
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
           <Pagination page={page} pages={meta.pages} onChange={(p) => { setPage(p); window.scrollTo(0, 0); }} />
         </>
       )}

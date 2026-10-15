@@ -93,7 +93,7 @@ export default function VendorPosts() {
           >
             <h3 className="font-semibold text-brand-dark mb-4">Create New Post</h3>
             <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {POST_TYPES.slice(1).map(({ value, label }) => (
                   <button
                     key={value}

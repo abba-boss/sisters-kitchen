@@ -91,7 +91,7 @@ export default function PostEditPage() {
               {/* Post type */}
               <div>
                 <label className="block text-sm font-semibold text-brand-dark mb-2">Post Type</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {POST_TYPES.map(({ value, label }) => (
                     <button
                       key={value}

@@ -61,6 +61,7 @@ import DailyRewardModal from './components/social/DailyRewardModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/common/OfflineBanner';
 import ScrollToTop from './components/common/ScrollToTop';
+import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 
 // ─── Socket + Notification wiring ────────────────────────────
 function AppProviders() {
@@ -137,6 +138,7 @@ export default function App() {
       <ScrollToTop />
       <AuthModal />
       <DailyRewardModal />
+      <PWAInstallPrompt />
       <AppProviders />
 
       <Routes>

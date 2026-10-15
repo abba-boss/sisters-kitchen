@@ -406,7 +406,7 @@ export default function ProductForm() {
             </div>
 
             {/* Price */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-brand-dark mb-1.5 block">
                   Price (₦) <span className="text-red-500">*</span>
@@ -449,7 +449,7 @@ export default function ProductForm() {
             </div>
 
             {/* Category + Prep */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-brand-dark mb-1.5 block">Category</label>
                 <select

@@ -48,7 +48,7 @@ export default function AdminAnalytics() {
       <h1 className="font-poppins font-bold text-2xl text-brand-dark mb-8">Platform Analytics</h1>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {statCards.map(({ label, value, icon: Icon, color, ic }, i) => (
           <motion.div key={label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
             className="card p-5">
@@ -136,30 +136,62 @@ export default function AdminAnalytics() {
         {topVendors.length === 0 ? (
           <p className="text-brand-muted text-sm text-center py-6">No vendor data yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-brand-muted text-xs font-semibold uppercase border-b border-orange-50">
-                  <th className="text-left pb-3">#</th>
-                  <th className="text-left pb-3">Vendor</th>
-                  <th className="text-right pb-3">Orders</th>
-                  <th className="text-right pb-3">Rating</th>
-                  <th className="text-right pb-3">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-orange-50">
-                {topVendors.map((v, i) => (
-                  <tr key={v.vendorId} className="hover:bg-brand-bg/50">
-                    <td className="py-3 text-brand-muted font-bold">{i + 1}</td>
-                    <td className="py-3 font-medium text-brand-dark">{v.businessName}</td>
-                    <td className="py-3 text-right text-brand-muted">{v.totalOrders}</td>
-                    <td className="py-3 text-right text-yellow-500 font-medium">{Number(v.rating || 0).toFixed(1)} ★</td>
-                    <td className="py-3 text-right font-semibold text-accent">{formatPrice(v.totalEarnings)}</td>
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-brand-muted text-xs font-semibold uppercase border-b border-orange-50">
+                    <th className="text-left pb-3">#</th>
+                    <th className="text-left pb-3">Vendor</th>
+                    <th className="text-right pb-3">Orders</th>
+                    <th className="text-right pb-3">Rating</th>
+                    <th className="text-right pb-3">Revenue</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-orange-50">
+                  {topVendors.map((v, i) => (
+                    <tr key={v.vendorId} className="hover:bg-brand-bg/50">
+                      <td className="py-3 text-brand-muted font-bold">{i + 1}</td>
+                      <td className="py-3 font-medium text-brand-dark">{v.businessName}</td>
+                      <td className="py-3 text-right text-brand-muted">{v.totalOrders}</td>
+                      <td className="py-3 text-right text-yellow-500 font-medium">{Number(v.rating || 0).toFixed(1)} ★</td>
+                      <td className="py-3 text-right font-semibold text-accent">{formatPrice(v.totalEarnings)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-3">
+              {topVendors.map((v, i) => (
+                <div key={v.vendorId} className="p-4 rounded-xl bg-brand-bg border border-orange-50">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                        {i + 1}
+                      </span>
+                      <div>
+                        <p className="font-semibold text-brand-dark">{v.businessName}</p>
+                        <p className="text-xs text-yellow-500 font-medium">{Number(v.rating || 0).toFixed(1)} ★</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-orange-100">
+                    <div>
+                      <p className="text-xs text-brand-muted mb-0.5">Orders</p>
+                      <p className="font-semibold text-brand-dark">{v.totalOrders}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-brand-muted mb-0.5">Revenue</p>
+                      <p className="font-semibold text-accent">{formatPrice(v.totalEarnings)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </DashboardLayout>

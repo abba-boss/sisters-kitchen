@@ -85,14 +85,15 @@ export default function AdminVendors() {
         <div className="space-y-3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-16 rounded-2xl" />)}</div>
       ) : (
         <>
-          <div className="card overflow-hidden mb-4">
+          {/* Desktop Table */}
+          <div className="hidden md:block card overflow-hidden mb-4">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-brand-bg">
                   <tr className="text-brand-muted text-xs font-semibold uppercase">
                     <th className="text-left px-4 py-3">Vendor</th>
-                    <th className="text-left px-4 py-3 hidden sm:table-cell">Owner</th>
-                    <th className="text-left px-4 py-3 hidden md:table-cell">Rating</th>
+                    <th className="text-left px-4 py-3">Owner</th>
+                    <th className="text-left px-4 py-3 hidden lg:table-cell">Rating</th>
                     <th className="text-left px-4 py-3">Status</th>
                     <th className="text-left px-4 py-3 hidden lg:table-cell">Joined</th>
                     <th className="text-right px-4 py-3">Actions</th>
@@ -117,11 +118,11 @@ export default function AdminVendors() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
+                      <td className="px-4 py-3">
                         <p className="text-brand-dark text-sm">{v.user?.firstName} {v.user?.lastName}</p>
                         <p className="text-xs text-brand-muted">{v.user?.email}</p>
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell text-yellow-500 font-medium text-sm">
+                      <td className="px-4 py-3 hidden lg:table-cell text-yellow-500 font-medium text-sm">
                         {Number(v.rating || 0).toFixed(1)} ★
                         <p className="text-xs text-brand-muted font-normal">{v.totalReviews} reviews</p>
                       </td>
@@ -155,6 +156,88 @@ export default function AdminVendors() {
             </div>
             {filtered.length === 0 && <p className="text-center text-brand-muted text-sm py-10">No vendors found.</p>}
           </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-3 mb-4">
+            {filtered.map((v, i) => (
+              <motion.div
+                key={v.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                className="card p-4"
+              >
+                {/* Vendor Header */}
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    {v.logo ? (
+                      <img src={v.logo} alt={v.businessName} className="w-full h-full object-cover rounded-full" />
+                    ) : (
+                      <span className="font-bold text-primary text-lg">{v.businessName?.[0]}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-brand-dark">{v.businessName}</h3>
+                    {v.address && <p className="text-xs text-brand-muted line-clamp-1">{v.address}</p>}
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`badge ${statusStyles[v.status] || 'badge-warning'} capitalize text-xs`}>
+                        {v.status}
+                      </span>
+                      <span className="text-xs text-yellow-500 font-medium">
+                        {Number(v.rating || 0).toFixed(1)} ★
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Owner Info */}
+                <div className="py-3 border-y border-orange-50 space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-brand-muted">Owner:</span>
+                    <span className="font-medium text-brand-dark">{v.user?.firstName} {v.user?.lastName}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-brand-muted">Email:</span>
+                    <span className="text-brand-dark truncate ml-2">{v.user?.email}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-brand-muted">Joined:</span>
+                    <span className="text-brand-dark">{formatDate(v.createdAt)}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 pt-3">
+                  <Link
+                    to={`/vendors/${v.id}`}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-brand-bg text-brand-dark hover:bg-primary/10 hover:text-primary transition-all text-sm font-semibold"
+                  >
+                    <Eye size={14} /> View Store
+                  </Link>
+                  {v.status !== 'approved' && (
+                    <button
+                      onClick={() => handleApproval(v.id, 'approved')}
+                      disabled={updating === v.id}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-accent/10 text-accent hover:bg-accent hover:text-white transition-all text-sm font-semibold active:scale-95"
+                    >
+                      <CheckCircle size={14} /> Approve
+                    </button>
+                  )}
+                  {v.status !== 'suspended' && (
+                    <button
+                      onClick={() => handleApproval(v.id, 'suspended')}
+                      disabled={updating === v.id}
+                      className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all text-sm font-semibold active:scale-95"
+                    >
+                      <XCircle size={14} />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+            {filtered.length === 0 && <p className="text-center text-brand-muted text-sm py-10">No vendors found.</p>}
+          </div>
+
           <Pagination page={page} pages={meta.pages} onChange={(p) => { setPage(p); window.scrollTo(0, 0); }} />
         </>
       )}

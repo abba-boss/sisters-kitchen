@@ -84,14 +84,15 @@ export default function AdminOrders() {
         <EmptyState icon={ShoppingBag} title="No orders found" message="No orders match your current filters." />
       ) : (
         <>
-          <div className="card overflow-hidden mb-4">
+          {/* Desktop Table */}
+          <div className="hidden md:block card overflow-hidden mb-4">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-brand-bg">
                   <tr className="text-brand-muted text-xs font-semibold uppercase">
                     <th className="text-left px-4 py-3">Order</th>
-                    <th className="text-left px-4 py-3 hidden sm:table-cell">Customer</th>
-                    <th className="text-left px-4 py-3 hidden md:table-cell">Vendor</th>
+                    <th className="text-left px-4 py-3">Customer</th>
+                    <th className="text-left px-4 py-3 hidden lg:table-cell">Vendor</th>
                     <th className="text-left px-4 py-3">Status</th>
                     <th className="text-left px-4 py-3 hidden lg:table-cell">Date</th>
                     <th className="text-right px-4 py-3">Amount</th>
@@ -104,8 +105,8 @@ export default function AdminOrders() {
                       <td className="px-4 py-3 font-medium text-brand-dark">
                         <Link to={`/orders/${o.id}`} className="hover:text-primary">#{o.orderNumber}</Link>
                       </td>
-                      <td className="px-4 py-3 text-brand-muted hidden sm:table-cell">{o.user?.firstName} {o.user?.lastName}</td>
-                      <td className="px-4 py-3 text-brand-muted hidden md:table-cell">{o.vendor?.businessName}</td>
+                      <td className="px-4 py-3 text-brand-muted">{o.user?.firstName} {o.user?.lastName}</td>
+                      <td className="px-4 py-3 text-brand-muted hidden lg:table-cell">{o.vendor?.businessName}</td>
                       <td className="px-4 py-3">
                         <span className={`badge ${getOrderStatusColor(o.status)}`}>{getOrderStatusLabel(o.status)}</span>
                       </td>
@@ -117,6 +118,47 @@ export default function AdminOrders() {
               </table>
             </div>
           </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-3 mb-4">
+            {filtered.map((o, i) => (
+              <motion.div
+                key={o.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.02 }}
+                className="card p-4"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 min-w-0">
+                    <Link to={`/orders/${o.id}`} className="font-semibold text-brand-dark hover:text-primary block">
+                      Order #{o.orderNumber}
+                    </Link>
+                    <p className="text-xs text-brand-muted mt-0.5">{formatDate(o.createdAt)}</p>
+                  </div>
+                  <span className={`badge ${getOrderStatusColor(o.status)} flex-shrink-0 ml-2`}>
+                    {getOrderStatusLabel(o.status)}
+                  </span>
+                </div>
+                
+                <div className="space-y-2 pt-3 border-t border-orange-50">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-brand-muted">Customer:</span>
+                    <span className="font-medium text-brand-dark">{o.user?.firstName} {o.user?.lastName}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-brand-muted">Vendor:</span>
+                    <span className="font-medium text-brand-dark truncate ml-2">{o.vendor?.businessName}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm pt-2 border-t border-orange-50">
+                    <span className="text-brand-muted">Total:</span>
+                    <span className="font-bold text-lg text-brand-dark">{formatPrice(o.total)}</span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
           <Pagination page={page} pages={meta.pages} onChange={(p) => { setPage(p); window.scrollTo(0, 0); }} />
         </>
       )}

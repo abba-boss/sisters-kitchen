@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Store, X } from 'lucide-react';
-import AppLayout from '../../components/layout/AppLayout';
+import MainLayout from '../../components/layout/MainLayout';
 import VendorCard from '../../components/common/VendorCard';
 import { vendorService } from '../../services/vendorService';
 
@@ -23,7 +23,7 @@ export default function VendorsPage() {
     : vendors;
 
   return (
-    <AppLayout hideFooter>
+    <MainLayout hideFooter>
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-poppins font-bold text-2xl text-brand-dark mb-2">Explore Vendors</h1>
@@ -82,6 +82,6 @@ export default function VendorsPage() {
           ))}
         </div>
       )}
-    </AppLayout>
+    </MainLayout>
   );
 }

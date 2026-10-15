@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA Icon Generator - Sisters Kitchen</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 800px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .preview-section {
+      margin-bottom: 30px;
+    }
+
+    .icon-preview {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .icon-item {
+      text-align: center;
+    }
+
+    .icon-item canvas {
+      border-radius: 20%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      margin-bottom: 8px;
+    }
+
+    .icon-label {
+      font-size: 12px;
+      color: #666;
+      font-weight: 600;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .instructions {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 30px;
+      border-left: 4px solid #667eea;
+    }
+
+    .instructions h3 {
+      color: #333;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .instructions ol {
+      margin-left: 20px;
+      color: #555;
+      line-height: 1.8;
+    }
+
+    .instructions li {
+      margin-bottom: 8px;
+    }
+
+    .success-message {
+      background: #d4edda;
+      color: #155724;
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      display: none;
+      border: 1px solid #c3e6cb;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 PWA Icon Generator</h1>
+    <p class="subtitle">Generate all required icon sizes for Sisters Kitchen PWA</p>
+
+    <div class="preview-section">
+      <h3>Icon Preview</h3>
+      <div class="icon-preview" id="iconPreview"></div>
+    </div>
+
+    <div>
+      <button onclick="generateIcons()">Generate All Icons</button>
+      <button onclick="downloadAllIcons()">Download All as ZIP</button>
+    </div>
+
+    <div class="success-message" id="successMessage">
+      ✅ Icons generated successfully! Click "Download All as ZIP" to save them.
+    </div>
+
+    <div class="instructions">
+      <h3>📋 Instructions</h3>
+      <ol>
+        <li>Click "Generate All Icons" to create all required sizes</li>
+        <li>Click "Download All as ZIP" to download all icons</li>
+        <li>Extract the ZIP file</li>
+        <li>Copy all icons to <code>frontend/public/icons/</code> directory</li>
+        <li>Your PWA is ready to install!</li>
+      </ol>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+    const canvases = {};
+
+    function createIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Gradient background (Orange theme for Sisters Kitchen)
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#FF7A59');
+      gradient.addColorStop(1, '#FF9478');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Add rounded corners effect
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.beginPath();
+      const radius = size * 0.2;
+      ctx.moveTo(radius, 0);
+      ctx.lineTo(size - radius, 0);
+      ctx.quadraticCurveTo(size, 0, size, radius);
+      ctx.lineTo(size, size - radius);
+      ctx.quadraticCurveTo(size, size, size - radius, size);
+      ctx.lineTo(radius, size);
+      ctx.quadraticCurveTo(0, size, 0, size - radius);
+      ctx.lineTo(0, radius);
+      ctx.quadraticCurveTo(0, 0, radius, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.globalCompositeOperation = 'source-over';
+
+      // Draw chef hat icon (simple representation)
+      ctx.fillStyle = 'white';
+      const centerX = size / 2;
+      const centerY = size / 2;
+      const scale = size / 512;
+
+      // Chef hat
+      ctx.beginPath();
+      ctx.arc(centerX - 60 * scale, centerY - 40 * scale, 50 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(centerX, centerY - 60 * scale, 60 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(centerX + 60 * scale, centerY - 40 * scale, 50 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Hat base
+      ctx.fillRect(centerX - 120 * scale, centerY - 20 * scale, 240 * scale, 80 * scale);
+      ctx.fillRect(centerX - 140 * scale, centerY + 50 * scale, 280 * scale, 30 * scale);
+
+      // Add "SK" text
+      ctx.fillStyle = '#FF7A59';
+      ctx.font = `bold ${80 * scale}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('SK', centerX, centerY + 20 * scale);
+
+      return canvas;
+    }
+
+    function generateIcons() {
+      const previewContainer = document.getElementById('iconPreview');
+      previewContainer.innerHTML = '';
+
+      sizes.forEach(size => {
+        const canvas = createIcon(size);
+        canvases[size] = canvas;
+
+        // Create preview
+        const previewCanvas = canvas.cloneNode(true);
+        const ctx = previewCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, 0);
+
+        const displaySize = Math.min(size, 192);
+        previewCanvas.style.width = displaySize + 'px';
+        previewCanvas.style.height = displaySize + 'px';
+
+        const iconItem = document.createElement('div');
+        iconItem.className = 'icon-item';
+        iconItem.appendChild(previewCanvas);
+        
+        const label = document.createElement('div');
+        label.className = 'icon-label';
+        label.textContent = `${size}x${size}`;
+        iconItem.appendChild(label);
+
+        previewContainer.appendChild(iconItem);
+      });
+
+      document.getElementById('successMessage').classList.add('show');
+    }
+
+    async function downloadAllIcons() {
+      if (Object.keys(canvases).length === 0) {
+        alert('Please generate icons first!');
+        return;
+      }
+
+      const zip = new JSZip();
+      const iconsFolder = zip.folder('icons');
+
+      for (const size of sizes) {
+        const canvas = canvases[size];
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        iconsFolder.file(`icon-${size}x${size}.png`, blob);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = 'sisters-kitchen-pwa-icons.zip';
+      link.click();
+    }
+
+    // Auto-generate on load
+    window.addEventListener('load', () => {
+      setTimeout(generateIcons, 500);
+    });
+  </script>
+</body>
+</html>

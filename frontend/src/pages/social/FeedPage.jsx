@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Compass, Flame, Users, Plus } from 'lucide-react';
-import AppLayout from '../../components/layout/AppLayout';
+import MainLayout from '../../components/layout/MainLayout';
 import PostCard from '../../components/social/PostCard';
 import StoriesCarousel from '../../components/social/StoriesCarousel';
 import WhatsCooking from '../../components/customer/WhatsKooking';
@@ -32,7 +32,7 @@ export default function FeedPage() {
   }, [filter]);
 
   return (
-    <AppLayout hideFooter>
+    <MainLayout hideFooter>
       {/* Stories */}
       <div className="mb-5">
         <StoriesCarousel />
@@ -129,6 +129,6 @@ export default function FeedPage() {
           window.location.reload();
         }}
       />
-    </AppLayout>
+    </MainLayout>
   );
 }

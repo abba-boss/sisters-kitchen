@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart, Star, Clock, Minus, Plus,
-  Store, ChevronRight, Flame, Share2, CheckCircle
+  Store, ChevronRight, Flame, Share2, CheckCircle, ArrowLeft
 } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { PageLoader } from '../../components/common/LoadingSkeleton';
@@ -36,6 +36,8 @@ export default function ProductDetailPage() {
       .then(({ data }) => setProduct(data.data))
       .catch(() => toast.error('Product not found'))
       .finally(() => setLoading(false));
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [id]);
 
   if (loading) return <PageLoader />;
@@ -97,47 +99,58 @@ export default function ProductDetailPage() {
 
   return (
     <MainLayout>
-      <div className="page-container py-10">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-brand-muted mb-6 flex-wrap">
-          <Link to="/" className="hover:text-primary">Home</Link>
-          <ChevronRight size={14} />
-          <Link to="/products" className="hover:text-primary">Products</Link>
-          {product.category && <>
-            <ChevronRight size={14} />
-            <Link to={`/products?category=${product.category.id}`} className="hover:text-primary">{product.category.name}</Link>
-          </>}
-          <ChevronRight size={14} />
-          <span className="text-brand-dark font-medium line-clamp-1">{product.name}</span>
-        </nav>
+      <div className="page-container py-4 sm:py-6 lg:py-10">
+        {/* Back Button & Breadcrumb */}
+        <div className="mb-4 sm:mb-6">
+          <Link to="/products" className="inline-flex items-center gap-2 text-brand-muted hover:text-primary transition-colors text-sm font-medium mb-3">
+            <ArrowLeft size={16} />
+            Back to Products
+          </Link>
+          <nav className="flex items-center gap-2 text-xs sm:text-sm text-brand-muted overflow-x-auto scrollbar-hide pb-1">
+            <Link to="/" className="hover:text-primary whitespace-nowrap">Home</Link>
+            <ChevronRight size={14} className="flex-shrink-0" />
+            <Link to="/products" className="hover:text-primary whitespace-nowrap">Products</Link>
+            {product.category && <>
+              <ChevronRight size={14} className="flex-shrink-0" />
+              <Link to={`/products?category=${product.category.id}`} className="hover:text-primary whitespace-nowrap">{product.category.name}</Link>
+            </>}
+            <ChevronRight size={14} className="flex-shrink-0" />
+            <span className="text-brand-dark font-medium truncate max-w-[150px] sm:max-w-none">{product.name}</span>
+          </nav>
+        </div>
 
-        <div className="grid lg:grid-cols-2 gap-10">
-          {/* Images */}
-          <div>
-            <div className="rounded-3xl overflow-hidden h-80 sm:h-96 shadow-card relative">
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
+          {/* Images - Equal space on large screens */}
+          <div className="lg:col-span-1">
+            <div className="rounded-2xl overflow-hidden h-64 sm:h-72 md:h-80 lg:h-96 shadow-card relative bg-brand-bg">
               <AnimatePresence mode="wait">
                 <motion.img
                   key={activeImg}
                   src={images[activeImg]}
                   alt={product.name}
                   className="w-full h-full object-cover"
-                  initial={{ opacity: 0, scale: 1.02 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
+                  transition={{ duration: 0.2 }}
                 />
               </AnimatePresence>
               {discountPct > 0 && (
-                <span className="absolute top-4 left-4 bg-primary text-white text-sm font-bold px-3 py-1 rounded-full shadow">
+                <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow">
                   -{discountPct}%
+                </span>
+              )}
+              {product.isFreshToday && (
+                <span className="absolute top-3 right-3 bg-accent text-white text-xs font-semibold px-2.5 py-1 rounded-lg shadow flex items-center gap-1">
+                  <Flame size={12} /> Fresh
                 </span>
               )}
             </div>
             {images.length > 1 && (
-              <div className="flex gap-3 mt-4 overflow-x-auto scrollbar-hide pb-1">
+              <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-1">
                 {images.map((img, i) => (
                   <button key={i} onClick={() => setActiveImg(i)}
-                    className={`flex-shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all ${activeImg === i ? 'border-primary shadow-soft' : 'border-transparent opacity-70 hover:opacity-100'}`}>
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${activeImg === i ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'}`}>
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
@@ -145,161 +158,144 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* Info */}
-          <div>
+          {/* Info - Equal space on large screens */}
+          <div className="lg:col-span-1">
+            {/* Header */}
             <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex-1">
-                {product.isFreshToday && (
-                  <span className="badge badge-success mb-2 inline-flex">
-                    <Flame size={12} /> Fresh Today
-                  </span>
-                )}
-                <h1 className="font-poppins font-bold text-2xl sm:text-3xl text-brand-dark leading-tight">
+              <div className="flex-1 min-w-0">
+                <h1 className="font-poppins font-bold text-xl sm:text-2xl text-brand-dark leading-tight mb-2">
                   {product.name}
                 </h1>
+                {/* Vendor */}
+                <Link to={`/vendors/${product.vendor?.id}`} className="flex items-center gap-2 group w-fit">
+                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Store size={12} className="text-primary" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium text-brand-muted group-hover:text-primary transition-colors truncate">
+                    {product.vendor?.businessName}
+                  </span>
+                  <ChevronRight size={12} className="text-brand-muted group-hover:text-primary flex-shrink-0" />
+                </Link>
               </div>
-              <button onClick={handleShare} className="p-2.5 rounded-2xl bg-brand-bg text-brand-muted hover:bg-primary/10 hover:text-primary transition-all flex-shrink-0">
-                <Share2 size={18} />
+              <button onClick={handleShare} className="p-2 rounded-lg bg-brand-bg text-brand-muted hover:bg-primary/10 hover:text-primary transition-all flex-shrink-0">
+                <Share2 size={16} />
               </button>
             </div>
 
-            {/* Vendor */}
-            <Link to={`/vendors/${product.vendor?.id}`} className="flex items-center gap-2 mb-4 group w-fit">
-              <div className="w-7 h-7 bg-primary/10 rounded-full flex items-center justify-center">
-                <span className="text-primary font-bold text-xs">{product.vendor?.businessName?.[0]}</span>
+            {/* Rating & Price */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <StarRating rating={product.rating || 0} size={16} />
+                <span className="text-sm font-bold text-brand-dark">{Number(product.rating || 0).toFixed(1)}</span>
+                <span className="text-xs text-brand-muted">({product.totalReviews})</span>
               </div>
-              <span className="text-sm font-medium text-brand-muted group-hover:text-primary transition-colors">
-                {product.vendor?.businessName}
-              </span>
-              <ChevronRight size={13} className="text-brand-muted group-hover:text-primary" />
-            </Link>
-
-            {/* Rating */}
-            <div className="flex items-center gap-3 mb-4">
-              <StarRating rating={product.rating || 0} size={18} />
-              <span className="text-sm font-semibold text-brand-dark">{Number(product.rating || 0).toFixed(1)}</span>
-              <span className="text-sm text-brand-muted">({product.totalReviews} reviews)</span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-poppins font-bold text-2xl text-primary">{formatPrice(price)}</span>
+                {product.discountPrice && (
+                  <span className="text-sm text-brand-muted line-through">{formatPrice(product.price)}</span>
+                )}
+              </div>
             </div>
 
-            {/* Price */}
-            <div className="flex items-baseline gap-3 mb-5">
-              <span className="font-poppins font-bold text-3xl text-brand-dark">{formatPrice(price)}</span>
-              {product.discountPrice && (
-                <span className="text-lg text-brand-muted line-through">{formatPrice(product.price)}</span>
-              )}
-            </div>
+            {/* Description */}
+            <p className="text-brand-muted text-sm leading-relaxed mb-4">{product.description}</p>
 
-            <p className="text-brand-muted leading-relaxed text-sm mb-5">{product.description}</p>
-
-            <div className="flex flex-wrap gap-4 mb-5 text-sm">
+            {/* Meta Info */}
+            <div className="flex flex-wrap gap-2 mb-4">
               {product.preparationTime && (
-                <span className="flex items-center gap-1.5 bg-brand-bg text-brand-muted px-3 py-1.5 rounded-full">
-                  <Clock size={14} className="text-primary" /> {product.preparationTime}
+                <span className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg text-xs font-medium">
+                  <Clock size={12} /> {product.preparationTime}
                 </span>
               )}
               {product.stock !== undefined && product.stock > 0 && (
-                <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-semibold ${
+                <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
                   product.stock <= 5 
                     ? 'bg-orange-50 text-orange-600' 
-                    : 'bg-accent/10 text-accent'
+                    : 'bg-green-50 text-accent'
                 }`}>
-                  <CheckCircle size={14} /> {product.stock} Available in Stock
-                  {product.stock <= 5 && ' - Order Now!'}
+                  <CheckCircle size={12} /> {product.stock} in stock
                 </span>
               )}
             </div>
 
-            {/* Tags */}
-            {product.tags?.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-5">
-                {product.tags.map((tag) => (
-                  <span key={tag} className="badge bg-orange-50 text-brand-muted text-xs">#{tag}</span>
-                ))}
-              </div>
-            )}
-
-            {/* Stock Availability Warning */}
+            {/* Stock Warnings */}
             {product.stock <= 0 && (
-              <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-2xl">
-                <p className="text-sm font-semibold text-red-600">⚠️ Out of Stock</p>
-                <p className="text-xs text-red-500 mt-1">This item is currently unavailable</p>
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-semibold text-red-600">Out of Stock</p>
               </div>
             )}
             {product.stock > 0 && product.stock <= 10 && (
-              <div className="mb-5 p-4 bg-orange-50 border border-orange-200 rounded-2xl">
-                <p className="text-sm font-semibold text-orange-600">🔥 Only {product.stock} left in stock!</p>
-                <p className="text-xs text-orange-500 mt-1">Order soon before it sells out</p>
+              <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm font-semibold text-orange-600">Only {product.stock} left!</p>
               </div>
             )}
 
-            {/* Quantity */}
+            {/* Quantity Selector */}
             {product.stock > 0 && (
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-center gap-4 mb-4">
                 <span className="text-sm font-semibold text-brand-dark">Qty:</span>
-                <div className="flex items-center gap-3 bg-brand-bg rounded-2xl p-1">
+                <div className="flex items-center gap-2 bg-brand-bg rounded-lg p-1">
                   <button onClick={() => setQty(Math.max(1, qty - 1))}
-                    className="w-9 h-9 rounded-xl bg-white shadow-card flex items-center justify-center hover:bg-primary hover:text-white transition-all">
-                    <Minus size={16} />
+                    className="w-8 h-8 rounded-lg bg-white flex items-center justify-center hover:bg-primary hover:text-white transition-all">
+                    <Minus size={14} />
                   </button>
-                  <span className="font-bold text-brand-dark w-6 text-center">{qty}</span>
+                  <span className="font-bold text-brand-dark w-8 text-center">{qty}</span>
                   <button 
                     onClick={() => setQty(Math.min(product.stock, qty + 1))}
                     disabled={qty >= product.stock}
-                    className="w-9 h-9 rounded-xl bg-white shadow-card flex items-center justify-center hover:bg-primary hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Plus size={16} />
+                    className="w-8 h-8 rounded-lg bg-white flex items-center justify-center hover:bg-primary hover:text-white transition-all disabled:opacity-50">
+                    <Plus size={14} />
                   </button>
                 </div>
-                {qty >= product.stock && (
-                  <span className="text-xs text-orange-500">Max available</span>
-                )}
               </div>
             )}
 
+            {/* Add to Cart Button */}
             <motion.button
               onClick={handleAddToCart}
               disabled={product.stock <= 0}
               whileTap={{ scale: product.stock > 0 ? 0.97 : 1 }}
-              className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-semibold text-base transition-all ${
+              className={`w-full flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-sm transition-all ${
                 product.stock <= 0 
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                   : addedToCart 
                     ? 'bg-accent text-white' 
-                    : 'btn-primary'
+                    : 'bg-primary text-white hover:bg-primary/90'
               }`}>
               {product.stock <= 0 ? (
                 <>Out of Stock</>
               ) : addedToCart ? (
-                <><CheckCircle size={20} /> Added to Cart!</>
+                <><CheckCircle size={18} /> Added to Cart!</>
               ) : (
-                <><ShoppingCart size={20} /> Add to Cart — {formatPrice(price * qty)}</>
+                <><ShoppingCart size={18} /> Add to Cart — {formatPrice(price * qty)}</>
               )}
             </motion.button>
           </div>
         </div>
 
         {/* Reviews Section */}
-        <div className="mt-16">
-          <h2 className="font-poppins font-bold text-2xl text-brand-dark mb-8">
-            Reviews <span className="text-brand-muted font-normal text-lg">({product.totalReviews})</span>
+        <div className="mt-10">
+          <h2 className="font-poppins font-bold text-xl text-brand-dark mb-6">
+            Reviews ({product.totalReviews})
           </h2>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-4 gap-6">
             {/* Rating Summary */}
-            <div className="card p-6">
-              <div className="text-center mb-5">
-                <p className="font-poppins font-bold text-5xl text-primary">{Number(product.rating || 0).toFixed(1)}</p>
-                <StarRating rating={product.rating || 0} size={22} />
-                <p className="text-sm text-brand-muted mt-1">{product.totalReviews} reviews</p>
+            <div className="card p-5">
+              <div className="text-center mb-4">
+                <p className="font-poppins font-bold text-4xl text-primary">{Number(product.rating || 0).toFixed(1)}</p>
+                <StarRating rating={product.rating || 0} size={18} />
+                <p className="text-xs text-brand-muted mt-1">{product.totalReviews} reviews</p>
               </div>
               <div className="space-y-2">
                 {ratingDist.map(({ r, count }) => (
                   <button key={r}
                     onClick={() => setRatingFilter(ratingFilter === r ? 0 : r)}
-                    className={`w-full flex items-center gap-2 group transition-all ${ratingFilter === r ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}>
+                    className={`w-full flex items-center gap-2 transition-all ${ratingFilter === r ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}>
                     <span className="text-xs font-medium text-brand-muted w-3">{r}</span>
-                    <Star size={11} fill="#FF7A59" className="text-primary flex-shrink-0" />
-                    <div className="flex-1 bg-orange-50 rounded-full h-2 overflow-hidden">
-                      <div className="bg-primary h-full rounded-full transition-all duration-500"
+                    <Star size={10} fill="#FF7A59" className="text-primary" />
+                    <div className="flex-1 bg-orange-50 rounded-full h-1.5 overflow-hidden">
+                      <div className="bg-primary h-full rounded-full transition-all"
                         style={{ width: product.totalReviews > 0 ? `${(count / product.totalReviews) * 100}%` : '0%' }} />
                     </div>
                     <span className="text-xs text-brand-muted w-5 text-right">{count}</span>
@@ -308,55 +304,56 @@ export default function ProductDetailPage() {
               </div>
               {ratingFilter > 0 && (
                 <button onClick={() => setRatingFilter(0)} className="text-xs text-primary mt-3 hover:underline w-full text-center">
-                  Clear filter
+                  Clear
                 </button>
               )}
             </div>
 
-            <div className="lg:col-span-2 space-y-5">
+            <div className="lg:col-span-3 space-y-4">
               {/* Write Review */}
               {isAuthenticated && (
-                <form onSubmit={handleReview} className="card p-5">
-                  <h3 className="font-semibold text-brand-dark mb-4">Write a Review</h3>
+                <form onSubmit={handleReview} className="card p-4">
+                  <h3 className="font-semibold text-brand-dark mb-3 text-sm">Write a Review</h3>
                   <div className="mb-3">
-                    <p className="text-xs text-brand-muted mb-2">Your Rating</p>
-                    <StarRating rating={review.rating} size={28} interactive onChange={(r) => setReview((p) => ({ ...p, rating: r }))} />
+                    <StarRating rating={review.rating} size={20} interactive onChange={(r) => setReview((p) => ({ ...p, rating: r }))} />
                   </div>
                   <textarea
                     value={review.comment}
                     onChange={(e) => setReview((p) => ({ ...p, comment: e.target.value }))}
-                    placeholder="Share your experience with this dish…"
-                    rows={3}
+                    placeholder="Share your thoughts about this dish..."
+                    rows={2}
                     className="input-field resize-none mb-3 text-sm"
                   />
-                  <button type="submit" disabled={submitting} className="btn-primary text-sm py-2.5">
-                    {submitting ? 'Submitting…' : 'Submit Review'}
+                  <button type="submit" disabled={submitting} className="btn-primary text-sm py-2">
+                    {submitting ? 'Submitting...' : 'Submit Review'}
                   </button>
                 </form>
               )}
 
               {/* Reviews List */}
-              <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1 scrollbar-hide">
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1 scrollbar-hide">
                 {(filteredReviews || []).length === 0 ? (
-                  <p className="text-brand-muted text-sm text-center py-8">No reviews yet. Be the first!</p>
+                  <div className="card p-6 text-center">
+                    <Star className="text-brand-muted mx-auto mb-2" size={24} />
+                    <p className="text-brand-muted text-sm">No reviews yet</p>
+                  </div>
                 ) : (
-                  (filteredReviews || []).map((r, i) => (
-                    <motion.div key={r.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                      className="card p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center">
-                            <span className="text-primary font-bold text-sm">{r.user?.firstName?.[0]}</span>
+                  (filteredReviews || []).map((r) => (
+                    <div key={r.id} className="card p-3">
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-primary font-bold text-xs">{r.user?.firstName?.[0]}</span>
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-brand-dark">{r.user?.firstName} {r.user?.lastName}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-brand-dark truncate">{r.user?.firstName} {r.user?.lastName}</p>
                             <p className="text-xs text-brand-muted">{formatDate(r.createdAt)}</p>
                           </div>
                         </div>
-                        <StarRating rating={r.rating} size={14} />
+                        <StarRating rating={r.rating} size={12} />
                       </div>
-                      {r.comment && <p className="text-sm text-brand-muted leading-relaxed pl-12">{r.comment}</p>}
-                    </motion.div>
+                      {r.comment && <p className="text-sm text-brand-muted leading-relaxed">{r.comment}</p>}
+                    </div>
                   ))
                 )}
               </div>
