@@ -97,7 +97,7 @@ export const updateVendorProfile = async (req: AuthRequest, res: Response): Prom
     const {
       businessName, description, address, phone, whatsapp,
       openingTime, closingTime, availableDays, bankName, accountNumber, accountName,
-      pickupLatitude, pickupLongitude, pickupInstructions,
+      pickupLatitude, pickupLongitude, pickupInstructions, offersDelivery,
     } = req.body;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -127,6 +127,7 @@ export const updateVendorProfile = async (req: AuthRequest, res: Response): Prom
       pickupLatitude: pickupLatitude !== undefined ? Number(pickupLatitude) : vendor.pickupLatitude,
       pickupLongitude: pickupLongitude !== undefined ? Number(pickupLongitude) : vendor.pickupLongitude,
       pickupInstructions: pickupInstructions !== undefined ? pickupInstructions : vendor.pickupInstructions,
+      offersDelivery: offersDelivery !== undefined ? (offersDelivery === 'true' || offersDelivery === true) : vendor.offersDelivery,
       logo: logoUrl,
       coverImage: coverUrl,
     });

@@ -30,7 +30,7 @@ export declare class Post {
     allowComments: boolean;
     tags: string;
     location: string;
-    scheduledAt: Date;
+    scheduledAt: Date | null;
     vendor: Vendor;
     author: User;
     product: Product;

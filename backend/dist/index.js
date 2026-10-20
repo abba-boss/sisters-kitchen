@@ -17,9 +17,36 @@ const database_1 = require("./config/database");
 const socket_1 = require("./config/socket");
 const errorHandler_1 = require("./middleware/errorHandler");
 const logger_1 = require("./utils/logger");
+const swagger_1 = require("./config/swagger");
+const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
+dotenv_1.default.config();
+// ── Optional Sentry Error Monitoring ───────────────────────────
+let Sentry = null;
+if (process.env.SENTRY_DSN) {
+    try {
+        Sentry = require("@sentry/node");
+        Sentry.init({
+            dsn: process.env.SENTRY_DSN,
+            environment: process.env.NODE_ENV || 'development',
+            tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+        });
+        logger_1.logger.info("✅ Sentry error monitoring initialized");
+    }
+    catch (error) {
+        logger_1.logger.warn("⚠️ Sentry not available - continuing without error monitoring");
+    }
+}
 // ── Crash guards — keep the process alive ─────────────────────
-process.on("uncaughtException", (err) => { logger_1.logger.error("Uncaught Exception:", err); });
-process.on("unhandledRejection", (err) => { logger_1.logger.error("Unhandled Rejection:", err); });
+process.on("uncaughtException", (err) => {
+    logger_1.logger.error("Uncaught Exception:", err);
+    if (Sentry)
+        Sentry.captureException(err);
+});
+process.on("unhandledRejection", (err) => {
+    logger_1.logger.error("Unhandled Rejection:", err);
+    if (Sentry)
+        Sentry.captureException(err);
+});
 // Routes
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const vendorRoutes_1 = __importDefault(require("./routes/vendorRoutes"));
@@ -99,8 +126,15 @@ app.get("/health", (req, res) => {
         message: "Sisters Kitchen API is running 🍽️",
         timestamp: new Date().toISOString(),
         env: process.env.NODE_ENV,
+        monitoring: !!process.env.SENTRY_DSN,
+        documentation: "/api-docs",
     });
 });
+// ── API Documentation ──────────────────────────────────────────
+app.use("/api-docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Sisters Kitchen API Docs',
+}));
 // ── API Routes ─────────────────────────────────────────────────
 app.use("/api/auth", authRoutes_1.default);
 app.use("/api/vendors", vendorRoutes_1.default);

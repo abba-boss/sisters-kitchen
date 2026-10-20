@@ -23,8 +23,8 @@ export class RewardWallet {
   @Column({ type: "decimal", precision: 10, scale: 2, default: 0 }) totalEarned: number;
   @Column({ type: "decimal", precision: 10, scale: 2, default: 0 }) totalSpent: number;
   @Column({ default: 0 }) streakDays: number;
-  @Column({ type: "timestamp", nullable: true }) lastActivityAt: Date;
-  @Column({ type: "timestamp", nullable: true }) lastDailyRewardAt: Date;
+  @Column({ type: "datetime", nullable: true }) lastActivityAt: Date;
+  @Column({ type: "datetime", nullable: true }) lastDailyRewardAt: Date;
   @OneToOne(() => User, { onDelete: "CASCADE" }) @JoinColumn() user: User;
   @OneToMany(() => RewardTransaction, (t) => t.wallet, { cascade: true }) transactions: RewardTransaction[];
   @CreateDateColumn() createdAt: Date;
@@ -35,7 +35,7 @@ export class RewardWallet {
 export class RewardTransaction {
   @PrimaryGeneratedColumn("uuid") id: string;
   @Column({ type: "decimal", precision: 10, scale: 2 }) amount: number;
-  @Column({ type: "enum", enum: RewardTransactionType }) type: RewardTransactionType;
+  @Column({ type: "varchar", length: 30 }) type: RewardTransactionType;
   @Column({ length: 200 }) description: string;
   @Column({ nullable: true }) referenceId: string;
   @Column({ type: "decimal", precision: 10, scale: 2 }) balanceAfter: number;

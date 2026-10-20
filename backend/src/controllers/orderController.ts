@@ -9,6 +9,8 @@ import { AuthRequest } from "../middleware/auth";
 import { generateOrderNumber } from "../utils/helpers";
 import { UserRole } from "../entities/User";
 import { emitOrderUpdate, emitNotification, emitToAdmins } from "../config/socket";
+import { updateVendorEarnings } from "../services/commissionService";
+import { sendEmail, emailTemplates } from "../config/email";
 import crypto from "crypto";
 
 // ─── Notification helper ──────────────────────────────────────
@@ -144,6 +146,16 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       order.id
     );
 
+    // Send confirmation emails
+    await sendEmail(
+      req.user!.email,
+      emailTemplates.orderConfirmation(order.orderNumber, req.user!.firstName, Number(order.total))
+    );
+    await sendEmail(
+      vendor.user.email,
+      emailTemplates.newOrderVendor(order.orderNumber, vendor.businessName, items.length, Number(order.total))
+    );
+
     res.status(201).json({ success: true, message: "Order placed successfully", data: fullOrder });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -260,14 +272,11 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       }
     }
 
-    // Update vendor earnings on delivery
+    // Update vendor earnings on delivery with commission deduction
     if (status === OrderStatus.DELIVERED) {
-      const vendorRepo = AppDataSource.getRepository(Vendor);
-      const vendor = await vendorRepo.findOne({ where: { id: order.vendor.id } });
-      if (vendor) {
-        vendor.totalOrders += 1;
-        vendor.totalEarnings = Number(vendor.totalEarnings) + Number(order.total);
-        await vendorRepo.save(vendor);
+      const result = await updateVendorEarnings(order.vendor.id, Number(order.total), order.id);
+      if (!result.success) {
+        console.error('Failed to update vendor earnings:', result.error);
       }
     }
 
@@ -287,6 +296,12 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     const notifData = statusMessages[status];
     if (notifData) {
       await createAndEmitNotification(order.user.id, notifData.title, notifData.msg, notifData.type, order.id);
+      
+      // Send email notification for status update
+      await sendEmail(
+        order.user.email,
+        emailTemplates.orderStatusUpdate(order.orderNumber, order.user.firstName, status, notifData.msg)
+      );
     }
 
     // Emit to admin room

@@ -43,26 +43,26 @@ __decorate([
 ], Payment.prototype, "amount", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: "enum",
-        enum: PaymentStatus,
+        type: "varchar",
+        length: 30,
         default: PaymentStatus.PENDING,
     }),
     __metadata("design:type", String)
 ], Payment.prototype, "status", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: "enum",
-        enum: PaymentMethod,
+        type: "varchar",
+        length: 30,
         default: PaymentMethod.PAYSTACK,
     }),
     __metadata("design:type", String)
 ], Payment.prototype, "method", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
     __metadata("design:type", String)
 ], Payment.prototype, "paystackReference", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "json", nullable: true }),
+    (0, typeorm_1.Column)({ type: "simple-json", nullable: true }),
     __metadata("design:type", Object)
 ], Payment.prototype, "metadata", void 0);
 __decorate([

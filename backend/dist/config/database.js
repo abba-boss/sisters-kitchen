@@ -24,14 +24,10 @@ const Story_1 = require("../entities/Story");
 const RewardWallet_1 = require("../entities/RewardWallet");
 dotenv_1.default.config();
 exports.AppDataSource = new typeorm_1.DataSource({
-    type: "mysql",
-    host: process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.DB_PORT || "3306"),
-    username: process.env.DB_USERNAME || "root",
-    password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "sisters_kitchen",
-    synchronize: false, // ✅ Back to false for safety
-    logging: false,
+    type: "sqlite",
+    database: "./data/sisters_kitchen.sqlite",
+    synchronize: true,
+    logging: ["error"],
     entities: [
         // V1
         User_1.User, Vendor_1.Vendor, Product_1.Product, Category_1.Category, Order_1.Order, OrderItem_1.OrderItem,

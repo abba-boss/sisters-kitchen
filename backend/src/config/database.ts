@@ -22,14 +22,10 @@ import { RewardWallet, RewardTransaction } from "../entities/RewardWallet";
 dotenv.config();
 
 export const AppDataSource = new DataSource({
-  type: "mysql",
-  host: process.env.DB_HOST || "localhost",
-  port: parseInt(process.env.DB_PORT || "3306"),
-  username: process.env.DB_USERNAME || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "sisters_kitchen",
-  synchronize: false, // ✅ Back to false for safety
-  logging: false,
+  type: "sqlite",
+  database: "./data/sisters_kitchen.sqlite",
+  synchronize: true,
+  logging: ["error"],
   entities: [
     // V1
     User, Vendor, Product, Category, Order, OrderItem,

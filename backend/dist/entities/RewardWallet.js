@@ -48,11 +48,11 @@ __decorate([
     __metadata("design:type", Number)
 ], RewardWallet.prototype, "streakDays", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
+    (0, typeorm_1.Column)({ type: "datetime", nullable: true }),
     __metadata("design:type", Date)
 ], RewardWallet.prototype, "lastActivityAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
+    (0, typeorm_1.Column)({ type: "datetime", nullable: true }),
     __metadata("design:type", Date)
 ], RewardWallet.prototype, "lastDailyRewardAt", void 0);
 __decorate([
@@ -87,7 +87,7 @@ __decorate([
     __metadata("design:type", Number)
 ], RewardTransaction.prototype, "amount", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "enum", enum: RewardTransactionType }),
+    (0, typeorm_1.Column)({ type: "varchar", length: 30 }),
     __metadata("design:type", String)
 ], RewardTransaction.prototype, "type", void 0);
 __decorate([

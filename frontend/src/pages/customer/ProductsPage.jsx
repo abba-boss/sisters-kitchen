@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
-import MainLayout from '../../components/layout/MainLayout';
+import AppLayout from '../../components/layout/AppLayout';
 import ProductCard from '../../components/common/ProductCard';
 import StoriesCarousel from '../../components/social/StoriesCarousel';
 import WhatsCooking from '../../components/customer/WhatsKooking';
@@ -50,7 +50,7 @@ export default function ProductsPage() {
   const showDiscovery = !search && !category;
 
   return (
-    <MainLayout hideFooter>
+    <AppLayout hideFooter>
       {/* Stories - Always show */}
       <div className="mb-5">
         <StoriesCarousel />
@@ -141,6 +141,6 @@ export default function ProductsPage() {
           ))}
         </div>
       )}
-    </MainLayout>
+    </AppLayout>
   );
 }

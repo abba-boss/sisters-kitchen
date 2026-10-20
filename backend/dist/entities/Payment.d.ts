@@ -17,8 +17,8 @@ export declare class Payment {
     amount: number;
     status: PaymentStatus;
     method: PaymentMethod;
-    paystackReference: string;
-    metadata: object;
+    paystackReference: string | null;
+    metadata: object | null;
     order: Order;
     user: User;
     createdAt: Date;

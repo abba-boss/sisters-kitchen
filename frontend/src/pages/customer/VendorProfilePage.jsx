@@ -118,165 +118,154 @@ export default function VendorProfilePageModern() {
   ];
 
   return (
-    <MainLayout>
-      {/* Cover Photo */}
-      <div className="relative h-64 sm:h-80 lg:h-96 overflow-hidden bg-gradient-to-br from-primary/20 to-orange-100">
-        <img 
-          src={cover} 
-          alt={vendor.businessName} 
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-      </div>
+    <MainLayout hideFooter>
+      {/* Compact Header - No Large Cover Photo */}
+      <div className="page-container py-6">
+        <div className="max-w-5xl mx-auto">
+          {/* Compact Vendor Header Card */}
+          <div className="bg-white rounded-3xl shadow-card border border-orange-100 p-6 mb-6">
+            <div className="flex flex-col sm:flex-row gap-5">
+              {/* Logo */}
+              <div className="flex-shrink-0">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-orange-100 shadow-md overflow-hidden bg-white">
+                  {vendor.logo ? (
+                    <img src={vendor.logo} alt={vendor.businessName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary to-orange-400 flex items-center justify-center">
+                      <span className="font-poppins font-bold text-white text-3xl">{vendor.businessName?.[0]}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-      <div className="page-container relative -mt-20 pb-12">
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-8">
-          {/* Main Content */}
-          <div className="space-y-6">
-            {/* Vendor Header Card */}
-            <div className="bg-white rounded-3xl shadow-card border border-orange-100 p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row gap-6">
-                {/* Logo */}
-                <div className="flex-shrink-0">
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl border-4 border-white shadow-lg overflow-hidden bg-white">
-                    {vendor.logo ? (
-                      <img src={vendor.logo} alt={vendor.businessName} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-primary to-orange-400 flex items-center justify-center">
-                        <span className="font-poppins font-bold text-white text-4xl">{vendor.businessName?.[0]}</span>
-                      </div>
-                    )}
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <h1 className="font-poppins font-bold text-xl sm:text-2xl text-brand-dark">
+                    {vendor.businessName}
+                  </h1>
+                  {vendor.status === 'approved' && (
+                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500 text-white">
+                      <ShieldCheck size={14} fill="white" />
+                      <span className="text-xs font-bold">Verified</span>
+                    </div>
+                  )}
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                    vendor.isOpen 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${vendor.isOpen ? 'bg-white animate-pulse' : 'bg-gray-500'}`} />
+                    {vendor.isOpen ? 'OPEN' : 'CLOSED'}
+                  </span>
+                </div>
+
+                {/* Quick Stats */}
+                <div className="flex flex-wrap gap-4 text-sm mb-3">
+                  <div className="flex items-center gap-1">
+                    <StarRating rating={vendor.rating || 0} size={14} />
+                    <span className="font-bold text-brand-dark">{Number(vendor.rating || 0).toFixed(1)}</span>
+                    <span className="text-brand-muted">({reviews.length})</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-brand-muted">
+                    <ShoppingBag size={14} />
+                    <span>{products.length} products</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-brand-muted">
+                    <Users size={14} />
+                    <span>{followersCount} followers</span>
                   </div>
                 </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-start gap-3 mb-3">
-                    <h1 className="font-poppins font-bold text-2xl sm:text-3xl text-brand-dark">
-                      {vendor.businessName}
-                    </h1>
-                    {vendor.status === 'approved' && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold">
-                        <ShieldCheck size={12} />
-                        Verified
-                      </span>
-                    )}
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                      vendor.isOpen 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      <span className={`w-2 h-2 rounded-full ${vendor.isOpen ? 'bg-white animate-pulse' : 'bg-gray-500'}`} />
-                      {vendor.isOpen ? 'OPEN' : 'CLOSED'}
-                    </span>
-                  </div>
+                {/* Description */}
+                <p className="text-brand-muted text-sm leading-relaxed mb-3 line-clamp-2">
+                  {vendor.description || 'Quality homemade food from a trusted local kitchen.'}
+                </p>
 
-                  {/* Quick Stats */}
-                  <div className="flex flex-wrap gap-4 text-sm mb-4">
+                {/* Location & Contact - Compact */}
+                <div className="flex flex-wrap gap-3 text-xs text-brand-muted mb-4">
+                  {vendor.address && (
                     <div className="flex items-center gap-1">
-                      <StarRating rating={vendor.rating || 0} size={16} />
-                      <span className="font-bold text-brand-dark">{Number(vendor.rating || 0).toFixed(1)}</span>
-                      <span className="text-brand-muted">({reviews.length})</span>
+                      <MapPin size={12} className="text-primary" />
+                      <span className="truncate max-w-[200px]">{vendor.address}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-brand-muted">
-                      <ShoppingBag size={14} />
-                      <span>{products.length} products</span>
+                  )}
+                  {vendor.phone && (
+                    <div className="flex items-center gap-1">
+                      <Phone size={12} className="text-primary" />
+                      <span>{vendor.phone}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-brand-muted">
-                      <Users size={14} />
-                      <span>{followersCount} followers</span>
+                  )}
+                  {vendor.openingTime && vendor.closingTime && (
+                    <div className="flex items-center gap-1">
+                      <Clock size={12} className="text-primary" />
+                      <span>{vendor.openingTime} - {vendor.closingTime}</span>
                     </div>
-                  </div>
+                  )}
+                </div>
 
-                  {/* Description */}
-                  <p className="text-brand-muted text-sm leading-relaxed mb-4">
-                    {vendor.description || 'Quality homemade food from a trusted local kitchen.'}
-                  </p>
-
-                  {/* Location & Contact */}
-                  <div className="flex flex-wrap gap-4 text-sm text-brand-muted mb-5">
-                    {vendor.address && (
-                      <div className="flex items-center gap-1.5">
-                        <MapPin size={14} className="text-primary flex-shrink-0" />
-                        <span className="truncate">{vendor.address}</span>
-                      </div>
-                    )}
-                    {vendor.phone && (
-                      <div className="flex items-center gap-1.5">
-                        <Phone size={14} className="text-primary flex-shrink-0" />
-                        <span>{vendor.phone}</span>
-                      </div>
-                    )}
-                    {vendor.openingTime && vendor.closingTime && (
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={14} className="text-primary flex-shrink-0" />
-                        <span>{vendor.openingTime} - {vendor.closingTime}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-3">
-                    <FollowButton vendorId={id} size="md" variant="fill" />
-                    <button
-                      onClick={() => vendor.phone ? window.open(`https://wa.me/${vendor.phone.replace(/\D/g, '')}`) : toast('Phone not available')}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border-2 border-orange-100 text-brand-dark text-sm font-semibold hover:border-primary hover:text-primary transition-all"
-                    >
-                      <MessageSquare size={16} />
-                      Message
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard?.writeText(window.location.href);
-                        toast.success('Link copied! 📋');
-                      }}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border-2 border-orange-100 text-brand-muted hover:border-primary hover:text-primary transition-all"
-                    >
-                      <Share2 size={16} />
-                    </button>
-                  </div>
+                {/* Action Buttons - Smaller */}
+                <div className="flex flex-wrap gap-2">
+                  <FollowButton vendorId={id} size="sm" variant="fill" />
+                  <button
+                    onClick={() => vendor.phone ? window.open(`https://wa.me/${vendor.phone.replace(/\D/g, '')}`) : toast('Phone not available')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-orange-200 text-brand-dark text-xs font-semibold hover:border-primary hover:text-primary transition-all"
+                  >
+                    <MessageSquare size={14} />
+                    Message
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(window.location.href);
+                      toast.success('Link copied! 📋');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-orange-200 text-brand-muted hover:border-primary hover:text-primary transition-all"
+                  >
+                    <Share2 size={14} />
+                  </button>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Tab Navigation */}
-            <div className="sticky top-20 z-30 bg-white rounded-2xl shadow-sm border border-orange-100 p-1.5 overflow-x-auto scrollbar-hide">
-              <div className="flex gap-2 min-w-max">
-                {tabs.map(({ key, label, icon: Icon, count }) => (
-                  <button
-                    key={key}
-                    onClick={() => setTab(key)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
-                      tab === key 
-                        ? 'bg-primary text-white shadow-soft' 
-                        : 'text-brand-muted hover:text-brand-dark hover:bg-brand-bg'
-                    }`}
-                  >
-                    <Icon size={16} />
-                    {label}
-                    {count !== null && (
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                        tab === key ? 'bg-white/20' : 'bg-orange-100 text-brand-muted'
-                      }`}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+          {/* Tab Navigation - Compact */}
+          <div className="sticky top-20 z-30 bg-white rounded-xl shadow-sm border border-orange-100 p-1 overflow-x-auto scrollbar-hide mb-5">
+            <div className="flex gap-1 min-w-max">
+              {tabs.map(({ key, label, icon: Icon, count }) => (
+                <button
+                  key={key}
+                  onClick={() => setTab(key)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                    tab === key 
+                      ? 'bg-primary text-white shadow-sm' 
+                      : 'text-brand-muted hover:text-brand-dark hover:bg-brand-bg'
+                  }`}
+                >
+                  <Icon size={14} />
+                  {label}
+                  {count !== null && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
+                      tab === key ? 'bg-white/20' : 'bg-orange-100 text-brand-muted'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Tab Content */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={tab}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {/* Products Tab */}
-                {tab === 'products' && (
+          {/* Tab Content */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={tab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* Products Tab */}
+              {tab === 'products' && (
                   <div>
                     {availableProducts.length === 0 ? (
                       <EmptyState 
@@ -285,7 +274,7 @@ export default function VendorProfilePageModern() {
                         description="This vendor hasn't added products yet or is currently closed."
                       />
                     ) : (
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {availableProducts.map((product) => (
                           <ProductCard key={product.id} product={{ ...product, vendor }} />
                         ))}
@@ -304,7 +293,7 @@ export default function VendorProfilePageModern() {
                         description="This vendor hasn't shared any posts."
                       />
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-1">
                         {posts.map((post) => (
                           <Link
                             key={post.id}
@@ -364,7 +353,7 @@ export default function VendorProfilePageModern() {
                         description="This vendor hasn't shared any videos."
                       />
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-1">
                         {videoPosts.map((post) => (
                           <Link
                             key={post.id}
@@ -516,63 +505,7 @@ export default function VendorProfilePageModern() {
               </motion.div>
             </AnimatePresence>
           </div>
-
-          {/* Sidebar */}
-          <aside className="space-y-6">
-            {/* Stats Card */}
-            <div className="bg-white rounded-2xl shadow-card border border-orange-100 p-6">
-              <h3 className="font-bold text-brand-dark mb-4">Statistics</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-brand-muted">Total Products</span>
-                  <span className="font-bold text-brand-dark">{products.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-brand-muted">Total Orders</span>
-                  <span className="font-bold text-brand-dark">{vendor.totalOrders || 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-brand-muted">Followers</span>
-                  <span className="font-bold text-brand-dark">{followersCount}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-brand-muted">Member Since</span>
-                  <span className="font-bold text-brand-dark text-xs">
-                    {formatDate(vendor.createdAt)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Rating Summary */}
-            <div className="bg-white rounded-2xl shadow-card border border-orange-100 p-6">
-              <h3 className="font-bold text-brand-dark mb-4">Rating Summary</h3>
-              <div className="text-center mb-4">
-                <p className="font-poppins font-bold text-4xl text-primary">
-                  {Number(vendor.rating || 0).toFixed(1)}
-                </p>
-                <StarRating rating={vendor.rating || 0} size={18} />
-                <p className="text-xs text-brand-muted mt-1">{reviews.length} reviews</p>
-              </div>
-              <div className="space-y-2">
-                {ratingDist.map(({ r, count }) => (
-                  <div key={r} className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-brand-muted w-3">{r}</span>
-                    <Star size={10} fill="#FF7A59" className="text-primary" />
-                    <div className="flex-1 bg-orange-50 rounded-full h-2">
-                      <div
-                        className="bg-primary h-full rounded-full transition-all"
-                        style={{ width: reviews.length > 0 ? `${(count / reviews.length) * 100}%` : '0%' }}
-                      />
-                    </div>
-                    <span className="text-xs text-brand-muted w-4 text-right">{count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
         </div>
-      </div>
-    </MainLayout>
-  );
-}
+      </MainLayout>
+    );
+  }

@@ -87,7 +87,7 @@ const updateVendorProfile = async (req, res) => {
             res.status(404).json({ success: false, message: "Vendor profile not found" });
             return;
         }
-        const { businessName, description, address, phone, whatsapp, openingTime, closingTime, availableDays, bankName, accountNumber, accountName, pickupLatitude, pickupLongitude, pickupInstructions, } = req.body;
+        const { businessName, description, address, phone, whatsapp, openingTime, closingTime, availableDays, bankName, accountNumber, accountName, pickupLatitude, pickupLongitude, pickupInstructions, offersDelivery, } = req.body;
         const files = req.files;
         let logoUrl = vendor.logo;
         let coverUrl = vendor.coverImage;
@@ -112,6 +112,7 @@ const updateVendorProfile = async (req, res) => {
             pickupLatitude: pickupLatitude !== undefined ? Number(pickupLatitude) : vendor.pickupLatitude,
             pickupLongitude: pickupLongitude !== undefined ? Number(pickupLongitude) : vendor.pickupLongitude,
             pickupInstructions: pickupInstructions !== undefined ? pickupInstructions : vendor.pickupInstructions,
+            offersDelivery: offersDelivery !== undefined ? (offersDelivery === 'true' || offersDelivery === true) : vendor.offersDelivery,
             logo: logoUrl,
             coverImage: coverUrl,
         });

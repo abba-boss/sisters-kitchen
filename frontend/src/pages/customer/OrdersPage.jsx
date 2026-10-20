@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, ChevronRight, RefreshCw } from 'lucide-react';
-import MainLayout from '../../components/layout/MainLayout';
+import AppLayout from '../../components/layout/AppLayout';
 import { EmptyOrders } from '../../components/common/EmptyState';
 import { OrderCardSkeleton } from '../../components/common/SkeletonLoader';
 import Pagination from '../../components/common/Pagination';
@@ -47,7 +47,7 @@ export default function OrdersPage() {
   });
 
   return (
-    <MainLayout hideFooter>
+    <AppLayout hideFooter>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="section-title">My Orders</h1>
@@ -146,6 +146,6 @@ export default function OrdersPage() {
           pages={meta.pages}
           onChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
         />
-    </MainLayout>
+    </AppLayout>
   );
 }

@@ -59,8 +59,8 @@ __decorate([
 ], User.prototype, "address", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: "enum",
-        enum: UserRole,
+        type: "varchar",
+        length: 30,
         default: UserRole.CUSTOMER,
     }),
     __metadata("design:type", String)

@@ -46,12 +46,11 @@ export class User {
   address: string;
 
   @Column({
-    type: "enum",
-    enum: UserRole,
-    default: UserRole.CUSTOMER,
-  })
-  role: UserRole;
-
+  type: "varchar",
+  length: 30,
+  default: UserRole.CUSTOMER,
+})
+role: UserRole;
   @Column({ default: true })
   isActive: boolean;
 

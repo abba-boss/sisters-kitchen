@@ -19,6 +19,9 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
     // Total stats
     const totalOrders = await orderRepo.count({ where: { vendor: { id: vendor.id } } });
     const deliveredOrders = await orderRepo.count({ where: { vendor: { id: vendor.id }, status: OrderStatus.DELIVERED } });
+    const totalProducts = await AppDataSource.getRepository(Product).count({
+      where: { vendor: { id: vendor.id } },
+    });
 
     // Revenue by month (last 6 months)
     const sixMonthsAgo = new Date();
@@ -26,7 +29,7 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
 
     const monthlyRevenue = await orderRepo
       .createQueryBuilder("order")
-      .select("DATE_FORMAT(order.createdAt, '%Y-%m') as month")
+      .select("strftime('%Y-%m', order.createdAt) as month")
       .addSelect("SUM(order.total) as revenue")
       .addSelect("COUNT(order.id) as orders")
       .where("order.vendorId = :vendorId", { vendorId: vendor.id })
@@ -85,6 +88,7 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
         summary: {
           totalOrders,
           deliveredOrders,
+          totalProducts,
           totalEarnings: vendor.totalEarnings,
           rating: vendor.rating,
           totalReviews: vendor.totalReviews,
@@ -129,7 +133,7 @@ export const getAdminAnalytics = async (req: AuthRequest, res: Response): Promis
 
     const monthlyStats = await orderRepo
       .createQueryBuilder("order")
-      .select("DATE_FORMAT(order.createdAt, '%Y-%m') as month")
+      .select("strftime('%Y-%m', order.createdAt) as month")
       .addSelect("SUM(order.total) as revenue")
       .addSelect("COUNT(order.id) as orders")
       .where("order.status = :status", { status: OrderStatus.DELIVERED })
@@ -141,7 +145,7 @@ export const getAdminAnalytics = async (req: AuthRequest, res: Response): Promis
     // User registration growth (last 6 months)
     const userGrowth = await userRepo
       .createQueryBuilder("user")
-      .select("DATE_FORMAT(user.createdAt, '%Y-%m') as month")
+      .select("strftime('%Y-%m', user.createdAt) as month")
       .addSelect("COUNT(user.id) as newUsers")
       .where("user.createdAt >= :from", { from: sixMonthsAgo })
       .groupBy("month")

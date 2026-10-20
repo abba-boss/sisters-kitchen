@@ -1,3 +1,4 @@
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -20,7 +21,6 @@ export enum NotificationType {
   PAYMENT_FAILED = "payment_failed",
   VENDOR_APPROVED = "vendor_approved",
   GENERAL = "general",
-  // V2 social notifications
   NEW_POST_LIKE = "new_post_like",
   NEW_POST_COMMENT = "new_post_comment",
   NEW_FOLLOWER = "new_follower",
@@ -32,15 +32,15 @@ export class Notification {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ length: 200 })
+  @Column({ type: "varchar", length: 200 })
   title: string;
 
   @Column({ type: "text" })
   message: string;
 
   @Column({
-    type: "enum",
-    enum: NotificationType,
+    type: "varchar",
+    length: 50,
     default: NotificationType.GENERAL,
   })
   type: NotificationType;
@@ -48,16 +48,19 @@ export class Notification {
   @Column({ default: false })
   isRead: boolean;
 
-  @Column({ nullable: true })
-  link: string;
+  @Column({ type: "varchar", nullable: true })
+  link: string | null;
 
-  @Column({ nullable: true })
-  referenceId: string;
+  @Column({ type: "varchar", nullable: true })
+  referenceId: string | null;
 
-  @ManyToOne(() => User, (user) => user.notifications, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, (user) => user.notifications, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn()
   user: User;
 
   @CreateDateColumn()
   createdAt: Date;
 }
+

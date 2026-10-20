@@ -36,19 +36,21 @@ export class Order {
   @Column({ unique: true })
   orderNumber: string;
 
-  @Column({
-    type: "enum",
-    enum: OrderStatus,
-    default: OrderStatus.PENDING,
-  })
-  status: OrderStatus;
+  
+@Column({
+  type: "varchar",
+  length: 30,
+  default: OrderStatus.PENDING,
+})
+status: OrderStatus;
 
-  @Column({
-    type: "enum",
-    enum: FulfillmentType,
-    default: FulfillmentType.DELIVERY,
-  })
-  fulfillmentType: FulfillmentType;
+@Column({
+  type: "varchar",
+  length: 30,
+  default: FulfillmentType.DELIVERY,
+})
+fulfillmentType: FulfillmentType;
+
 
   @Column({ nullable: true, unique: true })
   pickupToken: string;
@@ -56,9 +58,8 @@ export class Order {
   @Column({ nullable: true })
   pickupPin: string;
 
-  @Column({ type: "timestamp", nullable: true })
-  pickupVerifiedAt: Date;
-
+  @Column({ type: "datetime", nullable: true })
+pickupVerifiedAt: Date | null;
   @Column({ nullable: true })
   pickupVerifiedBy: string;
 

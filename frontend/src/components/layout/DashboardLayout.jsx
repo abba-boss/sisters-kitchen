@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Package, ShoppingBag, Star, Settings,
-  Bell, LogOut, Menu, X, ChefHat, Users, BarChart3,
-  Store, TrendingUp, PlusSquare, CreditCard, Rss, Radio
+  LayoutDashboard, Package, ShoppingBag, Settings,
+  LogOut, Menu, ChefHat, Users, BarChart3,
+  Store, TrendingUp, PlusSquare, Home
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
@@ -15,11 +15,8 @@ const vendorLinks = [
   { to: '/vendor/products',  icon: Package,         label: 'My Products' },
   { to: '/vendor/products/new', icon: PlusSquare,   label: 'Add Product' },
   { to: '/vendor/orders',    icon: ShoppingBag,     label: 'Orders' },
-  { to: '/vendor/posts',     icon: Rss,             label: 'Posts' },
-  { to: '/vendor/stories',   icon: Radio,           label: 'Stories' },
   { to: '/vendor/earnings',  icon: TrendingUp,      label: 'Earnings' },
-  { to: '/vendor/reviews',   icon: Star,            label: 'Reviews' },
-  { to: '/vendor/profile',   icon: Settings,        label: 'Store Profile' },
+  { to: '/vendor/profile',   icon: Settings,        label: 'Profile' },
 ];
 
 const adminLinks = [
@@ -74,17 +71,29 @@ export default function DashboardLayout({ children }) {
         })}
       </nav>
 
-      {/* User + Logout */}
+      {/* User + Actions */}
       <div className="p-4 border-t border-orange-100 space-y-1">
-        <div className="flex items-center gap-3 px-3 py-2 mb-1">
-          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-primary font-bold text-sm">{user?.firstName?.[0]}</span>
+        {/* User Info */}
+        <div className="flex items-center gap-3 px-3 py-2 mb-2">
+          <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-primary font-bold text-base">{user?.firstName?.[0]}</span>
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-brand-dark truncate">{user?.firstName} {user?.lastName}</p>
             <p className="text-xs text-brand-muted capitalize">{user?.role}</p>
           </div>
         </div>
+
+        {/* Back to Website */}
+        <Link 
+          to="/" 
+          onClick={() => setSidebarOpen(false)}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-brand-dark hover:bg-brand-bg transition-colors"
+        >
+          <Home size={16} /> Back to Website
+        </Link>
+
+        {/* Logout */}
         <button onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors">
           <LogOut size={16} /> Logout
@@ -139,9 +148,6 @@ export default function DashboardLayout({ children }) {
           </div>
           <div className="flex items-center gap-2">
             <NotificationDropdown />
-            <Link to="/" className="hidden sm:flex items-center gap-1.5 text-xs text-brand-muted hover:text-primary transition-colors px-3 py-2 rounded-xl hover:bg-brand-bg">
-              ← Site
-            </Link>
           </div>
         </header>
 

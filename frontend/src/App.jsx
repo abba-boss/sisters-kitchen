@@ -58,8 +58,8 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import AuthModal from './components/common/AuthModal';
 import NotFoundPage from './pages/NotFoundPage';
 import DailyRewardModal from './components/social/DailyRewardModal';
-import ErrorBoundary from './components/ErrorBoundary';
-import OfflineBanner from './components/common/OfflineBanner';
+// import ErrorBoundary from './components/ErrorBoundary';
+// import OfflineBanner from './components/common/OfflineBanner';
 import ScrollToTop from './components/common/ScrollToTop';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 
@@ -104,7 +104,7 @@ function AppProviders() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ErrorBoundary>
+      {/* <ErrorBoundary> */}
         <Toaster
           position="top-center"
           gutter={10}
@@ -134,7 +134,7 @@ export default function App() {
           duration: 3200,
         }}
       />
-      <OfflineBanner />
+      {/* <OfflineBanner /> */}
       <ScrollToTop />
       <AuthModal />
       <DailyRewardModal />
@@ -191,7 +191,7 @@ export default function App() {
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-      </ErrorBoundary>
+      {/* </ErrorBoundary> */}
     </BrowserRouter>
   );
 }

@@ -13,13 +13,18 @@
  *   npm install canvas
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Try to load canvas, provide helpful error if not installed
-let Canvas;
+let createCanvas;
 try {
-  Canvas = require('canvas');
+  const Canvas = await import('canvas');
+  createCanvas = Canvas.createCanvas;
 } catch (error) {
   console.error('\n❌ Error: canvas package not installed\n');
   console.log('To generate icons, install canvas:');
@@ -28,8 +33,6 @@ try {
   console.log('  Open frontend/scripts/generate-pwa-icons.html in your browser\n');
   process.exit(1);
 }
-
-const { createCanvas } = Canvas;
 
 // Icon sizes required for PWA
 const SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
@@ -138,8 +141,4 @@ function generateAllIcons() {
 }
 
 // Run the generator
-if (require.main === module) {
-  generateAllIcons();
-}
-
-module.exports = { generateAllIcons, createIcon };
+generateAllIcons();

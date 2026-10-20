@@ -85,7 +85,7 @@ __decorate([
 ], Vendor.prototype, "totalEarnings", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: "enum",
+        type: "simple-enum",
         enum: VendorStatus,
         default: VendorStatus.PENDING,
     }),
@@ -95,6 +95,10 @@ __decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], Vendor.prototype, "isOpen", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: true }),
+    __metadata("design:type", Boolean)
+], Vendor.prototype, "offersDelivery", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)

@@ -45,6 +45,8 @@ const Notification_1 = require("../entities/Notification");
 const helpers_1 = require("../utils/helpers");
 const User_1 = require("../entities/User");
 const socket_1 = require("../config/socket");
+const commissionService_1 = require("../services/commissionService");
+const email_1 = require("../config/email");
 const crypto_1 = __importDefault(require("crypto"));
 // ─── Notification helper ──────────────────────────────────────
 async function createAndEmitNotification(userId, title, message, type, referenceId) {
@@ -149,6 +151,9 @@ const createOrder = async (req, res) => {
         // Notify vendor via socket + DB notification
         (0, socket_1.emitToAdmins)("order:new", { order: fullOrder });
         await createAndEmitNotification(vendor.user.id, "New Order Received! 🛎️", `Order #${order.orderNumber} just came in!`, Notification_1.NotificationType.NEW_ORDER, order.id);
+        // Send confirmation emails
+        await (0, email_1.sendEmail)(req.user.email, email_1.emailTemplates.orderConfirmation(order.orderNumber, req.user.firstName, Number(order.total)));
+        await (0, email_1.sendEmail)(vendor.user.email, email_1.emailTemplates.newOrderVendor(order.orderNumber, vendor.businessName, items.length, Number(order.total)));
         res.status(201).json({ success: true, message: "Order placed successfully", data: fullOrder });
     }
     catch (error) {
@@ -261,14 +266,11 @@ const updateOrderStatus = async (req, res) => {
                 }
             }
         }
-        // Update vendor earnings on delivery
+        // Update vendor earnings on delivery with commission deduction
         if (status === Order_1.OrderStatus.DELIVERED) {
-            const vendorRepo = database_1.AppDataSource.getRepository(Vendor_1.Vendor);
-            const vendor = await vendorRepo.findOne({ where: { id: order.vendor.id } });
-            if (vendor) {
-                vendor.totalOrders += 1;
-                vendor.totalEarnings = Number(vendor.totalEarnings) + Number(order.total);
-                await vendorRepo.save(vendor);
+            const result = await (0, commissionService_1.updateVendorEarnings)(order.vendor.id, Number(order.total), order.id);
+            if (!result.success) {
+                console.error('Failed to update vendor earnings:', result.error);
             }
         }
         // ── Emit real-time socket event ──────────────────────────
@@ -285,6 +287,8 @@ const updateOrderStatus = async (req, res) => {
         const notifData = statusMessages[status];
         if (notifData) {
             await createAndEmitNotification(order.user.id, notifData.title, notifData.msg, notifData.type, order.id);
+            // Send email notification for status update
+            await (0, email_1.sendEmail)(order.user.email, email_1.emailTemplates.orderStatusUpdate(order.orderNumber, order.user.firstName, status, notifData.msg));
         }
         // Emit to admin room
         (0, socket_1.emitToAdmins)("order:status_changed", { orderId: order.id, newStatus: status, prevStatus, order });

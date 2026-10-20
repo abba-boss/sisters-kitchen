@@ -22,7 +22,7 @@ export declare class Order {
     fulfillmentType: FulfillmentType;
     pickupToken: string;
     pickupPin: string;
-    pickupVerifiedAt: Date;
+    pickupVerifiedAt: Date | null;
     pickupVerifiedBy: string;
     subtotal: number;
     deliveryFee: number;

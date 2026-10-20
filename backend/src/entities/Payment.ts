@@ -1,3 +1,4 @@
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,6 +8,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from "typeorm";
+
 import { Order } from "./Order";
 import { User } from "./User";
 
@@ -35,24 +37,24 @@ export class Payment {
   amount: number;
 
   @Column({
-    type: "enum",
-    enum: PaymentStatus,
+    type: "varchar",
+    length: 30,
     default: PaymentStatus.PENDING,
   })
   status: PaymentStatus;
 
   @Column({
-    type: "enum",
-    enum: PaymentMethod,
+    type: "varchar",
+    length: 30,
     default: PaymentMethod.PAYSTACK,
   })
   method: PaymentMethod;
 
-  @Column({ nullable: true })
-  paystackReference: string;
+  @Column({ type: "varchar", nullable: true })
+  paystackReference: string | null;
 
-  @Column({ type: "json", nullable: true })
-  metadata: object;
+  @Column({ type: "simple-json", nullable: true })
+  metadata: object | null;
 
   @ManyToOne(() => Order, (order) => order.payments)
   @JoinColumn()
@@ -68,3 +70,4 @@ export class Payment {
   @UpdateDateColumn()
   updatedAt: Date;
 }
+

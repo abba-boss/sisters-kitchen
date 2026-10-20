@@ -6,6 +6,7 @@ import {
   Search,
   LogOut,
   User,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
@@ -135,8 +136,21 @@ export default function Navbar() {
                         <p className="text-xs text-brand-muted">{user?.email}</p>
                       </div>
 
-                      {/* Logout Only */}
+                      {/* Menu Items */}
                       <div className="py-2">
+                        {/* Dashboard Link - Only for Vendors and Admins */}
+                        {(user?.role === 'vendor' || user?.role === 'admin') && (
+                          <Link
+                            to={user?.role === 'admin' ? '/admin/dashboard' : '/vendor/dashboard'}
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-bg transition-colors w-full text-left"
+                          >
+                            <LayoutDashboard size={18} className="text-primary" />
+                            <span className="text-sm text-brand-dark font-semibold">Dashboard</span>
+                          </Link>
+                        )}
+
+                        {/* Logout */}
                         <button
                           onClick={() => {
                             logout();

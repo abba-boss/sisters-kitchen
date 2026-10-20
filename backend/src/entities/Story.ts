@@ -10,12 +10,12 @@ export class Story {
   @PrimaryGeneratedColumn("uuid") id: string;
   @Column() mediaUrl: string;
   @Column({ nullable: true }) thumbnailUrl: string;
-  @Column({ type: "enum", enum: ["image", "video"], default: "image" }) mediaType: "image" | "video";
+  @Column({ type: "varchar", length: 10, default: "image" }) mediaType: "image" | "video";
   @Column({ type: "text", nullable: true }) caption: string;
   @Column({ nullable: true }) link: string;
   @Column({ default: 0 }) viewsCount: number;
   @Column({ default: true }) isActive: boolean;
-  @Column({ type: "timestamp" }) expiresAt: Date;
+  @Column({ type: "datetime" }) expiresAt: Date;
   @ManyToOne(() => Vendor, { nullable: true, onDelete: "CASCADE" }) @JoinColumn() vendor: Vendor;
   @ManyToOne(() => User,   { nullable: true, onDelete: "CASCADE" }) @JoinColumn() author: User;
   @OneToMany(() => StoryView, (sv) => sv.story, { cascade: true }) views: StoryView[];

@@ -29,7 +29,7 @@ __decorate([
     __metadata("design:type", String)
 ], Story.prototype, "thumbnailUrl", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "enum", enum: ["image", "video"], default: "image" }),
+    (0, typeorm_1.Column)({ type: "varchar", length: 10, default: "image" }),
     __metadata("design:type", String)
 ], Story.prototype, "mediaType", void 0);
 __decorate([
@@ -49,7 +49,7 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Story.prototype, "isActive", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "timestamp" }),
+    (0, typeorm_1.Column)({ type: "datetime" }),
     __metadata("design:type", Date)
 ], Story.prototype, "expiresAt", void 0);
 __decorate([

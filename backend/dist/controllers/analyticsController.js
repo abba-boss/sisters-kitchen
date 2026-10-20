@@ -19,12 +19,15 @@ const getVendorAnalytics = async (req, res) => {
         // Total stats
         const totalOrders = await orderRepo.count({ where: { vendor: { id: vendor.id } } });
         const deliveredOrders = await orderRepo.count({ where: { vendor: { id: vendor.id }, status: Order_1.OrderStatus.DELIVERED } });
+        const totalProducts = await database_1.AppDataSource.getRepository(Product_1.Product).count({
+            where: { vendor: { id: vendor.id } },
+        });
         // Revenue by month (last 6 months)
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
         const monthlyRevenue = await orderRepo
             .createQueryBuilder("order")
-            .select("DATE_FORMAT(order.createdAt, '%Y-%m') as month")
+            .select("strftime('%Y-%m', order.createdAt) as month")
             .addSelect("SUM(order.total) as revenue")
             .addSelect("COUNT(order.id) as orders")
             .where("order.vendorId = :vendorId", { vendorId: vendor.id })
@@ -78,6 +81,7 @@ const getVendorAnalytics = async (req, res) => {
                 summary: {
                     totalOrders,
                     deliveredOrders,
+                    totalProducts,
                     totalEarnings: vendor.totalEarnings,
                     rating: vendor.rating,
                     totalReviews: vendor.totalReviews,
@@ -119,7 +123,7 @@ const getAdminAnalytics = async (req, res) => {
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
         const monthlyStats = await orderRepo
             .createQueryBuilder("order")
-            .select("DATE_FORMAT(order.createdAt, '%Y-%m') as month")
+            .select("strftime('%Y-%m', order.createdAt) as month")
             .addSelect("SUM(order.total) as revenue")
             .addSelect("COUNT(order.id) as orders")
             .where("order.status = :status", { status: Order_1.OrderStatus.DELIVERED })
@@ -130,7 +134,7 @@ const getAdminAnalytics = async (req, res) => {
         // User registration growth (last 6 months)
         const userGrowth = await userRepo
             .createQueryBuilder("user")
-            .select("DATE_FORMAT(user.createdAt, '%Y-%m') as month")
+            .select("strftime('%Y-%m', user.createdAt) as month")
             .addSelect("COUNT(user.id) as newUsers")
             .where("user.createdAt >= :from", { from: sixMonthsAgo })
             .groupBy("month")

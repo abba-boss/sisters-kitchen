@@ -45,11 +45,11 @@ __decorate([
     __metadata("design:type", String)
 ], Post.prototype, "caption", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "enum", enum: PostType, default: PostType.IMAGE }),
+    (0, typeorm_1.Column)({ type: "varchar", length: 30, default: PostType.IMAGE }),
     __metadata("design:type", String)
 ], Post.prototype, "type", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "enum", enum: PostStatus, default: PostStatus.PUBLISHED }),
+    (0, typeorm_1.Column)({ type: "varchar", length: 30, default: PostStatus.PUBLISHED }),
     __metadata("design:type", String)
 ], Post.prototype, "status", void 0);
 __decorate([
@@ -81,7 +81,7 @@ __decorate([
     __metadata("design:type", String)
 ], Post.prototype, "location", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
+    (0, typeorm_1.Column)({ type: "datetime", nullable: true }),
     __metadata("design:type", Date)
 ], Post.prototype, "scheduledAt", void 0);
 __decorate([
@@ -142,7 +142,7 @@ __decorate([
     __metadata("design:type", String)
 ], PostMedia.prototype, "thumbnailUrl", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "enum", enum: ["image", "video"], default: "image" }),
+    (0, typeorm_1.Column)({ type: "varchar", length: 10, default: "image" }),
     __metadata("design:type", String)
 ], PostMedia.prototype, "type", void 0);
 __decorate([

@@ -12,10 +12,36 @@ import { AppDataSource } from "./config/database";
 import { initSocket } from "./config/socket";
 import { errorHandler, notFound } from "./middleware/errorHandler";
 import { logger } from "./utils/logger";
+import { swaggerSpec } from "./config/swagger";
+import swaggerUi from "swagger-ui-express";
+
+dotenv.config();
+
+// ── Optional Sentry Error Monitoring ───────────────────────────
+let Sentry: any = null;
+if (process.env.SENTRY_DSN) {
+  try {
+    Sentry = require("@sentry/node");
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV || 'development',
+      tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    });
+    logger.info("✅ Sentry error monitoring initialized");
+  } catch (error) {
+    logger.warn("⚠️ Sentry not available - continuing without error monitoring");
+  }
+}
 
 // ── Crash guards — keep the process alive ─────────────────────
-process.on("uncaughtException",  (err) => { logger.error("Uncaught Exception:",  err); });
-process.on("unhandledRejection", (err) => { logger.error("Unhandled Rejection:", err); });
+process.on("uncaughtException",  (err) => { 
+  logger.error("Uncaught Exception:",  err);
+  if (Sentry) Sentry.captureException(err);
+});
+process.on("unhandledRejection", (err) => { 
+  logger.error("Unhandled Rejection:", err);
+  if (Sentry) Sentry.captureException(err);
+});
 
 // Routes
 import authRoutes from "./routes/authRoutes";
@@ -39,6 +65,7 @@ import rewardRoutes from "./routes/rewardRoutes";
 dotenv.config();
 
 const app = express();
+
 const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
@@ -102,8 +129,16 @@ app.get("/health", (req, res) => {
     message: "Sisters Kitchen API is running 🍽️",
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV,
+    monitoring: !!process.env.SENTRY_DSN,
+    documentation: "/api-docs",
   });
 });
+
+// ── API Documentation ──────────────────────────────────────────
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Sisters Kitchen API Docs',
+}));
 
 // ── API Routes ─────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);

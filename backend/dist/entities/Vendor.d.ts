@@ -24,6 +24,7 @@ export declare class Vendor {
     totalEarnings: number;
     status: VendorStatus;
     isOpen: boolean;
+    offersDelivery: boolean;
     openingTime: string;
     closingTime: string;
     availableDays: string[];

@@ -43,16 +43,16 @@ __decorate([
 ], Order.prototype, "orderNumber", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: "enum",
-        enum: OrderStatus,
+        type: "varchar",
+        length: 30,
         default: OrderStatus.PENDING,
     }),
     __metadata("design:type", String)
 ], Order.prototype, "status", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: "enum",
-        enum: FulfillmentType,
+        type: "varchar",
+        length: 30,
         default: FulfillmentType.DELIVERY,
     }),
     __metadata("design:type", String)
@@ -66,7 +66,7 @@ __decorate([
     __metadata("design:type", String)
 ], Order.prototype, "pickupPin", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
+    (0, typeorm_1.Column)({ type: "datetime", nullable: true }),
     __metadata("design:type", Date)
 ], Order.prototype, "pickupVerifiedAt", void 0);
 __decorate([

@@ -22,8 +22,8 @@ export declare class Notification {
     message: string;
     type: NotificationType;
     isRead: boolean;
-    link: string;
-    referenceId: string;
+    link: string | null;
+    referenceId: string | null;
     user: User;
     createdAt: Date;
 }

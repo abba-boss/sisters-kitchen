@@ -66,7 +66,7 @@ export class Vendor {
   totalEarnings: number;
 
   @Column({
-    type: "enum",
+    type: "simple-enum",
     enum: VendorStatus,
     default: VendorStatus.PENDING,
   })
@@ -74,6 +74,9 @@ export class Vendor {
 
   @Column({ default: false })
   isOpen: boolean;
+
+  @Column({ default: true })
+  offersDelivery: boolean;
 
   @Column({ nullable: true })
   openingTime: string;

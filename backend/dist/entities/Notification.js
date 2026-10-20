@@ -25,7 +25,6 @@ var NotificationType;
     NotificationType["PAYMENT_FAILED"] = "payment_failed";
     NotificationType["VENDOR_APPROVED"] = "vendor_approved";
     NotificationType["GENERAL"] = "general";
-    // V2 social notifications
     NotificationType["NEW_POST_LIKE"] = "new_post_like";
     NotificationType["NEW_POST_COMMENT"] = "new_post_comment";
     NotificationType["NEW_FOLLOWER"] = "new_follower";
@@ -39,7 +38,7 @@ __decorate([
     __metadata("design:type", String)
 ], Notification.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 200 }),
+    (0, typeorm_1.Column)({ type: "varchar", length: 200 }),
     __metadata("design:type", String)
 ], Notification.prototype, "title", void 0);
 __decorate([
@@ -48,8 +47,8 @@ __decorate([
 ], Notification.prototype, "message", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: "enum",
-        enum: NotificationType,
+        type: "varchar",
+        length: 50,
         default: NotificationType.GENERAL,
     }),
     __metadata("design:type", String)
@@ -59,15 +58,17 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Notification.prototype, "isRead", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
     __metadata("design:type", String)
 ], Notification.prototype, "link", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
+    (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
     __metadata("design:type", String)
 ], Notification.prototype, "referenceId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.notifications, { onDelete: "CASCADE" }),
+    (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.notifications, {
+        onDelete: "CASCADE",
+    }),
     (0, typeorm_1.JoinColumn)(),
     __metadata("design:type", User_1.User)
 ], Notification.prototype, "user", void 0);

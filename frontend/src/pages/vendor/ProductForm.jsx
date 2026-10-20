@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, X, ArrowLeft, Save, ImagePlus,
-  AlertCircle, Loader, CheckCircle2, Star, Flame
+  AlertCircle, Loader, CheckCircle2, Star
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { PageLoader, OverlayLoader } from '../../components/common/LoadingSpinner';
@@ -32,8 +32,8 @@ export default function ProductForm() {
 
   const [form, setForm] = useState({
     name: '', description: '', price: '', discountPrice: '',
-    categoryId: '', stock: '20', preparationTime: '',
-    isAvailable: true, isFeatured: false, isFreshToday: false, tags: '',
+    categoryId: '', stock: '20',
+    isAvailable: true, isFeatured: false,
   });
 
   // ── Load categories ─────────────────────────────────────────
@@ -53,11 +53,8 @@ export default function ProductForm() {
           name: p.name || '', description: p.description || '',
           price: String(p.price || ''), discountPrice: String(p.discountPrice || ''),
           categoryId: p.category?.id || '', stock: String(p.stock ?? 20),
-          preparationTime: p.preparationTime || '',
           isAvailable:  p.isAvailable  ?? true,
           isFeatured:   p.isFeatured   ?? false,
-          isFreshToday: p.isFreshToday ?? false,
-          tags: (p.tags || []).join(', '),
         });
         if (p.images?.length) {
           setSlots(p.images.map((url) => makeSlot(url, null, url)));
@@ -173,13 +170,8 @@ export default function ProductForm() {
       if (form.discountPrice) fd.append('discountPrice', form.discountPrice);
       if (form.categoryId)    fd.append('categoryId',   form.categoryId);
       fd.append('stock',        String(form.stock || 0));
-      if (form.preparationTime) fd.append('preparationTime', form.preparationTime);
       fd.append('isAvailable',  String(form.isAvailable));
       fd.append('isFeatured',   String(form.isFeatured));
-      fd.append('isFreshToday', String(form.isFreshToday));
-      fd.append('tags',         JSON.stringify(
-        form.tags.split(',').map((t) => t.trim()).filter(Boolean)
-      ));
       // Pass already-uploaded URLs as a JSON array
       fd.append('existingImageUrls', JSON.stringify(uploadedUrls));
 
@@ -203,12 +195,6 @@ export default function ProductForm() {
   };
 
   // ── Live price preview ────────────────────────────────────────
-  const pricePreview = form.price
-    ? formatPrice(Number(form.price))
-    : null;
-  const discountPreview = form.discountPrice
-    ? formatPrice(Number(form.discountPrice))
-    : null;
   const saving_pct = form.price && form.discountPrice
     ? Math.round(((Number(form.price) - Number(form.discountPrice)) / Number(form.price)) * 100)
     : 0;
@@ -373,7 +359,7 @@ export default function ProductForm() {
                 type="text" name="name" value={form.name}
                 onChange={handleChange}
                 placeholder="e.g. Chicken Shawarma (Large)"
-                maxLength={200}
+                maxLength={100}
                 className={`input-field ${errors.name ? 'border-red-400 ring-2 ring-red-100' : ''}`}
               />
               {errors.name && (
@@ -391,13 +377,10 @@ export default function ProductForm() {
               <textarea
                 name="description" value={form.description}
                 onChange={handleChange}
-                rows={4}
-                placeholder="What makes this dish special? Mention ingredients, serving size, flavor profile…"
+                rows={3}
+                placeholder="Describe your dish..."
                 className={`input-field resize-none ${errors.description ? 'border-red-400' : ''}`}
               />
-              <p className="text-xs text-brand-muted text-right mt-0.5">
-                {form.description.length} chars
-              </p>
               {errors.description && (
                 <p className="text-xs text-red-500 flex items-center gap-1">
                   <AlertCircle size={11} /> {errors.description}
@@ -406,7 +389,7 @@ export default function ProductForm() {
             </div>
 
             {/* Price */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-brand-dark mb-1.5 block">
                   Price (₦) <span className="text-red-500">*</span>
@@ -417,9 +400,6 @@ export default function ProductForm() {
                   placeholder="2500" min="1" step="50"
                   className={`input-field ${errors.price ? 'border-red-400' : ''}`}
                 />
-                {pricePreview && (
-                  <p className="text-xs text-brand-muted mt-0.5">= {pricePreview}</p>
-                )}
                 {errors.price && (
                   <p className="text-xs text-red-500 mt-0.5">{errors.price}</p>
                 )}
@@ -436,75 +416,45 @@ export default function ProductForm() {
                 <input
                   type="number" name="discountPrice" value={form.discountPrice}
                   onChange={handleChange}
-                  placeholder="Leave empty = no discount" min="0" step="50"
+                  placeholder="Optional" min="0" step="50"
                   className={`input-field ${errors.discountPrice ? 'border-red-400' : ''}`}
                 />
-                {discountPreview && (
-                  <p className="text-xs text-accent mt-0.5">= {discountPreview}</p>
-                )}
                 {errors.discountPrice && (
                   <p className="text-xs text-red-500 mt-0.5">{errors.discountPrice}</p>
                 )}
               </div>
             </div>
 
-            {/* Category + Prep */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Category + Stock */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-brand-dark mb-1.5 block">Category</label>
                 <select
                   name="categoryId" value={form.categoryId} onChange={handleChange}
                   className="input-field">
-                  <option value="">Select category…</option>
+                  <option value="">Select category</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-brand-dark mb-1.5 block">Prep Time</label>
+                <label className="text-xs font-semibold text-brand-dark mb-1.5 block">
+                  Stock
+                </label>
                 <input
-                  type="text" name="preparationTime" value={form.preparationTime}
-                  onChange={handleChange} placeholder="e.g. 15–20 mins"
+                  type="number" name="stock" value={form.stock}
+                  onChange={handleChange}
+                  placeholder="20" min="0"
                   className="input-field"
                 />
               </div>
-            </div>
-
-            {/* Stock */}
-            <div>
-              <label className="text-xs font-semibold text-brand-dark mb-1.5 block">
-                Stock Quantity
-              </label>
-              <input
-                type="number" name="stock" value={form.stock}
-                onChange={handleChange}
-                placeholder="20" min="0"
-                className="input-field"
-              />
-              <p className="text-xs text-brand-muted mt-0.5">
-                Set to 0 to pause ordering while keeping the listing visible
-              </p>
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label className="text-xs font-semibold text-brand-dark mb-1.5 block">
-                Tags
-                <span className="text-brand-muted font-normal ml-1">(comma separated)</span>
-              </label>
-              <input
-                type="text" name="tags" value={form.tags}
-                onChange={handleChange}
-                placeholder="spicy, grilled, popular, vegetarian…"
-                className="input-field"
-              />
             </div>
           </div>
 
           {/* ── Settings ────────────────────────────── */}
           <div className="card p-5 space-y-3">
-            <h2 className="font-semibold text-brand-dark text-sm mb-1">Listing Settings</h2>
+            <h2 className="font-semibold text-brand-dark text-sm mb-1">Settings</h2>
 
             {[
               {
@@ -512,21 +462,14 @@ export default function ProductForm() {
                 icon: CheckCircle2,
                 iconClass: 'text-accent',
                 label: 'Available for ordering',
-                desc: 'Customers can find and add this to their cart',
+                desc: 'Customers can order this product',
               },
               {
                 name: 'isFeatured',
                 icon: Star,
                 iconClass: 'text-yellow-500',
                 label: 'Featured product',
-                desc: 'Promoted on the homepage featured section',
-              },
-              {
-                name: 'isFreshToday',
-                icon: Flame,
-                iconClass: 'text-orange-500',
-                label: '"Fresh Today" badge',
-                desc: 'Show a "Fresh Today" badge on the listing',
+                desc: 'Show on homepage',
               },
             ].map(({ name, icon: Icon, iconClass, label, desc }) => (
               <div key={name} className="flex items-center justify-between py-1.5">
