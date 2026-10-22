@@ -19,7 +19,18 @@ export default function VendorsPage() {
   }, []);
 
   const filteredVendors = search.trim()
-    ? vendors.filter((v) => v.businessName?.toLowerCase().includes(search.toLowerCase()))
+    ? vendors.filter((v) => {
+        const searchLower = search.toLowerCase();
+        return (
+          v.businessName?.toLowerCase().includes(searchLower) ||
+          v.description?.toLowerCase().includes(searchLower) ||
+          v.address?.toLowerCase().includes(searchLower) ||
+          v.city?.toLowerCase().includes(searchLower) ||
+          v.state?.toLowerCase().includes(searchLower) ||
+          v.user?.firstName?.toLowerCase().includes(searchLower) ||
+          v.user?.lastName?.toLowerCase().includes(searchLower)
+        );
+      })
     : vendors;
 
   return (

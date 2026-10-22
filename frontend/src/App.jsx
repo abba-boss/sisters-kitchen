@@ -28,11 +28,6 @@ import PaymentVerifyPage from './pages/customer/PaymentVerifyPage';
 import PaymentHistoryPage from './pages/customer/PaymentHistoryPage';
 import ProfilePage from './pages/customer/ProfilePage';
 
-// Social Pages
-import FeedPage from './pages/social/FeedPage';
-import PostDetailPage from './pages/social/PostDetailPage';
-import PostEditPage from './pages/social/PostEditPage';
-
 // Vendor Pages
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import VendorProducts from './pages/vendor/VendorProducts';
@@ -40,10 +35,9 @@ import ProductForm from './pages/vendor/ProductForm';
 import VendorOrders from './pages/vendor/VendorOrders';
 import VendorProfile from './pages/vendor/VendorProfile';
 import VendorEarnings from './pages/vendor/VendorEarnings';
+import VendorFeedback from './pages/vendor/VendorFeedback';
 import VendorReviews from './pages/vendor/VendorReviews';
-import VendorPosts from './pages/vendor/VendorPosts';
-import VendorStories from './pages/vendor/VendorStories';
-import BusinessHub from './pages/vendor/BusinessHub';
+import VendorMessages from './pages/vendor/VendorMessages';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -52,6 +46,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminProducts from './pages/admin/AdminProducts';
+import AdminMessages from './pages/admin/AdminMessages';
 
 // Common
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -145,8 +140,6 @@ export default function App() {
         {/* Public — no login needed to browse or add to cart */}
         <Route path="/" element={<HomePage />} />
         <Route path="/shop" element={<ShopPage />} />
-        <Route path="/feed" element={<FeedPage />} />
-        <Route path="/posts/:id" element={<PostDetailPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/vendors" element={<VendorsPage />} />
@@ -175,11 +168,9 @@ export default function App() {
         <Route path="/vendor/orders" element={<ProtectedRoute roles={['vendor']}><VendorOrders /></ProtectedRoute>} />
         <Route path="/vendor/profile" element={<ProtectedRoute roles={['vendor']}><VendorProfile /></ProtectedRoute>} />
         <Route path="/vendor/earnings" element={<ProtectedRoute roles={['vendor']}><VendorEarnings /></ProtectedRoute>} />
+        <Route path="/vendor/feedback" element={<ProtectedRoute roles={['vendor']}><VendorFeedback /></ProtectedRoute>} />
         <Route path="/vendor/reviews" element={<ProtectedRoute roles={['vendor']}><VendorReviews /></ProtectedRoute>} />
-        <Route path="/vendor/posts" element={<ProtectedRoute roles={['vendor']}><VendorPosts /></ProtectedRoute>} />
-        <Route path="/vendor/posts/:id/edit" element={<ProtectedRoute roles={['vendor']}><PostEditPage /></ProtectedRoute>} />
-        <Route path="/vendor/stories" element={<ProtectedRoute roles={['vendor']}><VendorStories /></ProtectedRoute>} />
-        <Route path="/vendor/hub" element={<ProtectedRoute roles={['vendor']}><BusinessHub /></ProtectedRoute>} />
+        <Route path="/vendor/messages" element={<ProtectedRoute roles={['vendor']}><VendorMessages /></ProtectedRoute>} />
 
         {/* Admin */}
         <Route path="/admin/dashboard" element={<ProtectedRoute roles={['admin']}><AdminDashboard /></ProtectedRoute>} />
@@ -188,6 +179,7 @@ export default function App() {
         <Route path="/admin/orders" element={<ProtectedRoute roles={['admin']}><AdminOrders /></ProtectedRoute>} />
         <Route path="/admin/analytics" element={<ProtectedRoute roles={['admin']}><AdminAnalytics /></ProtectedRoute>} />
         <Route path="/admin/products" element={<ProtectedRoute roles={['admin']}><AdminProducts /></ProtectedRoute>} />
+        <Route path="/admin/messages" element={<ProtectedRoute roles={['admin']}><AdminMessages /></ProtectedRoute>} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

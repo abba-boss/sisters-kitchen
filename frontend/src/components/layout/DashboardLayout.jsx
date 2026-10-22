@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Package, ShoppingBag, Settings,
   LogOut, Menu, ChefHat, Users, BarChart3,
-  Store, TrendingUp, PlusSquare, Home
+  Store, TrendingUp, PlusSquare, Home, MessageSquare, Mail
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
@@ -13,9 +13,10 @@ import NotificationDropdown from '../common/NotificationDropdown';
 const vendorLinks = [
   { to: '/vendor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/vendor/products',  icon: Package,         label: 'My Products' },
-  { to: '/vendor/products/new', icon: PlusSquare,   label: 'Add Product' },
   { to: '/vendor/orders',    icon: ShoppingBag,     label: 'Orders' },
   { to: '/vendor/earnings',  icon: TrendingUp,      label: 'Earnings' },
+  { to: '/vendor/feedback',  icon: MessageSquare,   label: 'Feedback & Reviews' },
+  { to: '/vendor/messages',  icon: Mail,            label: 'Messages' },
   { to: '/vendor/profile',   icon: Settings,        label: 'Profile' },
 ];
 
@@ -26,6 +27,7 @@ const adminLinks = [
   { to: '/admin/users', icon: Users, label: 'Users' },
   { to: '/admin/products', icon: Package, label: 'Products' },
   { to: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
+  { to: '/admin/messages', icon: Mail, label: 'Messages' },
 ];
 
 export default function DashboardLayout({ children }) {

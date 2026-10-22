@@ -18,9 +18,6 @@ const TYPE_COLORS = {
   payment_success: 'bg-accent/10 text-accent',
   payment_failed:  'bg-red-100 text-red-500',
   general:         'bg-orange-100 text-orange-500',
-  new_post_like:   'bg-pink-50 text-pink-500',
-  new_post_comment:'bg-blue-50 text-blue-500',
-  new_follower:    'bg-purple-50 text-purple-500',
 };
 
 const TYPE_EMOJI = {
@@ -28,7 +25,6 @@ const TYPE_EMOJI = {
   order_ready: '🎉', order_delivered: '🍽️', order_cancelled: '❌',
   new_order: '🛎️', payment_success: '💳', payment_failed: '⚠️',
   vendor_approved: '🎊', general: '🔔',
-  new_post_like: '❤️', new_post_comment: '💬', new_follower: '👤',
 };
 
 export default function NotificationDropdown() {
@@ -59,6 +55,8 @@ export default function NotificationDropdown() {
   }, []);
 
   const handleNotificationClick = (notification) => {
+    const { user } = useAuthStore.getState();
+    
     // Mark as read
     markAsRead(notification.id);
     notificationService.markAsRead(notification.id).catch(() => {});
@@ -69,12 +67,16 @@ export default function NotificationDropdown() {
     if (notification.type?.includes('order')) {
       // Order-related notifications go to orders page
       navigate('/orders');
-    } else if (notification.type?.includes('message') || notification.type?.includes('comment')) {
-      // Message/comment notifications go to messages
-      navigate('/messages');
-    } else if (notification.type?.includes('post') || notification.type?.includes('follower')) {
-      // Social notifications go to feed
-      navigate('/feed');
+    } else if (notification.type?.includes('message')) {
+      // Message notifications - only vendors and admins have access
+      if (user?.role === 'vendor') {
+        navigate('/vendor/messages');
+      } else if (user?.role === 'admin') {
+        navigate('/admin/messages');
+      } else {
+        // Customers don't have messaging feature
+        navigate('/notifications');
+      }
     } else {
       // Default: go to notifications page
       navigate('/notifications');

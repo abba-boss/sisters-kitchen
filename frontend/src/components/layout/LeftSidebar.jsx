@@ -4,10 +4,8 @@ import {
   Compass, 
   ShoppingBag, 
   Store, 
-  MessageSquare,
   User,
   Package,
-  ChefHat,
   Coins
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -15,11 +13,9 @@ import { useAuthStore } from '../../store/authStore';
 const CUSTOMER_NAV = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/products', label: 'Discover', icon: Compass },
-  { to: '/feed', label: 'Live Cooking', icon: ChefHat },
   { to: '/vendors', label: 'Vendors', icon: Store },
   { to: '/orders', label: 'Orders', icon: Package, authRequired: true },
   { to: '/rewards', label: 'Rewards', icon: Coins, authRequired: true },
-  { to: '/messages', label: 'Messages', icon: MessageSquare, authRequired: true },
   { to: '/profile', label: 'Profile', icon: User, authRequired: true },
 ];
 

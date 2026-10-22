@@ -19,7 +19,7 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
       .where("product.isAvailable = :yes", { yes: true })
       .andWhere("vendor.status = :approved", { approved: "approved" });
 
-    if (search)   qb.andWhere("(product.name LIKE :s OR product.description LIKE :s)", { s: `%${search}%` });
+    if (search)   qb.andWhere("(product.name LIKE :s OR product.description LIKE :s OR vendor.businessName LIKE :s OR category.name LIKE :s)", { s: `%${search}%` });
     if (category) qb.andWhere("category.id = :cat", { cat: category });
     if (vendorId) qb.andWhere("vendor.id = :vid", { vid: vendorId });
     if (minPrice) qb.andWhere("product.price >= :min", { min: Number(minPrice) });

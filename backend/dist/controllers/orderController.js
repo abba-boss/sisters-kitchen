@@ -210,7 +210,7 @@ const getOrderById = async (req, res) => {
 exports.getOrderById = getOrderById;
 const getVendorOrders = async (req, res) => {
     try {
-        const { page = 1, limit = 10, status } = req.query;
+        const { page = 1, limit = 10, status, startDate, endDate } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
         const vendorRepo = database_1.AppDataSource.getRepository(Vendor_1.Vendor);
         const vendor = await vendorRepo.findOne({ where: { user: { id: req.user.id } } });
@@ -227,6 +227,14 @@ const getVendorOrders = async (req, res) => {
             .where("order.vendor = :vendorId", { vendorId: vendor.id });
         if (status)
             qb.andWhere("order.status = :status", { status });
+        // Date range filtering
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            qb.andWhere("order.createdAt >= :start", { start })
+                .andWhere("order.createdAt <= :end", { end });
+        }
         const [orders, total] = await qb
             .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();
         res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit) } });

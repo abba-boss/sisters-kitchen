@@ -35,7 +35,6 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {[
                 ['/shop', 'Shop'],
-                ['/feed', 'Food Feed'],
                 ['/products', 'Discover'],
                 ['/vendors', 'Vendors'],
                 ['/rewards', 'Rewards 🪙'],

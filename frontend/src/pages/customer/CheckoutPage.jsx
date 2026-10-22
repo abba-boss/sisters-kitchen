@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { CreditCard, Truck, ShoppingBag, Store, MapPin } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { ButtonLoader } from '../../components/common/LoadingSpinner';
+import BackButton from '../../components/common/BackButton';
 import { useCart } from '../../hooks/useCart';
 import { useAuthStore } from '../../store/authStore';
 import { orderService } from '../../services/orderService';
@@ -152,7 +153,10 @@ export default function CheckoutPage() {
   return (
     <MainLayout>
       <div className="page-container py-6 sm:py-10">
-        <h1 className="section-title mb-6 sm:mb-8 text-xl sm:text-2xl">Checkout</h1>
+        <div className="mb-6 sm:mb-8">
+          <BackButton to="/cart" label="Back to Cart" className="mb-3" />
+          <h1 className="section-title text-xl sm:text-2xl">Checkout</h1>
+        </div>
 
         <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
           {/* ── Form ──────────────────────────────────── */}

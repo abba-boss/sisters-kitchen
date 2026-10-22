@@ -216,7 +216,7 @@ export const getOrderById = async (req: AuthRequest, res: Response): Promise<voi
 
 export const getVendorOrders = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { page = 1, limit = 10, status } = req.query;
+    const { page = 1, limit = 10, status, startDate, endDate } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
     const vendorRepo = AppDataSource.getRepository(Vendor);
@@ -232,6 +232,15 @@ export const getVendorOrders = async (req: AuthRequest, res: Response): Promise<
       .where("order.vendor = :vendorId", { vendorId: vendor.id });
 
     if (status) qb.andWhere("order.status = :status", { status });
+    
+    // Date range filtering
+    if (startDate && endDate) {
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999);
+      qb.andWhere("order.createdAt >= :start", { start })
+        .andWhere("order.createdAt <= :end", { end });
+    }
 
     const [orders, total] = await qb
       .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();

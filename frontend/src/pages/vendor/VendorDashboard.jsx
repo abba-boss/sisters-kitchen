@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package, ShoppingBag, TrendingUp, Star, Plus,
   ToggleLeft, ToggleRight, Wifi, ArrowUpRight, Clock,
-  AlertTriangle, X
+  AlertTriangle, X, Calendar, CheckCircle2, Timer
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -75,12 +75,43 @@ export default function VendorDashboard() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
+  
+  // Date range state
+  const [dateRange, setDateRange] = useState('all'); // all, today, week, month, custom
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   useEffect(() => {
+    loadDashboardData();
+  }, [dateRange, customStartDate, customEndDate]);
+
+  const loadDashboardData = () => {
+    setLoading(true);
+    
+    // Build query params for date filtering
+    const params = {};
+    if (dateRange === 'today') {
+      params.startDate = new Date().toISOString().split('T')[0];
+      params.endDate = new Date().toISOString().split('T')[0];
+    } else if (dateRange === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      params.startDate = weekAgo.toISOString().split('T')[0];
+      params.endDate = new Date().toISOString().split('T')[0];
+    } else if (dateRange === 'month') {
+      const monthAgo = new Date();
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      params.startDate = monthAgo.toISOString().split('T')[0];
+      params.endDate = new Date().toISOString().split('T')[0];
+    } else if (dateRange === 'custom' && customStartDate && customEndDate) {
+      params.startDate = customStartDate;
+      params.endDate = customEndDate;
+    }
+
     Promise.all([
       vendorService.getMyProfile(),
-      api.get('/analytics/vendor'),
-      orderService.getVendorOrders({ limit: 5 }),
+      api.get('/analytics/vendor', { params }),
+      orderService.getVendorOrders({ limit: 5, ...params }),
     ])
       .then(([vendorRes, analyticsRes, ordersRes]) => {
         setVendor(vendorRes.data.data);
@@ -89,7 +120,7 @@ export default function VendorDashboard() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  };
 
   // Live new order counter
   useSocketEvent('order:new', ({ order }) => {
@@ -113,7 +144,10 @@ export default function VendorDashboard() {
   const summary = analytics?.summary || {};
   const statCards = [
     { label: 'Total Products', value: summary.totalProducts ?? '—', icon: Package, color: 'bg-blue-50', ic: 'text-blue-500', sub: 'Listed' },
-    { label: 'Total Earnings', value: summary.totalEarnings !== undefined ? formatPrice(summary.totalEarnings) : '—', icon: TrendingUp, color: 'bg-accent/10', ic: 'text-accent', sub: 'All time' },
+    { label: 'Total Orders', value: summary.totalOrders ?? '—', icon: ShoppingBag, color: 'bg-purple-50', ic: 'text-purple-500', sub: 'All orders' },
+    { label: 'Pending Orders', value: summary.pendingOrders ?? '—', icon: Timer, color: 'bg-orange-50', ic: 'text-orange-500', sub: 'Awaiting action' },
+    { label: 'Completed Orders', value: summary.completedOrders ?? '—', icon: CheckCircle2, color: 'bg-green-50', ic: 'text-green-500', sub: 'Delivered' },
+    { label: 'Total Earnings', value: summary.totalEarnings !== undefined ? formatPrice(summary.totalEarnings) : '—', icon: TrendingUp, color: 'bg-accent/10', ic: 'text-accent', sub: 'Revenue' },
     { label: 'Rating', value: summary.rating ? `${Number(summary.rating).toFixed(1)} ★` : '—', icon: Star, color: 'bg-yellow-50', ic: 'text-yellow-500', sub: `${summary.totalReviews ?? 0} reviews` },
   ];
 
@@ -139,7 +173,7 @@ export default function VendorDashboard() {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="font-poppins font-bold text-2xl text-brand-dark">
             Welcome back, {vendor?.user?.firstName || '…'} 👋
@@ -163,26 +197,77 @@ export default function VendorDashboard() {
         </div>
       </div>
 
+      {/* Date Range Filter */}
+      <div className="card p-5 mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex items-center gap-2 text-brand-dark">
+            <Calendar size={18} className="text-primary" />
+            <span className="font-semibold text-sm">Date Range:</span>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            {['all', 'today', 'week', 'month', 'custom'].map((range) => (
+              <button
+                key={range}
+                onClick={() => setDateRange(range)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  dateRange === range
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-brand-bg text-brand-muted hover:bg-orange-50'
+                }`}
+              >
+                {range === 'all' && 'All Time'}
+                {range === 'today' && 'Today'}
+                {range === 'week' && 'Last 7 Days'}
+                {range === 'month' && 'Last 30 Days'}
+                {range === 'custom' && 'Custom Range'}
+              </button>
+            ))}
+          </div>
+
+          {dateRange === 'custom' && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-2 ml-auto"
+            >
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-3 py-2 border border-orange-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              />
+              <span className="text-brand-muted">to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-3 py-2 border border-orange-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              />
+            </motion.div>
+          )}
+        </div>
+      </div>
+
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         {loading ? (
           <>
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 6 }).map((_, i) => (
               <StatsCardSkeleton key={i} />
             ))}
           </>
         ) : (
           statCards.map(({ label, value, icon: Icon, color, ic, sub }, i) => (
-            <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-              className="card p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center`}>
-                  <Icon size={20} className={ic} />
+            <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+              className="card p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className={`w-9 h-9 ${color} rounded-xl flex items-center justify-center`}>
+                  <Icon size={18} className={ic} />
                 </div>
-                <ArrowUpRight size={16} className="text-brand-muted" />
               </div>
               <p className="font-poppins font-bold text-xl text-brand-dark">{value}</p>
-              <p className="text-sm text-brand-muted mt-0.5">{label}</p>
+              <p className="text-xs text-brand-dark font-medium mt-0.5">{label}</p>
               <p className="text-xs text-brand-muted/70 mt-0.5">{sub}</p>
             </motion.div>
           ))

@@ -1,12 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Compass, Rss, Store, User } from 'lucide-react';
+import { Home, Compass, Store, User } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const NAV = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/products', icon: Compass, label: 'Discover' },
-  { to: '/feed', icon: Rss, label: 'Feed' },
   { to: '/vendors', icon: Store, label: 'Vendors' },
   { to: '/profile', icon: User, label: 'Profile' },
 ];
@@ -19,7 +18,7 @@ export default function MobileBottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-orange-100">
-      <div className="max-w-screen-sm mx-auto grid grid-cols-5 h-16">
+      <div className="max-w-screen-sm mx-auto grid grid-cols-4 h-16">
         {NAV.map((item) => {
           const Icon = item.icon;
           const isActive = item.to === '/' 

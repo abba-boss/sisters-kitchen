@@ -15,17 +15,76 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
     if (!vendor) { res.status(404).json({ success: false, message: "Vendor not found" }); return; }
 
     const orderRepo = AppDataSource.getRepository(Order);
+    
+    // Date range filtering
+    const { startDate, endDate } = req.query;
+    let dateFilter = {};
+    
+    if (startDate && endDate) {
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999); // End of day
+      dateFilter = { createdAt: AppDataSource.getRepository(Order)
+        .createQueryBuilder()
+        .where("createdAt >= :start", { start })
+        .andWhere("createdAt <= :end", { end })
+        .getQuery()
+      };
+    }
 
-    // Total stats
-    const totalOrders = await orderRepo.count({ where: { vendor: { id: vendor.id } } });
-    const deliveredOrders = await orderRepo.count({ where: { vendor: { id: vendor.id }, status: OrderStatus.DELIVERED } });
+    // Build base query for filtered orders
+    const baseQuery = orderRepo
+      .createQueryBuilder("order")
+      .where("order.vendorId = :vendorId", { vendorId: vendor.id });
+    
+    if (startDate && endDate) {
+      baseQuery
+        .andWhere("order.createdAt >= :start", { start: new Date(startDate as string) })
+        .andWhere("order.createdAt <= :end", { 
+          end: new Date(new Date(endDate as string).setHours(23, 59, 59, 999)) 
+        });
+    }
+
+    // Total stats with date filtering
+    const totalOrders = await baseQuery.getCount();
+    
+    const deliveredQuery = baseQuery.clone()
+      .andWhere("order.status = :status", { status: OrderStatus.DELIVERED });
+    const deliveredOrders = await deliveredQuery.getCount();
+    
+    const pendingQuery = baseQuery.clone()
+      .andWhere("order.status IN (:...statuses)", { 
+        statuses: [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.READY] 
+      });
+    const pendingOrders = await pendingQuery.getCount();
+    
+    const completedOrders = deliveredOrders; // Delivered = Completed
+    
+    // Calculate total earnings from filtered orders
+    const earningsResult = await baseQuery.clone()
+      .select("SUM(order.total)", "total")
+      .andWhere("order.status = :status", { status: OrderStatus.DELIVERED })
+      .getRawOne();
+    
+    const filteredEarnings = earningsResult?.total || 0;
+    
     const totalProducts = await AppDataSource.getRepository(Product).count({
       where: { vendor: { id: vendor.id } },
     });
 
-    // Revenue by month (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    // Revenue by month (last 6 months or within date range)
+    let fromDate = new Date();
+    fromDate.setMonth(fromDate.getMonth() - 6);
+    
+    if (startDate) {
+      fromDate = new Date(startDate as string);
+    }
+    
+    let toDate = new Date();
+    if (endDate) {
+      toDate = new Date(endDate as string);
+      toDate.setHours(23, 59, 59, 999);
+    }
 
     const monthlyRevenue = await orderRepo
       .createQueryBuilder("order")
@@ -34,14 +93,19 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
       .addSelect("COUNT(order.id) as orders")
       .where("order.vendorId = :vendorId", { vendorId: vendor.id })
       .andWhere("order.status = :status", { status: OrderStatus.DELIVERED })
-      .andWhere("order.createdAt >= :from", { from: sixMonthsAgo })
+      .andWhere("order.createdAt >= :from", { from: fromDate })
+      .andWhere("order.createdAt <= :to", { to: toDate })
       .groupBy("month")
       .orderBy("month", "ASC")
       .getRawMany();
 
-    // Daily revenue (last 14 days)
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    // Daily revenue (last 14 days or within date range)
+    let dailyFromDate = new Date();
+    dailyFromDate.setDate(dailyFromDate.getDate() - 14);
+    
+    if (startDate) {
+      dailyFromDate = new Date(startDate as string);
+    }
 
     const dailyRevenue = await orderRepo
       .createQueryBuilder("order")
@@ -50,13 +114,14 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
       .addSelect("COUNT(order.id) as orders")
       .where("order.vendorId = :vendorId", { vendorId: vendor.id })
       .andWhere("order.status = :status", { status: OrderStatus.DELIVERED })
-      .andWhere("order.createdAt >= :from", { from: twoWeeksAgo })
+      .andWhere("order.createdAt >= :from", { from: dailyFromDate })
+      .andWhere("order.createdAt <= :to", { to: toDate })
       .groupBy("day")
       .orderBy("day", "ASC")
       .getRawMany();
 
-    // Top selling products
-    const topProducts = await AppDataSource
+    // Top selling products (with date filter)
+    const topProductsQuery = AppDataSource
       .createQueryBuilder()
       .select("product.id", "productId")
       .addSelect("product.name", "name")
@@ -67,18 +132,34 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
       .innerJoin("products", "product", "product.id = order_item.productId")
       .innerJoin("orders", "order", "order.id = order_item.orderId")
       .where("order.vendorId = :vendorId", { vendorId: vendor.id })
-      .andWhere("order.status = :status", { status: OrderStatus.DELIVERED })
+      .andWhere("order.status = :status", { status: OrderStatus.DELIVERED });
+    
+    if (startDate && endDate) {
+      topProductsQuery
+        .andWhere("order.createdAt >= :start", { start: new Date(startDate as string) })
+        .andWhere("order.createdAt <= :end", { end: toDate });
+    }
+    
+    const topProducts = await topProductsQuery
       .groupBy("product.id")
       .orderBy("totalSold", "DESC")
       .limit(5)
       .getRawMany();
 
-    // Orders by status
-    const ordersByStatus = await orderRepo
+    // Orders by status (with date filter)
+    const ordersByStatusQuery = orderRepo
       .createQueryBuilder("order")
       .select("order.status as status")
       .addSelect("COUNT(order.id) as count")
-      .where("order.vendorId = :vendorId", { vendorId: vendor.id })
+      .where("order.vendorId = :vendorId", { vendorId: vendor.id });
+    
+    if (startDate && endDate) {
+      ordersByStatusQuery
+        .andWhere("order.createdAt >= :start", { start: new Date(startDate as string) })
+        .andWhere("order.createdAt <= :end", { end: toDate });
+    }
+    
+    const ordersByStatus = await ordersByStatusQuery
       .groupBy("order.status")
       .getRawMany();
 
@@ -87,9 +168,10 @@ export const getVendorAnalytics = async (req: AuthRequest, res: Response): Promi
       data: {
         summary: {
           totalOrders,
-          deliveredOrders,
           totalProducts,
-          totalEarnings: vendor.totalEarnings,
+          pendingOrders,
+          completedOrders,
+          totalEarnings: startDate && endDate ? filteredEarnings : vendor.totalEarnings,
           rating: vendor.rating,
           totalReviews: vendor.totalReviews,
           completionRate: totalOrders > 0 ? Math.round((deliveredOrders / totalOrders) * 100) : 0,

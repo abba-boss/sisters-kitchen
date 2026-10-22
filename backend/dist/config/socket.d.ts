@@ -10,4 +10,9 @@ export declare const emitToAdmins: (event: string, data: any) => void;
 export declare const emitOrderUpdate: (order: any) => void;
 /** Emit new notification to user */
 export declare const emitNotification: (userId: string, notification: any) => void;
+/** Emit new message to user */
+export declare const emitMessage: (userId: string, message: any) => void;
+/** Emit unread message count update */
+export declare const emitUnreadCount: (userId: string, count: number) => void;
+export declare const getSocketIO: () => SocketIOServer;
 //# sourceMappingURL=socket.d.ts.map

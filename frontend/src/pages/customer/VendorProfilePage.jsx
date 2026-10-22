@@ -22,6 +22,7 @@ import MainLayout from '../../components/layout/MainLayout';
 import ProductCard from '../../components/common/ProductCard';
 import StarRating from '../../components/common/StarRating';
 import EmptyState from '../../components/common/EmptyState';
+import BackButton from '../../components/common/BackButton';
 import FollowButton from '../../components/social/FollowButton';
 import PostCard from '../../components/social/PostCard';
 import { vendorService } from '../../services/vendorService';
@@ -122,6 +123,7 @@ export default function VendorProfilePageModern() {
       {/* Compact Header - No Large Cover Photo */}
       <div className="page-container py-6">
         <div className="max-w-5xl mx-auto">
+          <BackButton to="/vendors" label="Back to Vendors" variant="minimal" className="mb-4" />
           {/* Compact Vendor Header Card */}
           <div className="bg-white rounded-3xl shadow-card border border-orange-100 p-6 mb-6">
             <div className="flex flex-col sm:flex-row gap-5">

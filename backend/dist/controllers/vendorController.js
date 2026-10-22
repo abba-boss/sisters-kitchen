@@ -14,7 +14,7 @@ const getAllVendors = async (req, res) => {
             .leftJoinAndSelect("vendor.user", "user")
             .where("vendor.status = :status", { status: status || Vendor_1.VendorStatus.APPROVED });
         if (search) {
-            qb.andWhere("vendor.businessName LIKE :search", { search: `%${search}%` });
+            qb.andWhere("(vendor.businessName LIKE :search OR vendor.description LIKE :search OR vendor.address LIKE :search OR vendor.city LIKE :search OR vendor.state LIKE :search OR user.firstName LIKE :search OR user.lastName LIKE :search)", { search: `%${search}%` });
         }
         // Sort options
         if (sort === "rating") {

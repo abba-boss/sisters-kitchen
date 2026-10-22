@@ -64,6 +64,7 @@ const postRoutes_1 = __importDefault(require("./routes/postRoutes"));
 const followerRoutes_1 = __importDefault(require("./routes/followerRoutes"));
 const storyRoutes_1 = __importDefault(require("./routes/storyRoutes"));
 const rewardRoutes_1 = __importDefault(require("./routes/rewardRoutes"));
+const messageRoutes_1 = __importDefault(require("./routes/messageRoutes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 exports.app = app;
@@ -89,6 +90,10 @@ app.use((0, cors_1.default)({
             return callback(null, true);
         // Allow any localhost / 127.0.0.1 origin dynamically
         if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+            return callback(null, true);
+        }
+        // Allow any local network IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+        if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
             return callback(null, true);
         }
         if (allowedOrigins.includes(origin))
@@ -152,6 +157,7 @@ app.use("/api/posts", postRoutes_1.default);
 app.use("/api/followers", followerRoutes_1.default);
 app.use("/api/stories", storyRoutes_1.default);
 app.use("/api/rewards", rewardRoutes_1.default);
+app.use("/api/messages", messageRoutes_1.default);
 // ── Error handling ─────────────────────────────────────────────
 app.use(errorHandler_1.notFound);
 app.use(errorHandler_1.errorHandler);

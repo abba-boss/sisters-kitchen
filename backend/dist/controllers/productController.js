@@ -18,7 +18,7 @@ const getAllProducts = async (req, res) => {
             .where("product.isAvailable = :yes", { yes: true })
             .andWhere("vendor.status = :approved", { approved: "approved" });
         if (search)
-            qb.andWhere("(product.name LIKE :s OR product.description LIKE :s)", { s: `%${search}%` });
+            qb.andWhere("(product.name LIKE :s OR product.description LIKE :s OR vendor.businessName LIKE :s OR category.name LIKE :s)", { s: `%${search}%` });
         if (category)
             qb.andWhere("category.id = :cat", { cat: category });
         if (vendorId)

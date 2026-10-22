@@ -61,6 +61,7 @@ import postRoutes from "./routes/postRoutes";
 import followerRoutes from "./routes/followerRoutes";
 import storyRoutes from "./routes/storyRoutes";
 import rewardRoutes from "./routes/rewardRoutes";
+import messageRoutes from "./routes/messageRoutes";
 
 dotenv.config();
 
@@ -89,6 +90,10 @@ app.use(cors({
     if (!origin) return callback(null, true);
     // Allow any localhost / 127.0.0.1 origin dynamically
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return callback(null, true);
+    }
+    // Allow any local network IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
       return callback(null, true);
     }
     if (allowedOrigins.includes(origin)) return callback(null, true);
@@ -158,6 +163,7 @@ app.use("/api/posts",     postRoutes);
 app.use("/api/followers", followerRoutes);
 app.use("/api/stories",   storyRoutes);
 app.use("/api/rewards",   rewardRoutes);
+app.use("/api/messages",  messageRoutes);
 
 // ── Error handling ─────────────────────────────────────────────
 app.use(notFound);

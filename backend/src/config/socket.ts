@@ -128,3 +128,16 @@ export const emitOrderUpdate = (order: any) => {
 export const emitNotification = (userId: string, notification: any) => {
   emitToUser(userId, "notification:new", notification);
 };
+
+/** Emit new message to user */
+export const emitMessage = (userId: string, message: any) => {
+  emitToUser(userId, "message:new", { message });
+};
+
+/** Emit unread message count update */
+export const emitUnreadCount = (userId: string, count: number) => {
+  emitToUser(userId, "message:unread-count", { count });
+};
+
+// Export getSocketIO for backward compatibility
+export const getSocketIO = getIO;

@@ -32,7 +32,7 @@ export default function ProductForm() {
 
   const [form, setForm] = useState({
     name: '', description: '', price: '', discountPrice: '',
-    categoryId: '', stock: '20',
+    categoryId: '', customCategory: '', stock: '20',
     isAvailable: true, isFeatured: false,
   });
 
@@ -52,7 +52,7 @@ export default function ProductForm() {
         setForm({
           name: p.name || '', description: p.description || '',
           price: String(p.price || ''), discountPrice: String(p.discountPrice || ''),
-          categoryId: p.category?.id || '', stock: String(p.stock ?? 20),
+          categoryId: p.category?.id || '', customCategory: '', stock: String(p.stock ?? 20),
           isAvailable:  p.isAvailable  ?? true,
           isFeatured:   p.isFeatured   ?? false,
         });
@@ -209,25 +209,25 @@ export default function ProductForm() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto py-4">
 
         {/* ── Header ─────────────────────────── */}
-        <div className="flex items-center gap-3 mb-6">
-          <Link to="/vendor/products"
-            className="p-2 rounded-xl hover:bg-brand-bg text-brand-muted hover:text-primary transition-all">
-            <ArrowLeft size={20} />
-          </Link>
-          <div>
-            <h1 className="font-poppins font-bold text-xl text-brand-dark">
-              {isEdit ? 'Edit Product' : 'Add New Product'}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Link to="/vendor/products"
+              className="p-2 rounded-xl hover:bg-brand-bg text-brand-muted hover:text-primary transition-all">
+              <ArrowLeft size={20} />
+            </Link>
+            <h1 className="font-poppins font-bold text-2xl text-brand-dark">
+              {isEdit ? 'Edit Product' : 'Add Product'}
             </h1>
-            <p className="text-xs text-brand-muted mt-0.5">
-              {isEdit ? 'Update your product listing' : 'List a new product for customers to order'}
-            </p>
           </div>
+          <p className="text-sm text-brand-muted ml-14">
+            {isEdit ? 'Update product information' : 'Fill in the details below to add a new product'}
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
 
           {/* ── Images ─────────────────────────────── */}
           <div className="card p-5">
@@ -426,21 +426,55 @@ export default function ProductForm() {
             </div>
 
             {/* Category + Stock */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-brand-dark mb-1.5 block">Category</label>
                 <select
-                  name="categoryId" value={form.categoryId} onChange={handleChange}
+                  name="categoryId" 
+                  value={form.categoryId} 
+                  onChange={(e) => {
+                    handleChange(e);
+                    if (e.target.value !== 'custom') {
+                      set('customCategory', '');
+                    }
+                  }}
                   className="input-field">
                   <option value="">Select category</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                   ))}
+                  <option value="custom">✏️ Write custom category</option>
                 </select>
               </div>
+              
+              {/* Custom Category Input */}
+              {form.categoryId === 'custom' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <label className="text-xs font-semibold text-brand-dark mb-1.5 block">
+                    Custom Category Name
+                  </label>
+                  <input
+                    type="text"
+                    name="customCategory"
+                    value={form.customCategory}
+                    onChange={handleChange}
+                    placeholder="e.g. Desserts, Snacks, etc."
+                    className="input-field"
+                    maxLength={50}
+                  />
+                  <p className="text-xs text-brand-muted mt-1">
+                    This will create a new category for your product
+                  </p>
+                </motion.div>
+              )}
+
               <div>
                 <label className="text-xs font-semibold text-brand-dark mb-1.5 block">
-                  Stock
+                  Stock Quantity
                 </label>
                 <input
                   type="number" name="stock" value={form.stock}
@@ -448,6 +482,9 @@ export default function ProductForm() {
                   placeholder="20" min="0"
                   className="input-field"
                 />
+                <p className="text-xs text-brand-muted mt-1">
+                  How many items do you have available?
+                </p>
               </div>
             </div>
           </div>

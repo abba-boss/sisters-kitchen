@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emitNotification = exports.emitOrderUpdate = exports.emitToAdmins = exports.emitToUser = exports.getIO = exports.initSocket = void 0;
+exports.getSocketIO = exports.emitUnreadCount = exports.emitMessage = exports.emitNotification = exports.emitOrderUpdate = exports.emitToAdmins = exports.emitToUser = exports.getIO = exports.initSocket = void 0;
 const socket_io_1 = require("socket.io");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const database_1 = require("./database");
@@ -125,4 +125,16 @@ const emitNotification = (userId, notification) => {
     (0, exports.emitToUser)(userId, "notification:new", notification);
 };
 exports.emitNotification = emitNotification;
+/** Emit new message to user */
+const emitMessage = (userId, message) => {
+    (0, exports.emitToUser)(userId, "message:new", { message });
+};
+exports.emitMessage = emitMessage;
+/** Emit unread message count update */
+const emitUnreadCount = (userId, count) => {
+    (0, exports.emitToUser)(userId, "message:unread-count", { count });
+};
+exports.emitUnreadCount = emitUnreadCount;
+// Export getSocketIO for backward compatibility
+exports.getSocketIO = exports.getIO;
 //# sourceMappingURL=socket.js.map

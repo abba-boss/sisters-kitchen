@@ -17,7 +17,10 @@ export const getAllVendors = async (req: Request, res: Response): Promise<void> 
       .where("vendor.status = :status", { status: status || VendorStatus.APPROVED });
 
     if (search) {
-      qb.andWhere("vendor.businessName LIKE :search", { search: `%${search}%` });
+      qb.andWhere(
+        "(vendor.businessName LIKE :search OR vendor.description LIKE :search OR vendor.address LIKE :search OR vendor.city LIKE :search OR vendor.state LIKE :search OR user.firstName LIKE :search OR user.lastName LIKE :search)",
+        { search: `%${search}%` }
+      );
     }
 
     // Sort options
