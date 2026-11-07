@@ -1,17 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ShoppingBag, CheckCircle, XCircle, Clock, Wifi, QrCode, 
-  MapPin, Truck, Eye, Search, Calendar, Filter, RefreshCw,
-  MoreVertical, Check, X
-} from 'lucide-react';
+import { CheckCircle, XCircle, Clock, QrCode, MapPin, Truck, Eye, Search, Calendar, Filter, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { EmptyOrders } from '../../components/common/EmptyState';
 import { OrderCardSkeleton } from '../../components/common/SkeletonLoader';
 import PickupVerificationModal from '../../components/vendor/PickupVerificationModal';
+import VendorOrderCard from '../../components/vendor/VendorOrderCard';
 import { orderService } from '../../services/orderService';
 import { useSocketEvent } from '../../hooks/useSocket';
-import { formatPrice, formatDateTime, getOrderStatusColor, getOrderStatusLabel } from '../../utils/formatters';
+import { formatPrice, getOrderStatusLabel } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
 const STATUS_ACTIONS = {
@@ -36,9 +33,9 @@ export default function VendorOrders() {
   const [verifyModalOrder, setVerifyModalOrder] = useState(null);
   const [selectedDate, setSelectedDate] = useState('today'); // today, all
   const [actionDropdown, setActionDropdown] = useState(null);
+  const [soundEnabled, setSoundEnabled] = useState(true); // Sound alerts toggle
 
   const fetchOrders = useCallback(() => {
-    setLoading(true);
     orderService.getVendorOrders({ status: statusFilter, limit: 50 })
       .then(({ data }) => setOrders(data.data || []))
       .catch(() => {})
@@ -47,6 +44,37 @@ export default function VendorOrders() {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
+  // ── Sound alert function ─────────────────────────────────────
+  const playNewOrderSound = () => {
+    if (!soundEnabled) return;
+    
+    try {
+      // Create a simple notification beep using Web Audio API
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800; // Frequency in Hz
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime); // Volume
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.log('Sound playback failed:', error);
+    }
+  };
+
+  // ── Request notification permission on mount ──────────────────
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   // ── Real-time: new order came in ────────────────────────────
   useSocketEvent('order:new', ({ order }) => {
     setLiveOrder(order);
@@ -54,7 +82,20 @@ export default function VendorOrders() {
       if (prev.find((o) => o.id === order.id)) return prev;
       return [order, ...prev];
     });
-    toast.success(`🛎️ New order #${order.orderNumber}!`);
+    
+    // Play sound alert
+    playNewOrderSound();
+    
+    // Show browser notification
+    if (Notification.permission === 'granted') {
+      new Notification('New Order Received! 🛎️', {
+        body: `Order #${order.orderNumber} - ${formatPrice(order.total)}`,
+        icon: '/favicon.svg',
+        tag: order.id,
+      });
+    }
+    
+    toast.success(`🛎️ New order #${order.orderNumber}!`, { duration: 5000 });
   });
 
   // ── Real-time: order status changed ─────────────────────────
@@ -124,7 +165,25 @@ export default function VendorOrders() {
     <DashboardLayout>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-poppins font-bold text-2xl text-brand-dark">Order Management</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="font-poppins font-bold text-2xl text-brand-dark">Order Management</h1>
+          
+          {/* Sound Toggle */}
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+              soundEnabled
+                ? 'bg-accent/10 text-accent hover:bg-accent/20'
+                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+            }`}
+            title={soundEnabled ? 'Mute sound alerts' : 'Enable sound alerts'}
+          >
+            {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            <span className="text-sm font-medium hidden sm:inline">
+              {soundEnabled ? 'Sound On' : 'Sound Off'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -134,14 +193,12 @@ export default function VendorOrders() {
           <p className="font-poppins font-bold text-2xl text-brand-dark">{stats.todaysOrders}</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs text-brand-muted mb-1">Revenue (Incl. 10%)</p>
+          <p className="text-xs text-brand-muted mb-1">Revenue (Delivered)</p>
           <p className="font-poppins font-bold text-xl text-brand-dark">{formatPrice(stats.revenue)}</p>
-          <p className="text-xs text-accent mt-1">N887,439</p>
         </div>
         <div className="card p-5">
           <p className="text-xs text-brand-muted mb-1">Pending</p>
           <p className="font-poppins font-bold text-2xl text-brand-dark">{stats.pending}</p>
-          <p className="text-xs text-brand-muted mt-1">3 orders</p>
         </div>
         <div className="card p-5">
           <p className="text-xs text-brand-muted mb-1">Completed</p>
@@ -149,8 +206,7 @@ export default function VendorOrders() {
         </div>
         <div className="card p-5">
           <p className="text-xs text-brand-muted mb-1">Refunded</p>
-          <p className="font-poppins font-bold text-2xl text-brand-dark text-red-500">{stats.refunded === 0 ? 'No' : stats.refunded}</p>
-          <p className="text-xs text-brand-muted mt-1">0 orders</p>
+          <p className={`font-poppins font-bold text-2xl ${stats.refunded === 0 ? 'text-brand-dark' : 'text-red-500'}`}>{stats.refunded}</p>
         </div>
       </div>
 
@@ -247,9 +303,24 @@ export default function VendorOrders() {
           onBrowse={() => window.location.href = '/vendor/products'}
         />
       ) : (
-        <div className="card overflow-hidden">
-          {/* Table */}
-          <div className="overflow-x-auto">
+        <>
+          {/* Mobile Card View */}
+          <div className="block md:hidden space-y-3 mb-6">
+            {filteredOrders.map((order) => (
+              <VendorOrderCard
+                key={order.id}
+                order={order}
+                onStatusUpdate={handleStatusUpdate}
+                onVerifyPickup={() => setVerifyModalOrder(order)}
+                updating={updating}
+              />
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="card overflow-hidden hidden md:block">
+            {/* Table */}
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-orange-100 bg-brand-bg/50">
@@ -266,7 +337,12 @@ export default function VendorOrders() {
               </thead>
               <tbody>
                 <AnimatePresence initial={false}>
-                  {filteredOrders.map((order) => (
+                  {filteredOrders.map((order) => {
+                    // Pickup orders are completed with QR/PIN verification, not "out for delivery".
+                    const statusActions = (STATUS_ACTIONS[order.status] || []).filter(
+                      (action) => !(isPickupOrder(order) && action.status === 'out_for_delivery')
+                    );
+                    return (
                     <motion.tr
                       key={order.id}
                       initial={{ opacity: 0 }}
@@ -385,7 +461,7 @@ export default function VendorOrders() {
                           )}
 
                           {/* Status Actions Dropdown */}
-                          {STATUS_ACTIONS[order.status] && (
+                          {statusActions.length > 0 && (
                             <div className="relative">
                               <button
                                 onClick={() => setActionDropdown(actionDropdown === order.id ? null : order.id)}
@@ -405,7 +481,7 @@ export default function VendorOrders() {
                                   animate={{ opacity: 1, y: 0 }}
                                   className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-orange-100 overflow-hidden z-10"
                                 >
-                                  {STATUS_ACTIONS[order.status].map(({ status, label, icon: Icon }) => (
+                                  {statusActions.map(({ status, label, icon: Icon }) => (
                                     <button
                                       key={status}
                                       onClick={() => {
@@ -425,12 +501,14 @@ export default function VendorOrders() {
                         </div>
                       </td>
                     </motion.tr>
-                  ))}
+                    );
+                  })}
                 </AnimatePresence>
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Pickup Verification Modal */}

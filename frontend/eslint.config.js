@@ -18,4 +18,18 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // Node environment for build/tooling files
+    files: ['vitest.config.js', 'scripts/**/*.js'],
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.node },
+    },
+  },
+  {
+    // Service worker environment
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.serviceworker },
+    },
+  },
 ])

@@ -3,6 +3,7 @@ import { AppDataSource } from "../config/database";
 import { Follower } from "../entities/Follower";
 import { Vendor }   from "../entities/Vendor";
 import { logger }   from "../utils/logger";
+import { publicUser } from "../utils/serializers";
 
 const followerRepo = () => AppDataSource.getRepository(Follower);
 const vendorRepo   = () => AppDataSource.getRepository(Vendor);
@@ -76,7 +77,11 @@ export const getFollowers = async (req: Request, res: Response) => {
       take: limit,
     });
 
-    res.json({ success: true, data: followers, meta: { total, page, pages: Math.ceil(total / limit) } });
+    res.json({
+      success: true,
+      data: followers.map((f) => ({ ...f, follower: publicUser(f.follower) })),
+      meta: { total, page, pages: Math.ceil(total / limit) },
+    });
   } catch (err) {
     logger.error("getFollowers:", err);
     res.status(500).json({ success: false, message: "Failed" });

@@ -14,10 +14,19 @@ A premium, full-stack food ordering platform with real-time features, analytics,
 ```bash
 cd backend
 npm install
-# Edit .env — set DB credentials, Cloudinary, Paystack keys
-mysql -u root -h 127.0.0.1 -e "CREATE DATABASE sisters_kitchen;"
-npm run seed      # Creates categories + demo accounts
-npm run dev       # → http://localhost:5000
+cp .env.example .env   # DB_TYPE=sqlite by default (no database server needed)
+npm run migration:run  # creates the schema
+npm run seed           # demo vendors, products, orders and accounts
+npm run dev            # → http://localhost:5000
+```
+
+For production, set `DB_TYPE=mysql` plus `DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD`/`DB_NAME`
+(and `DB_SSL=true` for managed databases), then run the migrations against it:
+```bash
+mysql -u root -e "CREATE DATABASE sisters_kitchen CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+DB_TYPE=mysql npm run migration:run
+DB_TYPE=mysql npm run migration:show   # all [X]
+npm run build && npm start
 ```
 
 ### 2. Frontend
@@ -126,13 +135,41 @@ npm run dev       # → http://localhost:5173
 
 ---
 
+## 🗄️ Database & Migrations
+
+The schema is created and changed **only through TypeORM migrations** — `synchronize` is off in every
+environment, so a deploy can never drop a column behind your back.
+
+| Command | What it does |
+|---|---|
+| `npm run migration:show` | List migrations and whether they ran |
+| `npm run migration:run` | Apply pending migrations |
+| `npm run migration:revert` | Roll back the last migration |
+| `npm run migration:generate -- src/migrations/<driver>/Name` | Generate a migration from entity changes |
+| `npm run migration:create -- src/migrations/<driver>/Name` | Empty migration for hand-written SQL |
+| `npm run db:baseline` | Adopt a database created by the old `synchronize: true` |
+
+Each driver has its own folder (`src/migrations/sqlite`, `src/migrations/mysql`) because SQLite and
+MySQL generate different DDL; the folder for the active `DB_TYPE` is loaded automatically.
+
+**Existing database created by `synchronize: true`?** Run `npm run db:baseline` once. It records the
+initial migration as already applied (without touching data), then `npm run migration:run` applies any
+later migrations. It refuses to run on an empty database.
+
+Production tip: run `npm run build`, then `npm run migration:run:prod` before starting the server, and
+leave `DB_MIGRATIONS_RUN=false` so migrations are an explicit deploy step. The API logs a warning at
+boot if migrations are pending.
+
+---
+
 ## 🏗 Architecture
 
 ```
 sisters-kitchen/
 ├── backend/
 │   └── src/
-│       ├── config/         database.ts, socket.ts, cloudinary.ts
+│       ├── config/         database.ts, socket.ts, cloudinary.ts, validateEnv.ts
+│       ├── migrations/     sqlite/, mysql/ (TypeORM migrations per driver)
 │       ├── controllers/    auth, vendor, product, category,
 │       │                   order, review, favorite, notification,
 │       │                   payment, analytics, admin
@@ -192,7 +229,9 @@ sisters-kitchen/
 ### backend/.env
 ```
 PORT=5000
-DB_HOST=127.0.0.1 | DB_PORT=3306 | DB_USERNAME=root | DB_PASSWORD= | DB_NAME=sisters_kitchen
+DB_TYPE=sqlite | DB_DATABASE=./data/sisters_kitchen.sqlite          # development
+DB_TYPE=mysql | DB_HOST=127.0.0.1 | DB_PORT=3306 | DB_USERNAME=root | DB_PASSWORD= | DB_NAME=sisters_kitchen | DB_SSL=false
+DB_MIGRATIONS_RUN=false | DB_LOGGING=false
 JWT_SECRET=... | JWT_REFRESH_SECRET=...
 CLOUDINARY_CLOUD_NAME=... | CLOUDINARY_API_KEY=... | CLOUDINARY_API_SECRET=...
 PAYSTACK_SECRET_KEY=... | PAYSTACK_PUBLIC_KEY=...

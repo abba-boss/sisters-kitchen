@@ -1,10 +1,7 @@
 import { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ShoppingCart, Trash2, Plus, Minus, ArrowRight,
-  Store, Lock, ShieldCheck, ChevronRight
-} from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, Store, Lock, ShieldCheck, ChevronRight } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { EmptyCart } from '../../components/common/EmptyState';
 import { useCart } from '../../hooks/useCart';
@@ -14,7 +11,7 @@ import { formatPrice } from '../../utils/formatters';
 
 export default function CartPage() {
   const {
-    items, vendorGroups, subtotal, total,
+    items, vendorGroups, subtotal,
     updateQuantity, removeFromCart, clearCart,
   } = useCart();
   const { isAuthenticated } = useAuthStore();

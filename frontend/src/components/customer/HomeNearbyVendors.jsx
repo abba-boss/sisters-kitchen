@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, ChevronRight, Star } from 'lucide-react';
+import { MapPin, ChevronRight } from 'lucide-react';
 import { vendorService } from '../../services/vendorService';
 import VendorCard from '../common/VendorCard';
 

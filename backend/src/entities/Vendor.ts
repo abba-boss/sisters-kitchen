@@ -87,13 +87,16 @@ export class Vendor {
   @Column({ type: "simple-array", nullable: true })
   availableDays: string[];
 
-  @Column({ nullable: true })
+  // Payout details are private. Hidden from every default query so product,
+  // vendor and post endpoints can't expose them; the vendor's own profile
+  // endpoints opt in with .addSelect(...).
+  @Column({ nullable: true, select: false })
   bankName: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   accountNumber: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   accountName: string;
 
   @OneToOne(() => User, (user) => user.vendor)

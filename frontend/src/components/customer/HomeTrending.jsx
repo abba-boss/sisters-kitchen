@@ -1,13 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Star, Clock, Heart, ShoppingCart, Flame, Award, Zap, CheckCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Star, Clock, ShoppingCart, Flame, Award, Zap, CheckCircle } from 'lucide-react';
 import { productService } from '../../services/productService';
 import { useCart } from '../../hooks/useCart';
 import { formatPrice } from '../../utils/formatters';
 import { ProductCardSkeleton } from '../common/SkeletonLoader';
 import { CompactEmptyState } from '../common/EmptyState';
-import toast from 'react-hot-toast';
 
 const BADGE_MAP = {
   0: { label: 'Best Seller', color: 'bg-green-500',  icon: Award },

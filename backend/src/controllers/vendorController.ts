@@ -4,6 +4,7 @@ import { Vendor, VendorStatus } from "../entities/Vendor";
 import { User, UserRole } from "../entities/User";
 import { AuthRequest } from "../middleware/auth";
 import { uploadToCloudinary } from "../utils/helpers";
+import { publicUser } from "../utils/serializers";
 
 export const getAllVendors = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -17,8 +18,9 @@ export const getAllVendors = async (req: Request, res: Response): Promise<void> 
       .where("vendor.status = :status", { status: status || VendorStatus.APPROVED });
 
     if (search) {
+      // Only real columns — Vendor has no city/state fields.
       qb.andWhere(
-        "(vendor.businessName LIKE :search OR vendor.description LIKE :search OR vendor.address LIKE :search OR vendor.city LIKE :search OR vendor.state LIKE :search OR user.firstName LIKE :search OR user.lastName LIKE :search)",
+        "(vendor.businessName LIKE :search OR vendor.description LIKE :search OR vendor.address LIKE :search OR user.firstName LIKE :search OR user.lastName LIKE :search)",
         { search: `%${search}%` }
       );
     }
@@ -39,7 +41,7 @@ export const getAllVendors = async (req: Request, res: Response): Promise<void> 
 
     res.json({
       success: true,
-      data: vendors,
+      data: vendors.map((vendor) => ({ ...vendor, user: publicUser(vendor.user) })),
       meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
     });
   } catch (error: any) {
@@ -47,7 +49,7 @@ export const getAllVendors = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const getVendorById = async (req: Request, res: Response): Promise<void> => {
+export const getVendorById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const vendorRepo = AppDataSource.getRepository(Vendor);
     const vendor = await vendorRepo.findOne({
@@ -60,7 +62,16 @@ export const getVendorById = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    res.json({ success: true, data: vendor });
+    // Kitchens awaiting approval (or suspended) are only visible to admins and
+    // to the owner previewing their own shop.
+    const isOwnerOrAdmin =
+      req.user?.role === UserRole.ADMIN || (!!req.user && vendor.user?.id === req.user.id);
+    if (vendor.status !== VendorStatus.APPROVED && !isOwnerOrAdmin) {
+      res.status(404).json({ success: false, message: "Vendor not found" });
+      return;
+    }
+
+    res.json({ success: true, data: { ...vendor, user: publicUser(vendor.user) } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -69,10 +80,14 @@ export const getVendorById = async (req: Request, res: Response): Promise<void> 
 export const getMyVendorProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const vendorRepo = AppDataSource.getRepository(Vendor);
-    const vendor = await vendorRepo.findOne({
-      where: { user: { id: req.user!.id } },
-      relations: ["user", "products"],
-    });
+    // A vendor may see its own payout details, so opt in to the hidden columns.
+    const vendor = await vendorRepo
+      .createQueryBuilder("vendor")
+      .addSelect(["vendor.bankName", "vendor.accountNumber", "vendor.accountName"])
+      .leftJoinAndSelect("vendor.user", "user")
+      .leftJoinAndSelect("vendor.products", "products")
+      .where("user.id = :id", { id: req.user!.id })
+      .getOne();
 
     if (!vendor) {
       res.status(404).json({ success: false, message: "Vendor profile not found" });
@@ -88,9 +103,13 @@ export const getMyVendorProfile = async (req: AuthRequest, res: Response): Promi
 export const updateVendorProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const vendorRepo = AppDataSource.getRepository(Vendor);
-    const vendor = await vendorRepo.findOne({
-      where: { user: { id: req.user!.id } },
-    });
+    // Load the hidden payout columns so they are preserved and returned.
+    const vendor = await vendorRepo
+      .createQueryBuilder("vendor")
+      .addSelect(["vendor.bankName", "vendor.accountNumber", "vendor.accountName"])
+      .leftJoin("vendor.user", "user")
+      .where("user.id = :id", { id: req.user!.id })
+      .getOne();
 
     if (!vendor) {
       res.status(404).json({ success: false, message: "Vendor profile not found" });
@@ -199,6 +218,15 @@ export const getVendorStats = async (req: AuthRequest, res: Response): Promise<v
 export const updateVendorApproval = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { status } = req.body;
+
+    if (!Object.values(VendorStatus).includes(status)) {
+      res.status(400).json({
+        success: false,
+        message: `Invalid vendor status. Use one of: ${Object.values(VendorStatus).join(", ")}`,
+      });
+      return;
+    }
+
     const vendorRepo = AppDataSource.getRepository(Vendor);
     const vendor = await vendorRepo.findOne({ where: { id: req.params.id as string } });
 

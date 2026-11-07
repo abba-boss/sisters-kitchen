@@ -1,0 +1,45 @@
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+
+# ── Build output ──────────────────────────────────────────────
+dist/
+build/
+backend/dist/
+frontend/dist/
+
+# ── Test / coverage artifacts ─────────────────────────────────
+coverage/
+backend/coverage/
+*.lcov
+
+# ── Logs ──────────────────────────────────────────────────────
+logs/
+backend/logs/
+*.log
+
+# ── Environment files (keep the templates) ────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+!*.env.example
+
+# ── Local database, backups and uploads ───────────────────────
+backend/data/
+backend/backups/
+backend/uploads/
+*.sqlite
+*.sqlite3
+*.db
+
+# ── Editor / OS noise ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ── Scratch files ─────────────────────────────────────────────
+*.bak
+*.before-repair
+*.old.jsx
+*.tmp

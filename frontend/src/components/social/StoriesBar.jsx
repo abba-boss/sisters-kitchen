@@ -116,24 +116,9 @@ function StoryViewer({ groups, initialGroupIdx, initialStoryIdx, onClose, onView
   const stories = group?.stories || [];
   const story   = stories[storyIdx];
 
-  useEffect(() => {
-    if (!story) return;
-    onView?.(story);
-    setProgress(0);
-
-    const startTime = Date.now();
-    timerRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const pct = Math.min((elapsed / DURATION) * 100, 100);
-      setProgress(pct);
-      if (pct >= 100) next();
-    }, 50);
-
-    return () => clearInterval(timerRef.current);
-  }, [groupIdx, storyIdx]);
-
   const next = () => {
     clearInterval(timerRef.current);
+    setProgress(0);
     if (storyIdx < stories.length - 1) {
       setStoryIdx((i) => i + 1);
     } else if (groupIdx < groups.length - 1) {
@@ -146,9 +131,25 @@ function StoryViewer({ groups, initialGroupIdx, initialStoryIdx, onClose, onView
 
   const prev = () => {
     clearInterval(timerRef.current);
+    setProgress(0);
     if (storyIdx > 0) setStoryIdx((i) => i - 1);
     else if (groupIdx > 0) { setGroupIdx((i) => i - 1); setStoryIdx(0); }
   };
+
+  useEffect(() => {
+    if (!story) return;
+    onView?.(story);
+
+    const startTime = Date.now();
+    timerRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min((elapsed / DURATION) * 100, 100);
+      setProgress(pct);
+      if (pct >= 100) next();
+    }, 50);
+
+    return () => clearInterval(timerRef.current);
+  }, [groupIdx, storyIdx]);
 
   if (!story) return null;
 

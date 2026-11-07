@@ -1,8 +1,5 @@
 import toast from 'react-hot-toast';
-import { 
-  CheckCircle, XCircle, AlertCircle, 
-  Info, Heart, ShoppingCart, Package 
-} from 'lucide-react';
+
 
 // Enhanced toast configurations with icons and better messaging
 export const toastConfig = {

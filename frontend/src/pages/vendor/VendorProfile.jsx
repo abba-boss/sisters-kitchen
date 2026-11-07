@@ -15,11 +15,10 @@ export default function VendorProfile() {
   const [logoFile, setLogoFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
-  const [coverPreview, setCoverPreview] = useState(null);
+  const [, setCoverPreview] = useState(null);
   const [selectedDays, setSelectedDays] = useState([]);
   const [showLocationHelp, setShowLocationHelp] = useState(false);
   const logoRef = useRef();
-  const coverRef = useRef();
 
   useEffect(() => {
     vendorService.getMyProfile()
@@ -77,7 +76,6 @@ export default function VendorProfile() {
 
   if (loading) return <DashboardLayout><div className="space-y-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-16 rounded-2xl" />)}</div></DashboardLayout>;
 
-  const coverSrc = coverPreview || vendor?.coverImage || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800';
   const logoSrc = logoPreview || vendor?.logo;
 
   return (

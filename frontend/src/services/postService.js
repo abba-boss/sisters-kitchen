@@ -8,7 +8,6 @@ export const postService = {
   update:         (id, data)  => api.put(`/posts/${id}`, data),
   delete:         (id)        => api.delete(`/posts/${id}`),
   toggleLike:     (id)        => api.post(`/posts/${id}/like`),
-  getLikeStatus:  (id)        => api.get(`/posts/${id}/like-status`),
   toggleSave:     (id)        => api.post(`/posts/${id}/save`),
   getSaved:       (p)         => api.get('/posts/saved/list', { params: p }),
   getComments:    (id, p)     => api.get(`/posts/${id}/comments`, { params: p }),

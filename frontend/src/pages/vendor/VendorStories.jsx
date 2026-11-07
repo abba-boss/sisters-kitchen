@@ -16,7 +16,6 @@ export default function VendorStories() {
   const fileRef = useRef(null);
 
   const loadStories = () => {
-    setLoading(true);
     storyService.getMyStories()
       .then(({ data }) => setStories(data.data || []))
       .catch(() => {})

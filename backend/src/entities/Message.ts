@@ -20,7 +20,9 @@ export class Message {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: "varchar", enum: MessageType })
+  // Stored as a plain varchar: `enum` alongside `type: "varchar"` produces
+  // invalid DDL on MySQL (varchar(...) with an inline value list).
+  @Column({ type: "varchar", length: 30, default: MessageType.VENDOR_TO_ADMIN })
   type: MessageType;
 
   @Column({ type: "text" })

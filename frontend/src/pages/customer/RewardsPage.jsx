@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Gift, Coins, Star, TrendingUp, Award, Calendar, ChevronRight, Loader } from 'lucide-react';
+import { Gift, Coins, Star, TrendingUp, Award, Calendar, Loader } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { rewardService } from '../../services/rewardService';
 import { useRewardStore } from '../../store/rewardStore';
@@ -11,14 +11,14 @@ import toast from 'react-hot-toast';
 
 export default function RewardsPage() {
   const { isAuthenticated } = useAuthStore();
-  const { balance, setBalance, setShowDailyModal } = useRewardStore();
+  const { balance, setBalance } = useRewardStore();
   const [wallet, setWallet] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) { setLoading(false); return; }
+    if (!isAuthenticated) return;
     Promise.all([
       rewardService.getWallet(),
       rewardService.getHistory({ limit: 20 }),
@@ -30,7 +30,7 @@ export default function RewardsPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [isAuthenticated]);
+  }, [isAuthenticated, setBalance]);
 
   const handleClaimDaily = async () => {
     if (claiming) return;

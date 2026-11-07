@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { CreditCard, Truck, ShoppingBag, Store, MapPin } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { ButtonLoader } from '../../components/common/LoadingSpinner';
@@ -18,7 +17,7 @@ const PAYMENT_METHODS = [
 ];
 
 export default function CheckoutPage() {
-  const { items, vendorGroups, clearCart, clearVendorItems } = useCart();
+  const { vendorGroups, clearVendorItems } = useCart();
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,6 +34,19 @@ export default function CheckoutPage() {
   const checkoutItems = groupsToCheckout.flatMap((g) => g.items);
   const subtotal = groupsToCheckout.reduce((s, g) => s + g.subtotal, 0);
 
+  // Self-pickup needs a pickup location on the vendor profile and works with one
+  // vendor at a time. The API enforces the same rule, so flag it up front instead
+  // of failing when the customer hits "Place Order".
+  const pickupBlockedReason = (() => {
+    if (groupsToCheckout.length > 1) {
+      return 'Pickup is only available when checking out one vendor at a time';
+    }
+    const missingLocation = groupsToCheckout.some((g) =>
+      g.items.some((i) => i.vendor?.pickupLatitude == null || i.vendor?.pickupLongitude == null)
+    );
+    return missingLocation ? 'This vendor has not set up a pickup location yet' : null;
+  })();
+
   const [form, setForm] = useState({
     deliveryAddress: user?.address || '',
     deliveryPhone:   user?.phone   || '',
@@ -48,7 +60,9 @@ export default function CheckoutPage() {
   const total = subtotal + deliveryFee;
   const [loading, setLoading] = useState(false);
 
-  if (checkoutItems.length === 0) { navigate('/cart'); return null; }
+  // Redirect during render (never call navigate() here — React forbids updating
+  // another component mid-render and logs a warning in dev).
+  if (checkoutItems.length === 0) return <Navigate to="/cart" replace />;
 
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
@@ -62,16 +76,17 @@ export default function CheckoutPage() {
     }
     
     // Validate vendor has pickup location if pickup is selected
-    if (form.fulfillmentType === 'pickup' && groupsToCheckout.length > 1) {
-      toastHelper.error('Pickup orders can only be placed with one vendor at a time');
+    if (form.fulfillmentType === 'pickup' && pickupBlockedReason) {
+      toastHelper.error(pickupBlockedReason);
       return;
     }
     
     setLoading(true);
 
-    try {
-      const orderIds = [];
+    const createdOrders = [];
+    const failedVendors = [];
 
+    try {
       // Create one order per vendor group
       for (const group of groupsToCheckout) {
         const orderData = {
@@ -85,64 +100,75 @@ export default function CheckoutPage() {
         
         try {
           const { data } = await orderService.create(orderData);
-          orderIds.push(data.data.id);
+          createdOrders.push({ vendorId: group.vendorId, orderId: data.data.id });
         } catch (orderError) {
-          // Use user-friendly error message from API interceptor
-          const errorMsg = orderError.userMessage || orderError.response?.data?.message;
-          
-          // Handle specific error cases
-          if (errorMsg && errorMsg.includes('Insufficient stock')) {
-            toastHelper.error(errorMsg, { duration: 5000 });
-          } else if (errorMsg && errorMsg.includes('not found')) {
-            toastHelper.error('One or more products are no longer available');
-          } else if (errorMsg && errorMsg.includes('does not offer pickup')) {
-            toastHelper.error('This vendor does not offer pickup service. Please choose delivery.');
-          } else {
-            toastHelper.error(errorMsg || errorMessages.orderFailed);
-          }
-          setLoading(false);
-          return; // Stop processing if any order fails
+          failedVendors.push({
+            vendorName: group.vendorName,
+            message: orderError.userMessage || orderError.response?.data?.message || errorMessages.orderFailed,
+          });
         }
       }
 
-      if (form.paymentMethod === 'paystack' && orderIds.length === 1) {
+      if (createdOrders.length === 0) {
+        toastHelper.error(failedVendors[0]?.message || errorMessages.orderFailed, { duration: 6000 });
+        setLoading(false);
+        return;
+      }
+
+      if (form.paymentMethod === 'paystack' && createdOrders.length === 1) {
         // Single vendor — redirect to Paystack
         try {
           const { data: payRes } = await paymentService.initialize({
-            orderId: orderIds[0],
+            orderId: createdOrders[0].orderId,
             method:  'paystack',
           });
           
           // Store pending checkout info for verification page to clear cart
-          sessionStorage.setItem('pendingOrderIds', JSON.stringify(orderIds));
+          sessionStorage.setItem('pendingOrderIds', JSON.stringify(createdOrders.map((o) => o.orderId)));
           sessionStorage.setItem('pendingVendorId', targetVendorId || 'all');
 
           window.location.href = payRes.data.authorizationUrl;
-        } catch (paymentError) {
-          toastHelper.error(errorMessages.paymentFailed);
+          return;
+        } catch (payError) {
+          // The API cancels the order when online payment cannot start, so the cart stays intact.
+          toastHelper.error(
+            payError.userMessage || payError.response?.data?.message || errorMessages.paymentFailed,
+            { duration: 7000 }
+          );
           setLoading(false);
           return;
         }
-      } else {
-        // COD or multiple vendors — initialize each as COD
-        for (const orderId of orderIds) {
+      }
+
+      // COD, or multiple vendors (online payment works per vendor)
+      let paymentFailed = false;
+      for (const order of createdOrders) {
+        try {
           await paymentService.initialize({
-            orderId,
+            orderId: order.orderId,
             method: form.paymentMethod === 'paystack' ? 'cash_on_delivery' : form.paymentMethod,
           });
+        } catch {
+          paymentFailed = true;
         }
-
-        if (targetVendorId) clearVendorItems(targetVendorId);
-        else clearCart();
-
-        if (form.paymentMethod === 'paystack' && orderIds.length > 1) {
-          toastHelper.success(`${orderIds.length} orders placed! Online payment for multiple vendors coming soon.`, { duration: 6000 });
-        } else {
-          orderToasts.placed();
-        }
-
-        navigate(orderIds.length === 1 ? `/orders/${orderIds[0]}` : '/orders');
       }
+
+      createdOrders.forEach((order) => clearVendorItems(order.vendorId));
+
+      if (failedVendors.length > 0) {
+        toastHelper.error(
+          `${createdOrders.length} of ${groupsToCheckout.length} vendor orders were placed. ${failedVendors.map((f) => f.message).join(' ')}`,
+          { duration: 9000 }
+        );
+      } else if (form.paymentMethod === 'paystack' && createdOrders.length > 1) {
+        toastHelper.success(`${createdOrders.length} orders placed! Online payment for multiple vendors coming soon.`, { duration: 6000 });
+      } else if (paymentFailed) {
+        toastHelper.error('Your order was placed, but we could not set up the payment. Please contact support.', { duration: 7000 });
+      } else {
+        orderToasts.placed();
+      }
+
+      navigate(createdOrders.length === 1 ? `/orders/${createdOrders[0].orderId}` : '/orders');
     } catch (err) {
       toastHelper.error(err.userMessage || err.response?.data?.message || errorMessages.orderFailed);
     } finally {
@@ -171,12 +197,22 @@ export default function CheckoutPage() {
                 {[
                   { value: 'delivery', label: 'Delivery', icon: Truck, desc: 'Have your order delivered to your doorstep' },
                   { value: 'pickup', label: 'Self-Pickup', icon: MapPin, desc: 'Pick up your order from the vendor location' },
-                ].map(({ value, label, icon: Icon, desc }) => (
+                ].map(({ value, label, icon: Icon, desc }) => {
+                  const blocked = value === 'pickup' && Boolean(pickupBlockedReason);
+                  return (
                   <label key={value}
-                    className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 cursor-pointer transition-all ${
-                      form.fulfillmentType === value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-orange-100 hover:border-primary/40'
+                    onClick={(e) => {
+                      if (blocked) {
+                        e.preventDefault();
+                        toastHelper.error(pickupBlockedReason);
+                      }
+                    }}
+                    className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all ${
+                      blocked
+                        ? 'border-orange-100 opacity-50 cursor-not-allowed'
+                        : form.fulfillmentType === value
+                          ? 'border-primary bg-primary/5 cursor-pointer'
+                          : 'border-orange-100 hover:border-primary/40 cursor-pointer'
                     }`}>
                     <input
                       type="radio" name="fulfillmentType" value={value}
@@ -194,14 +230,15 @@ export default function CheckoutPage() {
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-brand-dark block">{label}</span>
                       <span className="text-xs text-brand-muted block">{desc}</span>
-                      {value === 'pickup' && groupsToCheckout.length > 1 && (
+                      {blocked && (
                         <span className="text-xs text-orange-500 block mt-1">
-                          ⚠️ Pickup available for single vendor only
+                          ⚠️ {pickupBlockedReason}
                         </span>
                       )}
                     </div>
                   </label>
-                ))}
+                  );
+                })}
               </div>
               {form.fulfillmentType === 'pickup' && (
                 <div className="mt-3 sm:mt-4 p-2.5 sm:p-3 bg-accent/10 rounded-xl">

@@ -8,7 +8,8 @@ import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import path from "path";
 
-import { AppDataSource } from "./config/database";
+import { AppDataSource, databaseDriver, describeDatabase } from "./config/database";
+import { validateEnv } from "./config/validateEnv";
 import { initSocket } from "./config/socket";
 import { errorHandler, notFound } from "./middleware/errorHandler";
 import { logger } from "./utils/logger";
@@ -16,6 +17,7 @@ import { swaggerSpec } from "./config/swagger";
 import swaggerUi from "swagger-ui-express";
 
 dotenv.config();
+validateEnv();
 
 // ── Optional Sentry Error Monitoring ───────────────────────────
 let Sentry: any = null;
@@ -104,6 +106,11 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "tiny"));
+
+// Paystack signs the exact bytes it sends, so the webhook must be given the raw
+// body. This has to be registered before the JSON parser consumes the stream.
+app.use("/api/payments/webhook/paystack", express.raw({ type: "*/*", limit: "1mb" }));
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -171,12 +178,27 @@ app.use(errorHandler);
 
 // ── Start server ───────────────────────────────────────────────
 AppDataSource.initialize()
-  .then(() => {
-    logger.info("✅ Database connected");
+  .then(async () => {
+    logger.info(`✅ Database connected (${databaseDriver}) → ${describeDatabase()}`);
+
+    // Schema changes only ever come from migrations, so surface a stale schema
+    // immediately instead of letting queries fail later with "no such column".
+    try {
+      const hasPending = await AppDataSource.showMigrations();
+      if (hasPending) {
+        logger.warn("⚠️  Pending database migrations. Run `npm run migration:run` before using the API.");
+      }
+    } catch (error: any) {
+      logger.warn(`⚠️  Could not check migration status: ${error?.message ?? error}`);
+    }
 
     // Initialize Socket.IO
     initSocket(httpServer);
     logger.info("✅ Socket.IO initialized");
+
+    // Initialize Order Timeout Cron Job
+    const { startOrderTimeoutCron } = await import("./services/orderTimeoutService");
+    startOrderTimeoutCron();
 
     httpServer.listen(PORT, () => {
       logger.info(`🚀 Sisters Kitchen API → http://localhost:${PORT}`);

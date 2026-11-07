@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 
 // Socket
@@ -28,33 +28,33 @@ import PaymentVerifyPage from './pages/customer/PaymentVerifyPage';
 import PaymentHistoryPage from './pages/customer/PaymentHistoryPage';
 import ProfilePage from './pages/customer/ProfilePage';
 
-// Vendor Pages
-import VendorDashboard from './pages/vendor/VendorDashboard';
-import VendorProducts from './pages/vendor/VendorProducts';
-import ProductForm from './pages/vendor/ProductForm';
-import VendorOrders from './pages/vendor/VendorOrders';
-import VendorProfile from './pages/vendor/VendorProfile';
-import VendorEarnings from './pages/vendor/VendorEarnings';
-import VendorFeedback from './pages/vendor/VendorFeedback';
-import VendorReviews from './pages/vendor/VendorReviews';
-import VendorMessages from './pages/vendor/VendorMessages';
+// Vendor Pages — split into their own chunks, customers never download them
+const VendorDashboard = lazy(() => import('./pages/vendor/VendorDashboard'));
+const VendorProducts = lazy(() => import('./pages/vendor/VendorProducts'));
+const ProductForm = lazy(() => import('./pages/vendor/ProductForm'));
+const VendorOrders = lazy(() => import('./pages/vendor/VendorOrders'));
+const VendorProfile = lazy(() => import('./pages/vendor/VendorProfile'));
+const VendorEarnings = lazy(() => import('./pages/vendor/VendorEarnings'));
+const VendorFeedback = lazy(() => import('./pages/vendor/VendorFeedback'));
+const VendorReviews = lazy(() => import('./pages/vendor/VendorReviews'));
+const VendorMessages = lazy(() => import('./pages/vendor/VendorMessages'));
 
-// Admin Pages
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminVendors from './pages/admin/AdminVendors';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminAnalytics from './pages/admin/AdminAnalytics';
-import AdminProducts from './pages/admin/AdminProducts';
-import AdminMessages from './pages/admin/AdminMessages';
+// Admin Pages — same, lazy-loaded
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminVendors = lazy(() => import('./pages/admin/AdminVendors'));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
+const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
+const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
+const AdminMessages = lazy(() => import('./pages/admin/AdminMessages'));
 
 // Common
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AuthModal from './components/common/AuthModal';
 import NotFoundPage from './pages/NotFoundPage';
 import DailyRewardModal from './components/social/DailyRewardModal';
-// import ErrorBoundary from './components/ErrorBoundary';
-// import OfflineBanner from './components/common/OfflineBanner';
+import ErrorBoundary from './components/ErrorBoundary';
+import OfflineBanner from './components/common/OfflineBanner';
 import ScrollToTop from './components/common/ScrollToTop';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 
@@ -71,7 +71,7 @@ function AppProviders() {
     authService.getMe()
       .then(({ data }) => { if (data.data) updateUser(data.data); })
       .catch(() => { /* token may be expired — leave it, refresh handles it */ });
-  }, [isAuthenticated]);
+  }, [isAuthenticated, updateUser]);
 
   // Live notification events
   useSocketEvent('notification:new', (notification) => {
@@ -99,7 +99,7 @@ function AppProviders() {
 export default function App() {
   return (
     <BrowserRouter>
-      {/* <ErrorBoundary> */}
+      <ErrorBoundary>
         <Toaster
           position="top-center"
           gutter={10}
@@ -129,13 +129,20 @@ export default function App() {
           duration: 3200,
         }}
       />
-      {/* <OfflineBanner /> */}
+      <OfflineBanner />
       <ScrollToTop />
       <AuthModal />
       <DailyRewardModal />
       <PWAInstallPrompt />
       <AppProviders />
 
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-brand-bg">
+            <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          </div>
+        }
+      >
       <Routes>
         {/* Public — no login needed to browse or add to cart */}
         <Route path="/" element={<HomePage />} />
@@ -183,7 +190,8 @@ export default function App() {
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-      {/* </ErrorBoundary> */}
+      </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

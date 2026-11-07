@@ -19,7 +19,6 @@ export default function AdminOrders() {
   const [search, setSearch] = useState('');
 
   const fetchOrders = () => {
-    setLoading(true);
     orderService.getAllOrders({ page, limit: 20, status: statusFilter })
       .then(({ data }) => { setOrders(data.data || []); setMeta(data.meta || {}); })
       .catch(() => {})

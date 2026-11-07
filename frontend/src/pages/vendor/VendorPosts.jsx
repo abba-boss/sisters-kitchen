@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, FileText, Loader, Pencil, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, FileText, Loader } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import PostCard from '../../components/social/PostCard';
 import PostSkeleton from '../../components/social/PostSkeleton';
 import { postService } from '../../services/postService';
-import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 
 const POST_TYPES = [
@@ -18,7 +17,6 @@ const POST_TYPES = [
 ];
 
 export default function VendorPosts() {
-  const { user } = useAuthStore();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
@@ -29,7 +27,6 @@ export default function VendorPosts() {
   const fileRef = useRef(null);
 
   const loadPosts = () => {
-    setLoading(true);
     postService.getMyPosts({ limit: 30 })
       .then(({ data }) => setPosts(data.data || []))
       .catch(() => {})

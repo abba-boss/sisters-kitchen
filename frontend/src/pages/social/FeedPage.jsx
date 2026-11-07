@@ -23,7 +23,6 @@ export default function FeedPage() {
   const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
-    setLoading(true);
     postService
       .getFeed({ type: filter || undefined, limit: 20 })
       .then(({ data }) => setPosts(data.data || []))

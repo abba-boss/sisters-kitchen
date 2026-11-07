@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
 import { Post, PostMedia, PostLike, PostComment, SavedPost, PostStatus, PostType } from "../entities/Post";
-import { Vendor } from "../entities/Vendor";
+import { Vendor, VendorStatus } from "../entities/Vendor";
 import { logger } from "../utils/logger";
+import { publicUser } from "../utils/serializers";
+import { uploadToCloudinary } from "../utils/helpers";
 
 const postRepo    = () => AppDataSource.getRepository(Post);
 const likeRepo    = () => AppDataSource.getRepository(PostLike);
@@ -26,6 +28,8 @@ export const getFeed = async (req: Request, res: Response) => {
       .leftJoinAndSelect("post.product", "product")
       .leftJoinAndSelect("post.media",   "media")
       .where("post.status = :status", { status: PostStatus.PUBLISHED })
+      // Posts from kitchens that are not approved yet are not part of the public feed.
+      .andWhere("vendor.status = :vendorStatus", { vendorStatus: VendorStatus.APPROVED })
       .orderBy("post.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit);
@@ -48,6 +52,7 @@ export const getFeed = async (req: Request, res: Response) => {
 
     const data = posts.map((p) => ({
       ...p,
+      author: publicUser(p.author),
       tags: p.tags ? tryParseArray(p.tags) : [],
       _liked: likedIds.has(p.id),
       _saved: savedIds.has(p.id),
@@ -84,6 +89,7 @@ export const getVendorPosts = async (req: Request, res: Response) => {
 
     const data = posts.map((p) => ({
       ...p,
+      author: publicUser(p.author),
       tags: p.tags ? tryParseArray(p.tags) : [],
       _liked: likedIds.has(p.id),
     }));
@@ -167,7 +173,16 @@ export const getPost = async (req: Request, res: Response) => {
       _liked = !!like; _saved = !!save;
     }
 
-    res.json({ success: true, data: { ...post, tags: post.tags ? tryParseArray(post.tags) : [], _liked, _saved } });
+    res.json({
+      success: true,
+      data: {
+        ...post,
+        author: publicUser(post.author),
+        tags: post.tags ? tryParseArray(post.tags) : [],
+        _liked,
+        _saved,
+      },
+    });
   } catch (err) {
     logger.error("getPost:", err);
     res.status(500).json({ success: false, message: "Failed" });
@@ -180,6 +195,10 @@ export const createPost = async (req: Request, res: Response) => {
     const userId = (req as any).user.id as string;
     const vendor = await vendorRepo().findOne({ where: { user: { id: userId } } });
     if (!vendor) return res.status(403).json({ success: false, message: "Vendor account required" });
+
+    if (vendor.status !== VendorStatus.APPROVED) {
+      return res.status(403).json({ success: false, message: "Your kitchen is awaiting approval" });
+    }
 
     const { caption, type, tags, productId, location } = req.body;
 
@@ -204,13 +223,25 @@ export const createPost = async (req: Request, res: Response) => {
 
     const files = (req as any).files as Express.Multer.File[] | undefined;
     if (files?.length) {
-      const mediaItems = files.map((f, i) => mediaRepo().create({
-        url:       (f as any).path || (f as any).secure_url || "",
-        type:      f.mimetype.startsWith("video") ? "video" as const : "image" as const,
-        sortOrder: i,
-        post:      { id: saved.id } as any,
-      }));
-      await mediaRepo().save(mediaItems);
+      // multer's `path` is a filesystem path, not a URL — upload it (Cloudinary,
+      // local /uploads fallback) before storing it as the media source.
+      const mediaItems = [];
+      for (const [i, f] of files.entries()) {
+        let url = "";
+        try {
+          url = await uploadToCloudinary(f.path, "sisters-kitchen/posts");
+        } catch (uploadErr) {
+          logger.error("Post media upload failed:", uploadErr);
+        }
+        if (!url) continue;
+        mediaItems.push(mediaRepo().create({
+          url,
+          type:      f.mimetype.startsWith("video") ? "video" as const : "image" as const,
+          sortOrder: i,
+          post:      { id: saved.id } as any,
+        }));
+      }
+      if (mediaItems.length) await mediaRepo().save(mediaItems);
     }
 
     const full = await postRepo().findOne({
@@ -345,8 +376,13 @@ export const getComments = async (req: Request, res: Response) => {
       take: limit,
     });
 
-    // Only top-level comments (no parent)
-    const topLevel = comments.filter((c) => !c.parent);
+    // Only top-level comments (no parent). Commenters are identified by name and
+    // avatar only — never by email.
+    const topLevel = comments.filter((c) => !c.parent).map((c) => ({
+      ...c,
+      user: publicUser(c.user),
+      replies: (c.replies ?? []).map((reply) => ({ ...reply, user: publicUser(reply.user) })),
+    }));
     res.json({ success: true, data: topLevel });
   } catch (err) {
     logger.error("getComments:", err);
@@ -376,7 +412,7 @@ export const addComment = async (req: Request, res: Response) => {
     await postRepo().save(post);
 
     const full = await commentRepo().findOne({ where: { id: savedComment.id }, relations: ["user"] });
-    res.status(201).json({ success: true, data: full });
+    res.status(201).json({ success: true, data: full ? { ...full, user: publicUser(full.user) } : null });
   } catch (err) {
     logger.error("addComment:", err);
     res.status(500).json({ success: false, message: "Failed" });

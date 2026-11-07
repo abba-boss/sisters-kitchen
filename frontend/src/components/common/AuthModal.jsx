@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { ChefHat, Mail, Lock, Eye, EyeOff, User, Phone, AlertCircle } from 'lucide-react';
+import { ChefHat, Mail, Lock, Eye, EyeOff, Phone, AlertCircle } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { useAuthModalStore } from '../../store/authModalStore';
 import { useFormValidation, validationRules } from '../../hooks/useFormValidation';
 import { ButtonLoader } from '../common/LoadingSpinner';
-import toastHelper, { authToasts, errorMessages } from '../../utils/toastConfig.jsx';
+import toastHelper, { authToasts } from '../../utils/toastConfig.jsx';
 import Modal from './Modal';
 
 export default function AuthModal() {

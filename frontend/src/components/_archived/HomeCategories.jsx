@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, MoreHorizontal } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { categoryService } from '../../services/categoryService';
 
 const FALLBACK_CATS = [

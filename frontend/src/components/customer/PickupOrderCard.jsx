@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Navigation, CheckCircle, Clock, Info, Copy, Check } from 'lucide-react';
 import QRCode from 'qrcode';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -18,7 +18,6 @@ export default function PickupOrderCard({ order }) {
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [copied, setCopied] = useState(false);
-  const canvasRef = useRef();
 
   const { vendor, pickupToken, pickupPin, pickupVerifiedAt, status } = order;
   const lat = Number(vendor?.pickupLatitude);
@@ -46,7 +45,7 @@ export default function PickupOrderCard({ order }) {
       setCopied(true);
       toast.success('PIN copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
+    } catch {
       toast.error('Failed to copy PIN');
     }
   };

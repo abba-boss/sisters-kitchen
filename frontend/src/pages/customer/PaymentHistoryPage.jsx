@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Receipt, ChevronRight } from 'lucide-react';
+import { CreditCard, Receipt } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import EmptyState from '../../components/common/EmptyState';
 import Pagination from '../../components/common/Pagination';
@@ -28,7 +28,6 @@ export default function PaymentHistoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
     paymentService.getMyPayments({ page, limit: 10 })
       .then(({ data }) => { setPayments(data.data || []); setMeta(data.meta || {}); })
       .catch(() => {})

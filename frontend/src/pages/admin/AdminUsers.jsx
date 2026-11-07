@@ -24,7 +24,6 @@ export default function AdminUsers() {
   const [updating, setUpdating] = useState(null);
 
   const fetchUsers = () => {
-    setLoading(true);
     api.get('/admin/users', { params: { page, limit: 20, role: roleFilter, search } })
       .then(({ data }) => { setUsers(data.data || []); setMeta(data.meta || {}); })
       .catch(() => {})

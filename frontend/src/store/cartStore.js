@@ -92,10 +92,10 @@ export const useCartStore = create(
         Object.values(groups).forEach((g) => { g.total = g.subtotal + 500; });
         return Object.values(groups);
       },
-
-      // For backwards-compat: first vendor in cart
-      get vendorId() { return get().items[0]?.vendor?.id || null; },
-      get vendorName() { return get().items[0]?.vendor?.businessName || null; },
+      // NOTE: do not add state getters here. persist() spreads the initial state
+      // while hydrating, before the store exists, so a getter that calls get()
+      // throws and storage rehydration silently fails (cart lost on every reload).
+      // Derived values (e.g. first vendor) live in hooks/useCart instead.
     }),
     { name: 'sisters-kitchen-cart' }
   )

@@ -9,8 +9,6 @@ import { useAuthStore } from '../../store/authStore';
 export default function HomeTopVendors() {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { isAuthenticated } = useAuthStore();
-  const navigate = useNavigate();
 
   useEffect(() => {
     vendorService.getAll({ limit: 6, sort: 'rating' })

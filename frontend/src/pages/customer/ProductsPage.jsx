@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import AppLayout from '../../components/layout/AppLayout';
 import ProductCard from '../../components/common/ProductCard';
 import StoriesCarousel from '../../components/social/StoriesCarousel';
@@ -9,15 +9,12 @@ import WhatsCooking from '../../components/customer/WhatsKooking';
 import { EmptySearchResults } from '../../components/common/EmptyState';
 import { ProductCardSkeleton } from '../../components/common/SkeletonLoader';
 import { productService } from '../../services/productService';
-import { ShoppingBag } from 'lucide-react';
-import { useDebounce } from '../../hooks/useDebounce';
 
 export default function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [localSearch, setLocalSearch] = useState(searchParams.get('search') || '');
-  const debouncedSearch = useDebounce(localSearch, 300);
 
   const search = searchParams.get('search') || '';
   const category = searchParams.get('category') || '';
@@ -35,7 +32,6 @@ export default function ProductsPage() {
   };
 
   const fetchProducts = useCallback(() => {
-    setLoading(true);
     productService
       .getAll({ limit: 20, search, category })
       .then(({ data }) => setProducts(data.data || []))

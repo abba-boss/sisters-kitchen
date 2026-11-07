@@ -28,7 +28,7 @@ export default function DailyRewardModal() {
       const timer = setTimeout(() => setShowDailyModal(true), 2500);
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, setShowDailyModal]);
 
   const handleClaim = async () => {
     if (claiming) return;

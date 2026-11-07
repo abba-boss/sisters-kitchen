@@ -6,11 +6,10 @@ import {
   AlertCircle, Loader, CheckCircle2, Star
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { PageLoader, OverlayLoader } from '../../components/common/LoadingSpinner';
+import { PageLoader } from '../../components/common/LoadingSpinner';
 import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
 import { uploadImage } from '../../services/cloudinaryService';
-import { formatPrice } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
 const MAX_IMAGES = 5;
@@ -62,7 +61,7 @@ export default function ProductForm() {
       })
       .catch(() => toast.error('Failed to load product'))
       .finally(() => setPageLoading(false));
-  }, [id]);
+  }, [id, isEdit]);
 
   // ── Field change ─────────────────────────────────────────────
   const set = (name, value) => {
@@ -109,7 +108,7 @@ export default function ProductForm() {
               : s
           )
         );
-      } catch (err) {
+      } catch {
         toast.error(`Image ${i + 1} upload failed — will retry on save`);
         setSlots((prev) =>
           prev.map((s, idx) =>
@@ -167,7 +166,8 @@ export default function ProductForm() {
       fd.append('name',         form.name.trim());
       fd.append('description',  form.description.trim());
       fd.append('price',        form.price);
-      if (form.discountPrice) fd.append('discountPrice', form.discountPrice);
+      // Always send the discount field so clearing it removes the discount.
+      fd.append('discountPrice', form.discountPrice ?? '');
       if (form.categoryId)    fd.append('categoryId',   form.categoryId);
       fd.append('stock',        String(form.stock || 0));
       fd.append('isAvailable',  String(form.isAvailable));

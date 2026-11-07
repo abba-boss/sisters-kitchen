@@ -16,6 +16,7 @@ export enum NotificationType {
   ORDER_READY = "order_ready",
   ORDER_DELIVERED = "order_delivered",
   ORDER_CANCELLED = "order_cancelled",
+  ORDER_REMINDER = "order_reminder",
   NEW_ORDER = "new_order",
   PAYMENT_SUCCESS = "payment_success",
   PAYMENT_FAILED = "payment_failed",

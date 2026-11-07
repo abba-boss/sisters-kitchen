@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader, ChefHat } from 'lucide-react';
+import { ArrowLeft, ChefHat } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import PostCard from '../../components/social/PostCard';
 import { postService } from '../../services/postService';

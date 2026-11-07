@@ -47,8 +47,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       const vendor = vendorRepo.create({
         businessName: req.body.businessName || `${firstName}'s Kitchen`,
         user,
-        status: VendorStatus.APPROVED, // Auto-approve for development
-        isOpen: true, // Start with shop open
+        // A new kitchen must be approved by an admin before it can sell.
+        status: VendorStatus.PENDING,
+        isOpen: false,
       });
       await vendorRepo.save(vendor);
     }
@@ -74,10 +75,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
 
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({
-      where: { email },
-      relations: ["vendor"],
-    });
+    // password is select:false on the entity — opt in only here, where it is compared.
+    const user = await userRepo
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .leftJoinAndSelect("user.vendor", "vendor")
+      .where("user.email = :email", { email })
+      .getOne();
 
     if (!user || !user.isActive) {
       res.status(401).json({ success: false, message: "Invalid credentials" });
@@ -116,9 +120,13 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as { userId: string };
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({
-      where: { id: decoded.userId, refreshToken },
-    });
+    // refreshToken is select:false on the entity — opt in for the comparison.
+    const user = await userRepo
+      .createQueryBuilder("user")
+      .addSelect("user.refreshToken")
+      .where("user.id = :id", { id: decoded.userId })
+      .andWhere("user.refreshToken = :token", { token: refreshToken })
+      .getOne();
 
     if (!user) {
       res.status(401).json({ success: false, message: "Invalid refresh token" });
@@ -181,7 +189,12 @@ export const changePassword = async (req: AuthRequest, res: Response): Promise<v
   try {
     const { currentPassword, newPassword } = req.body;
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({ where: { id: req.user!.id } });
+    // password is select:false on the entity — opt in for bcrypt.compare.
+    const user = await userRepo
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.id = :id", { id: req.user!.id })
+      .getOne();
 
     const isMatch = await bcrypt.compare(currentPassword, user!.password);
     if (!isMatch) {

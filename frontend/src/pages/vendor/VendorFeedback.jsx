@@ -1,13 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Star, MessageSquare, ThumbsUp, ThumbsDown, Search, Filter,
-  Calendar, TrendingUp, Award, AlertCircle, Eye, Reply,
-  StarOff, Clock, User, Package
-} from 'lucide-react';
+import { Star, MessageSquare, ThumbsUp, ThumbsDown, Search, TrendingUp, Award, AlertCircle, Reply, StarOff, Clock, Package } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { formatDate, formatPrice } from '../../utils/formatters';
-import api from '../../services/api';
+import { formatDate } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
 export default function VendorFeedback() {
@@ -19,12 +14,7 @@ export default function VendorFeedback() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
 
-  useEffect(() => {
-    fetchReviews();
-  }, []);
-
   const fetchReviews = async () => {
-    setLoading(true);
     try {
       // TODO: Replace with actual API endpoint
       // const { data } = await api.get('/reviews/vendor');
@@ -123,12 +113,16 @@ export default function VendorFeedback() {
           notHelpful: 8
         },
       ]);
-    } catch (error) {
+    } catch {
       toast.error('Failed to load reviews');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    (async () => { await fetchReviews(); })();
+  }, []);
 
   const handleReplySubmit = async (reviewId) => {
     if (!replyText.trim()) return;
@@ -147,7 +141,7 @@ export default function VendorFeedback() {
       setReplyingTo(null);
       setReplyText('');
       toast.success('Reply posted successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to post reply');
     }
   };
@@ -181,10 +175,10 @@ export default function VendorFeedback() {
       const today = new Date().toDateString();
       if (new Date(review.createdAt).toDateString() !== today) return false;
     } else if (filterDate === 'week') {
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const weekAgo = new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000);
       if (new Date(review.createdAt) < weekAgo) return false;
     } else if (filterDate === 'month') {
-      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000);
       if (new Date(review.createdAt) < monthAgo) return false;
     }
 

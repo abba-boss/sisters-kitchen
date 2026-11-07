@@ -1,13 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Compass, 
-  ShoppingBag, 
-  Store, 
-  User,
-  Package,
-  Coins
-} from 'lucide-react';
+import { Home, Compass, Store, User, Package, Coins } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const CUSTOMER_NAV = [

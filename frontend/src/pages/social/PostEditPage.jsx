@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Save, Loader } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { postService } from '../../services/postService';
-import { useAuthStore } from '../../store/authStore';
 import { PageLoader } from '../../components/common/LoadingSkeleton';
 import toast from 'react-hot-toast';
 
@@ -20,7 +19,6 @@ const POST_TYPES = [
 export default function PostEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

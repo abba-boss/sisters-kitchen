@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, Compass, Store, User } from 'lucide-react';
-import { useAuthStore } from '../../store/authStore';
 
 const NAV = [
   { to: '/', icon: Home, label: 'Home' },
@@ -11,7 +10,6 @@ const NAV = [
 ];
 
 export default function MobileBottomNav() {
-  const { isAuthenticated } = useAuthStore();
   const location = useLocation();
 
   if (location.pathname.startsWith('/vendor') || location.pathname.startsWith('/admin')) return null;

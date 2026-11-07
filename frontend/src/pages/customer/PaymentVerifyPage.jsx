@@ -14,7 +14,10 @@ export default function PaymentVerifyPage() {
 
   useEffect(() => {
     const reference = searchParams.get('reference') || searchParams.get('trxref');
-    if (!reference) { setStatus('failed'); return; }
+    if (!reference) {
+      const t = setTimeout(() => setStatus('failed'), 0);
+      return () => clearTimeout(t);
+    }
 
     paymentService.verify(reference)
       .then(({ data }) => {
@@ -34,7 +37,7 @@ export default function PaymentVerifyPage() {
         setTimeout(() => navigate(`/orders/${data.data?.orderId}`), 3000);
       })
       .catch(() => setStatus('failed'));
-  }, []);
+  }, [searchParams, clearCart, clearVendorItems, navigate]);
 
   return (
     <div className="min-h-screen bg-hero-pattern flex items-center justify-center p-4">

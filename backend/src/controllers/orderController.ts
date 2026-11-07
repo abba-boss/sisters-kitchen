@@ -1,16 +1,28 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { AppDataSource } from "../config/database";
 import { Order, OrderStatus, FulfillmentType } from "../entities/Order";
 import { OrderItem } from "../entities/OrderItem";
 import { Product } from "../entities/Product";
-import { Vendor } from "../entities/Vendor";
+import { Vendor, VendorStatus } from "../entities/Vendor";
 import { Notification, NotificationType } from "../entities/Notification";
 import { AuthRequest } from "../middleware/auth";
 import { generateOrderNumber } from "../utils/helpers";
 import { UserRole } from "../entities/User";
-import { emitOrderUpdate, emitNotification, emitToAdmins } from "../config/socket";
+import {
+  emitOrderUpdate,
+  emitNotification,
+  emitToAdmins,
+  emitToUser,
+} from "../config/socket";
 import { updateVendorEarnings } from "../services/commissionService";
 import { sendEmail, emailTemplates } from "../config/email";
+import {
+  DELIVERY_FEE,
+  OrderError,
+  restoreOrderStock,
+  sanitizeOrders,
+  stripSensitiveUserFields,
+} from "../utils/orderHelpers";
 import crypto from "crypto";
 
 // ─── Notification helper ──────────────────────────────────────
@@ -33,9 +45,59 @@ async function createAndEmitNotification(
   return notif;
 }
 
+/** Allowed status changes. Anything else is rejected instead of silently applied. */
+const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+  [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+  [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.CANCELLED],
+  [OrderStatus.READY]: [
+    OrderStatus.OUT_FOR_DELIVERY,
+    OrderStatus.DELIVERED,
+    OrderStatus.CANCELLED,
+  ],
+  [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+  [OrderStatus.DELIVERED]: [],
+  [OrderStatus.CANCELLED]: [],
+};
+
+const STATUS_MESSAGES: Record<string, { title: string; msg: string; type: NotificationType }> = {
+  confirmed: { title: "Order Confirmed ✅", msg: "has been confirmed!", type: NotificationType.ORDER_CONFIRMED },
+  preparing: { title: "Order Being Prepared 👩‍🍳", msg: "is being freshly prepared.", type: NotificationType.ORDER_PREPARING },
+  ready: { title: "Order Ready! 🎉", msg: "is ready for delivery.", type: NotificationType.ORDER_READY },
+  out_for_delivery: { title: "On the Way 🛵", msg: "is out for delivery!", type: NotificationType.ORDER_DELIVERED },
+  delivered: { title: "Order Delivered! 🍽️", msg: "has been delivered. Enjoy your meal!", type: NotificationType.ORDER_DELIVERED },
+  cancelled: { title: "Order Cancelled", msg: "was cancelled.", type: NotificationType.ORDER_CANCELLED },
+};
+
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { items, deliveryAddress, deliveryPhone, notes, vendorId, fulfillmentType = FulfillmentType.DELIVERY } = req.body;
+    const {
+      items,
+      deliveryAddress,
+      deliveryPhone,
+      notes,
+      vendorId,
+      fulfillmentType = FulfillmentType.DELIVERY,
+    } = req.body ?? {};
+
+    // ── Request validation (route validators run too, this keeps the controller safe) ──
+    if (!vendorId) {
+      res.status(400).json({ success: false, message: "Vendor is required" });
+      return;
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ success: false, message: "Your cart is empty" });
+      return;
+    }
+
+    if (
+      fulfillmentType !== FulfillmentType.DELIVERY &&
+      fulfillmentType !== FulfillmentType.PICKUP
+    ) {
+      res.status(400).json({ success: false, message: "Invalid fulfillment type" });
+      return;
+    }
 
     const vendorRepo = AppDataSource.getRepository(Vendor);
     const vendor = await vendorRepo.findOne({ where: { id: vendorId }, relations: ["user"] });
@@ -45,119 +107,182 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // ── Validate pickup location if pickup order ──────────────
-    if (fulfillmentType === FulfillmentType.PICKUP) {
-      if (!vendor.pickupLatitude || !vendor.pickupLongitude) {
-        res.status(400).json({ 
-          success: false, 
-          message: "This vendor does not offer pickup service yet. Please choose delivery or contact the vendor." 
-        });
-        return;
-      }
-    }
-
-    // ── Validate delivery address if delivery order ───────────
-    if (fulfillmentType === FulfillmentType.DELIVERY && !deliveryAddress) {
-      res.status(400).json({ 
-        success: false, 
-        message: "Delivery address is required for delivery orders" 
+    if (vendor.status !== VendorStatus.APPROVED) {
+      res.status(400).json({
+        success: false,
+        message: "This vendor is not accepting orders right now",
       });
       return;
     }
 
-    const productRepo = AppDataSource.getRepository(Product);
-    let subtotal = 0;
-    const orderItems: Partial<OrderItem>[] = [];
-
-    for (const item of items) {
-      const product = await productRepo.findOne({ where: { id: item.productId } });
-      if (!product) {
-        res.status(404).json({ success: false, message: `Product ${item.productId} not found` });
-        return;
-      }
-
-      // ── Stock Validation ──────────────────────────────────────
-      if (product.stock < item.quantity) {
-        res.status(400).json({ 
-          success: false, 
-          message: `Insufficient stock for "${product.name}". Available: ${product.stock}, Requested: ${item.quantity}` 
+    // ── Pickup / delivery requirements ────────────────────────
+    if (fulfillmentType === FulfillmentType.PICKUP) {
+      if (vendor.pickupLatitude == null || vendor.pickupLongitude == null) {
+        res.status(400).json({
+          success: false,
+          message:
+            "This vendor does not offer pickup service yet. Please choose delivery or contact the vendor.",
         });
         return;
       }
-
-      // ── Decrement Stock ───────────────────────────────────────
-      product.stock -= item.quantity;
-      await productRepo.save(product);
-
-      const price = Number(product.discountPrice) || Number(product.price);
-      const itemSubtotal = price * item.quantity;
-      subtotal += itemSubtotal;
-      orderItems.push({ product, quantity: item.quantity, price, subtotal: itemSubtotal, notes: item.notes });
+    } else if (!deliveryAddress || !String(deliveryAddress).trim()) {
+      res.status(400).json({
+        success: false,
+        message: "Delivery address is required for delivery orders",
+      });
+      return;
     }
 
-    // ── Calculate delivery fee based on fulfillment type ──────
-    const deliveryFee = fulfillmentType === FulfillmentType.PICKUP ? 0 : 500;
-    const total = subtotal + deliveryFee;
+    // ── Normalise the cart lines (same product twice → one line) ──
+    const quantityByProduct = new Map<string, number>();
+    for (const raw of items) {
+      const productId = raw?.productId;
+      const quantity = Number(raw?.quantity);
+      if (!productId || !Number.isInteger(quantity) || quantity < 1) {
+        res.status(400).json({
+          success: false,
+          message: "Every item needs a valid product and a quantity of at least 1",
+        });
+        return;
+      }
+      quantityByProduct.set(productId, (quantityByProduct.get(productId) ?? 0) + quantity);
+    }
 
-    // ── Generate pickup token and PIN if pickup order ─────────────────
-    // Token: Long secure string for QR code
-    // PIN: Short 6-digit code for manual entry
-    const pickupToken = fulfillmentType === FulfillmentType.PICKUP 
-      ? crypto.randomBytes(32).toString('hex')
-      : null;
-    
-    const pickupPin = fulfillmentType === FulfillmentType.PICKUP
-      ? Math.floor(100000 + Math.random() * 900000).toString() // 6-digit number
-      : null;
+    const deliveryFee = fulfillmentType === FulfillmentType.PICKUP ? 0 : DELIVERY_FEE;
+    const pickupToken =
+      fulfillmentType === FulfillmentType.PICKUP ? crypto.randomBytes(32).toString("hex") : null;
+    const pickupPin =
+      fulfillmentType === FulfillmentType.PICKUP
+        ? Math.floor(100000 + Math.random() * 900000).toString()
+        : null;
 
-    const orderRepo = AppDataSource.getRepository(Order);
-    const order = orderRepo.create({
-      orderNumber: generateOrderNumber(),
-      user: req.user,
-      vendor,
-      items: orderItems as OrderItem[],
-      subtotal,
-      deliveryFee,
-      total,
-      deliveryAddress: fulfillmentType === FulfillmentType.DELIVERY ? deliveryAddress : null,
-      deliveryPhone,
-      notes,
-      status: OrderStatus.PENDING,
-      fulfillmentType,
-      pickupToken,
-      pickupPin,
+    // ── Stock reservation + order creation happen in one transaction ──
+    const orderId = await AppDataSource.transaction(async (manager) => {
+      const productRepo = manager.getRepository(Product);
+      const orderItemRepo = manager.getRepository(OrderItem);
+      const orderRepo = manager.getRepository(Order);
+
+      let subtotal = 0;
+      const orderItems: OrderItem[] = [];
+
+      for (const [productId, quantity] of quantityByProduct) {
+        const product = await productRepo.findOne({
+          where: { id: productId },
+          relations: ["vendor"],
+        });
+
+        if (!product) {
+          throw new OrderError(404, "One or more products in your cart no longer exist");
+        }
+
+        if (!product.vendor || product.vendor.id !== vendor.id) {
+          throw new OrderError(
+            400,
+            `"${product.name}" is not sold by ${vendor.businessName}. Please order each vendor separately.`
+          );
+        }
+
+        if (!product.isAvailable) {
+          throw new OrderError(400, `"${product.name}" is no longer available`);
+        }
+
+        // Conditional decrement: never sell more than is in stock, even under concurrency.
+        const stockUpdate = await productRepo
+          .createQueryBuilder()
+          .update(Product)
+          .set({ stock: () => `stock - ${quantity}` })
+          .where("id = :productId", { productId })
+          .andWhere("stock >= :quantity", { quantity })
+          .execute();
+
+        if (!stockUpdate.affected) {
+          throw new OrderError(
+            400,
+            `Insufficient stock for "${product.name}". Please lower the quantity or remove it from your cart.`
+          );
+        }
+
+        const unitPrice = Number(product.discountPrice) || Number(product.price);
+        const itemSubtotal = unitPrice * quantity;
+        subtotal += itemSubtotal;
+
+        orderItems.push(
+          orderItemRepo.create({ product, quantity, price: unitPrice, subtotal: itemSubtotal })
+        );
+      }
+
+      const order = orderRepo.create({
+        orderNumber: generateOrderNumber(),
+        user: req.user,
+        vendor,
+        items: orderItems,
+        subtotal,
+        deliveryFee,
+        total: subtotal + deliveryFee,
+        deliveryAddress:
+          fulfillmentType === FulfillmentType.DELIVERY ? String(deliveryAddress).trim() : null,
+        deliveryPhone,
+        notes,
+        status: OrderStatus.PENDING,
+        fulfillmentType,
+        pickupToken,
+        pickupPin,
+      });
+
+      const saved = await orderRepo.save(order);
+      return saved.id;
     });
 
-    await orderRepo.save(order);
-
-    // Reload with relations for socket payload
+    // ── Post-commit side effects (never fail the order) ────────
+    const orderRepo = AppDataSource.getRepository(Order);
     const fullOrder = await orderRepo.findOne({
-      where: { id: order.id },
+      where: { id: orderId },
       relations: ["user", "vendor", "vendor.user", "items", "items.product"],
     });
 
-    // Notify vendor via socket + DB notification
-    emitToAdmins("order:new", { order: fullOrder });
-    await createAndEmitNotification(
-      vendor.user.id,
-      "New Order Received! 🛎️",
-      `Order #${order.orderNumber} just came in!`,
-      NotificationType.NEW_ORDER,
-      order.id
-    );
+    if (fullOrder) {
+      // Vendors listen for "order:new" on their dashboard.
+      if (vendor.user) emitToUser(vendor.user.id, "order:new", { order: fullOrder });
+      emitToAdmins("order:new", { order: fullOrder });
 
-    // Send confirmation emails
-    await sendEmail(
-      req.user!.email,
-      emailTemplates.orderConfirmation(order.orderNumber, req.user!.firstName, Number(order.total))
-    );
-    await sendEmail(
-      vendor.user.email,
-      emailTemplates.newOrderVendor(order.orderNumber, vendor.businessName, items.length, Number(order.total))
-    );
+      await createAndEmitNotification(
+        vendor.user.id,
+        "New Order Received! 🛎️",
+        `Order #${fullOrder.orderNumber} just came in!`,
+        NotificationType.NEW_ORDER,
+        fullOrder.id
+      );
 
-    res.status(201).json({ success: true, message: "Order placed successfully", data: fullOrder });
+      // Fire-and-forget: slow SMTP must not delay or fail the order response.
+      sendEmail(
+        req.user!.email,
+        emailTemplates.orderConfirmation(
+          fullOrder.orderNumber,
+          req.user!.firstName,
+          Number(fullOrder.total)
+        )
+      ).catch(() => undefined);
+      sendEmail(
+        vendor.user.email,
+        emailTemplates.newOrderVendor(
+          fullOrder.orderNumber,
+          vendor.businessName,
+          quantityByProduct.size,
+          Number(fullOrder.total)
+        )
+      ).catch(() => undefined);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Order placed successfully",
+      data: fullOrder ? stripSensitiveUserFields(fullOrder) : null,
+    });
   } catch (error: any) {
+    if (error instanceof OrderError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -180,7 +305,7 @@ export const getMyOrders = async (req: AuthRequest, res: Response): Promise<void
     const [orders, total] = await qb
       .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();
 
-    res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
+    res.json({ success: true, data: sanitizeOrders(orders), meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -208,7 +333,7 @@ export const getOrderById = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    res.json({ success: true, data: order });
+    res.json({ success: true, data: stripSensitiveUserFields(order) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -232,7 +357,7 @@ export const getVendorOrders = async (req: AuthRequest, res: Response): Promise<
       .where("order.vendor = :vendorId", { vendorId: vendor.id });
 
     if (status) qb.andWhere("order.status = :status", { status });
-    
+
     // Date range filtering
     if (startDate && endDate) {
       const start = new Date(startDate as string);
@@ -245,7 +370,7 @@ export const getVendorOrders = async (req: AuthRequest, res: Response): Promise<
     const [orders, total] = await qb
       .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();
 
-    res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit) } });
+    res.json({ success: true, data: sanitizeOrders(orders), meta: { total, page: Number(page), limit: Number(limit) } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -253,7 +378,13 @@ export const getVendorOrders = async (req: AuthRequest, res: Response): Promise<
 
 export const updateOrderStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status, rejectionReason, estimatedDeliveryTime } = req.body;
+    const { status, rejectionReason, estimatedDeliveryTime } = req.body ?? {};
+
+    if (!status || !Object.values(OrderStatus).includes(status)) {
+      res.status(400).json({ success: false, message: "Invalid order status" });
+      return;
+    }
+
     const orderRepo = AppDataSource.getRepository(Order);
     const order = await orderRepo.findOne({
       where: { id: req.params.id as string },
@@ -262,61 +393,96 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
 
     if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
 
+    const isAdmin = req.user!.role === UserRole.ADMIN;
+    const isVendorOwner = order.vendor?.user?.id === req.user!.id;
+
+    // A vendor may only manage its own orders.
+    if (!isAdmin && !isVendorOwner) {
+      res.status(403).json({ success: false, message: "Not authorized to update this order" });
+      return;
+    }
+
     const prevStatus = order.status;
-    order.status = status;
+
+    if (status === prevStatus) {
+      res.status(400).json({
+        success: false,
+        message: `Order is already ${prevStatus.replace(/_/g, " ")}`,
+      });
+      return;
+    }
+
+    if (!isAdmin && !STATUS_TRANSITIONS[prevStatus]?.includes(status as OrderStatus)) {
+      res.status(400).json({
+        success: false,
+        message: `Cannot change order from "${prevStatus}" to "${status}"`,
+      });
+      return;
+    }
+
+    // Pickup orders must be completed by scanning the pickup code, not by a status tap.
+    if (
+      status === OrderStatus.DELIVERED &&
+      order.fulfillmentType === FulfillmentType.PICKUP &&
+      !order.pickupVerifiedAt
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "Use the pickup verification (QR code or PIN) to complete this order",
+      });
+      return;
+    }
+
+    order.status = status as OrderStatus;
     if (rejectionReason) order.rejectionReason = rejectionReason;
+    if (status === OrderStatus.CANCELLED && !rejectionReason) order.rejectionReason = "Order cancelled";
     if (estimatedDeliveryTime) order.estimatedDeliveryTime = estimatedDeliveryTime;
 
     await orderRepo.save(order);
 
-    // ── Restore Stock on Cancellation ─────────────────────────
-    if (status === OrderStatus.CANCELLED && prevStatus !== OrderStatus.CANCELLED) {
-      const productRepo = AppDataSource.getRepository(Product);
-      for (const item of order.items) {
-        const product = await productRepo.findOne({ where: { id: item.product.id } });
-        if (product) {
-          product.stock += item.quantity;
-          await productRepo.save(product);
-        }
-      }
+    // ── Restore stock on cancellation ─────────────────────────
+    if (status === OrderStatus.CANCELLED) {
+      await restoreOrderStock(order);
     }
 
-    // Update vendor earnings on delivery with commission deduction
+    // Update vendor earnings once, when the order is actually delivered.
     if (status === OrderStatus.DELIVERED) {
       const result = await updateVendorEarnings(order.vendor.id, Number(order.total), order.id);
       if (!result.success) {
-        console.error('Failed to update vendor earnings:', result.error);
+        console.error("Failed to update vendor earnings:", result.error);
       }
     }
 
-    // ── Emit real-time socket event ──────────────────────────
     emitOrderUpdate(order);
 
-    // ── Customer notification ────────────────────────────────
-    const statusMessages: Record<string, { title: string; msg: string; type: NotificationType }> = {
-      confirmed: { title: "Order Confirmed ✅", msg: `Your order #${order.orderNumber} has been confirmed!`, type: NotificationType.ORDER_CONFIRMED },
-      preparing: { title: "Order Being Prepared 👩‍🍳", msg: `#${order.orderNumber} is being freshly prepared.`, type: NotificationType.ORDER_PREPARING },
-      ready: { title: "Order Ready! 🎉", msg: `#${order.orderNumber} is ready for delivery.`, type: NotificationType.ORDER_READY },
-      out_for_delivery: { title: "On the Way 🛵", msg: `#${order.orderNumber} is out for delivery!`, type: NotificationType.ORDER_DELIVERED },
-      delivered: { title: "Order Delivered! 🍽️", msg: `#${order.orderNumber} has been delivered. Enjoy your meal!`, type: NotificationType.ORDER_DELIVERED },
-      cancelled: { title: "Order Cancelled", msg: `#${order.orderNumber} was cancelled. ${rejectionReason || ""}`, type: NotificationType.ORDER_CANCELLED },
-    };
-
-    const notifData = statusMessages[status];
-    if (notifData) {
-      await createAndEmitNotification(order.user.id, notifData.title, notifData.msg, notifData.type, order.id);
-      
-      // Send email notification for status update
-      await sendEmail(
-        order.user.email,
-        emailTemplates.orderStatusUpdate(order.orderNumber, order.user.firstName, status, notifData.msg)
+    const notifData = STATUS_MESSAGES[status];
+    if (notifData && order.user) {
+      await createAndEmitNotification(
+        order.user.id,
+        notifData.title,
+        `#${order.orderNumber} ${notifData.msg}${status === OrderStatus.CANCELLED && order.rejectionReason ? ` Reason: ${order.rejectionReason}` : ""}`,
+        notifData.type,
+        order.id
       );
+
+      sendEmail(
+        order.user.email,
+        emailTemplates.orderStatusUpdate(
+          order.orderNumber,
+          order.user.firstName,
+          status,
+          `${notifData.title} — #${order.orderNumber} ${notifData.msg}`
+        )
+      ).catch(() => undefined);
     }
 
-    // Emit to admin room
     emitToAdmins("order:status_changed", { orderId: order.id, newStatus: status, prevStatus, order });
 
-    res.json({ success: true, message: "Order status updated", data: order });
+    res.json({
+      success: true,
+      message: "Order status updated",
+      data: stripSensitiveUserFields(order),
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -339,16 +505,15 @@ export const getAllOrders = async (req: AuthRequest, res: Response): Promise<voi
     const [orders, total] = await qb
       .skip(skip).take(Number(limit)).orderBy("order.createdAt", "DESC").getManyAndCount();
 
-    res.json({ success: true, data: orders, meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
+    res.json({ success: true, data: sanitizeOrders(orders), meta: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-
 export const verifyPickup = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { token } = req.body;
+    const { token } = req.body ?? {};
     const { id: orderId } = req.params;
 
     if (!token) {
@@ -357,9 +522,11 @@ export const verifyPickup = async (req: AuthRequest, res: Response): Promise<voi
     }
 
     const orderRepo = AppDataSource.getRepository(Order);
+    // `payments` is loaded separately: saving an Order with its payments collection
+    // loaded makes TypeORM rewrite those rows and detach them (orderId = NULL).
     const order = await orderRepo.findOne({
       where: { id: orderId as string },
-      relations: ["user", "vendor", "vendor.user", "items", "items.product", "payments"],
+      relations: ["user", "vendor", "vendor.user", "items", "items.product"],
     });
 
     if (!order) {
@@ -379,44 +546,44 @@ export const verifyPickup = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    // ── Validate token or PIN ────────────────────────────────────────
-    // Accept either: long token (from QR scan) OR short PIN (manual entry)
+    // ── Validate token or PIN ─────────────────────────────────
     const tokenMatches = order.pickupToken === token;
     const pinMatches = order.pickupPin === token;
-    
+
     if (!tokenMatches && !pinMatches) {
       res.status(400).json({ success: false, message: "Invalid pickup code" });
       return;
     }
 
-    // ── Check if already verified ─────────────────────────────
     if (order.pickupVerifiedAt) {
-      res.status(400).json({ 
-        success: false, 
+      res.status(400).json({
+        success: false,
         message: "This order has already been picked up",
-        data: { verifiedAt: order.pickupVerifiedAt }
+        data: { verifiedAt: order.pickupVerifiedAt },
       });
       return;
     }
 
-    // ── Validate order status ─────────────────────────────────
     if (order.status !== OrderStatus.READY) {
-      res.status(400).json({ 
-        success: false, 
-        message: `Order must be in 'ready' status. Current status: ${order.status}` 
+      res.status(400).json({
+        success: false,
+        message: `Order must be in 'ready' status. Current status: ${order.status}`,
       });
       return;
     }
 
-    // ── Validate payment ──────────────────────────────────────
-    // For pickup orders: Allow COD (pay on pickup) or already paid orders
-    const hasPaidPayment = order.payments?.some(p => p.status === 'success');
-    const hasCODPayment = order.payments?.some(p => p.method === 'cash_on_delivery');
-    
-    if (!hasPaidPayment && !hasCODPayment) {
-      res.status(400).json({ 
-        success: false, 
-        message: "Order must have a payment method before pickup" 
+    // For pickup orders: allow COD (pay on pickup) or already paid orders
+    const paymentRepo = AppDataSource.getRepository(
+      (await import("../entities/Payment")).Payment
+    );
+    const orderPayments = await paymentRepo.find({ where: { order: { id: order.id } } });
+    const hasPaidPayment = orderPayments.some((p) => p.status === "success");
+    const codPayment = orderPayments.find((p) => p.method === "cash_on_delivery");
+
+    if (!hasPaidPayment && !codPayment) {
+      res.status(400).json({
+        success: false,
+        message: "Order must have a payment method before pickup",
       });
       return;
     }
@@ -427,29 +594,20 @@ export const verifyPickup = async (req: AuthRequest, res: Response): Promise<voi
     order.status = OrderStatus.DELIVERED;
     await orderRepo.save(order);
 
-    // ── Mark COD payment as success on pickup ─────────────────
-    if (hasCODPayment && !hasPaidPayment) {
-      const Payment = AppDataSource.getRepository(await import("../entities/Payment").then(m => m.Payment));
-      const codPayment = order.payments?.find(p => p.method === 'cash_on_delivery');
-      if (codPayment) {
-        codPayment.status = 'success' as any;
-        await Payment.save(codPayment);
-      }
+    // ── Collect cash on pickup ────────────────────────────────
+    if (!hasPaidPayment && codPayment) {
+      codPayment.status = "success" as any;
+      await paymentRepo.save(codPayment);
     }
 
-    // Update vendor stats
-    const vendorRepo = AppDataSource.getRepository(Vendor);
-    const vendor = await vendorRepo.findOne({ where: { id: order.vendor.id } });
-    if (vendor) {
-      vendor.totalOrders += 1;
-      vendor.totalEarnings = Number(vendor.totalEarnings) + Number(order.total);
-      await vendorRepo.save(vendor);
+    // Vendor earnings (with platform commission) — same rule as delivery.
+    const earnings = await updateVendorEarnings(order.vendor.id, Number(order.total), order.id);
+    if (!earnings.success) {
+      console.error("Failed to update vendor earnings:", earnings.error);
     }
 
-    // Emit real-time update
     emitOrderUpdate(order);
 
-    // Notify customer
     await createAndEmitNotification(
       order.user.id,
       "Order Picked Up! 🎉",
@@ -458,10 +616,10 @@ export const verifyPickup = async (req: AuthRequest, res: Response): Promise<voi
       order.id
     );
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Pickup verified successfully! Order marked as delivered.",
-      data: order 
+      data: stripSensitiveUserFields(order),
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

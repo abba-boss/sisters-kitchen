@@ -28,7 +28,6 @@ export default function AdminProducts() {
   }, []);
 
   const fetchProducts = () => {
-    setLoading(true);
     const params = { page, limit: 20 };
     if (search) params.search = search;
     if (categoryFilter) params.categoryId = categoryFilter;

@@ -27,7 +27,10 @@ export const useSocketConnection = () => {
  */
 export const useSocketEvent = (event, handler, deps = []) => {
   const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  });
 
   useEffect(() => {
     const socket = getSocket();

@@ -366,7 +366,7 @@ function SpecialLayoutBar({ post, heroProduct, upcomingLabel }) {
 }
 
 // ── Expandable caption ──────────────────────────────────────────
-function ExpandableCaption({ caption, vendorName }) {
+function ExpandableCaption({ caption }) {
   const [expanded, setExpanded] = useState(false);
   const LIMIT = 150;
   const isLong = caption.length > LIMIT;

@@ -25,7 +25,6 @@ export default function OrdersPage() {
   const [updated, setUpdated] = useState(null); // id of recently-updated order
 
   const fetchOrders = () => {
-    setLoading(true);
     orderService.getMyOrders({ status, page, limit: 10 })
       .then(({ data }) => { setOrders(data.data || []); setMeta(data.meta || {}); })
       .catch(() => {})

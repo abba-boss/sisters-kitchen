@@ -10,16 +10,22 @@ export default function FollowButton({ vendorId, size = 'md', variant = 'fill', 
   const { isAuthenticated } = useAuthStore();
   const openAuth = useAuthModalStore((s) => s.open);
   const [following, setFollowing] = useState(false);
-  const [count,     setCount]     = useState(0);
+  const [,          setCount]     = useState(0);
   const [loading,   setLoading]   = useState(false);
   const [ready,     setReady]     = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated || !vendorId) { setReady(true); return; }
+    if (!isAuthenticated || !vendorId) return;
     followerService.getStatus(vendorId)
       .then(({ data }) => { setFollowing(data.data.following); setCount(data.data.followersCount); })
-      .catch(() => {}).finally(() => setReady(true));
+      .catch(() => {});
   }, [vendorId, isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && vendorId) return;
+    const t = setTimeout(() => setReady(true), 0);
+    return () => clearTimeout(t);
+  }, [isAuthenticated, vendorId]);
 
   const handle = async () => {
     if (!isAuthenticated) { openAuth('Sign in to follow this vendor'); return; }

@@ -1,17 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  TrendingUp, TrendingDown, DollarSign, Percent, Package, 
-  Calendar, Download, ArrowUpRight, ArrowDownRight, Crown,
-  Clock, ShoppingCart, Wallet, CreditCard, ArrowRight
-} from 'lucide-react';
+import { TrendingUp, DollarSign, Percent, Package, Calendar, Download, ArrowUpRight, ArrowDownRight, Crown, ShoppingCart, Wallet, CreditCard, ArrowRight } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import api from '../../services/api';
-import { formatPrice, formatDate } from '../../utils/formatters';
+import { formatPrice } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
 export default function VendorEarnings() {
@@ -24,12 +20,7 @@ export default function VendorEarnings() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
-  useEffect(() => {
-    loadEarningsData();
-  }, [dateRange, customStartDate, customEndDate]);
-
   const loadEarningsData = () => {
-    setLoading(true);
     
     // Build query params for date filtering
     const params = {};
@@ -56,6 +47,10 @@ export default function VendorEarnings() {
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    loadEarningsData();
+  }, [dateRange, customStartDate, customEndDate]);
 
   const handleWithdrawal = () => {
     setWithdrawing(true);

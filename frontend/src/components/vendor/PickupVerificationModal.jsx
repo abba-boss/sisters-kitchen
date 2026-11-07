@@ -10,19 +10,7 @@ export default function PickupVerificationModal({ order, onClose, onSuccess }) {
   const [manualToken, setManualToken] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
-  const scannerRef = useRef(null);
   const html5QrCodeRef = useRef(null);
-
-  useEffect(() => {
-    if (scanning && !html5QrCodeRef.current) {
-      startScanner();
-    }
-    return () => {
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {});
-      }
-    };
-  }, [scanning]);
 
   const startScanner = async () => {
     try {
@@ -38,7 +26,7 @@ export default function PickupVerificationModal({ order, onClose, onSuccess }) {
         handleScanSuccess,
         handleScanError
       );
-    } catch (err) {
+    } catch {
       setError('Camera access denied or not available. Use manual entry instead.');
       setScanning(false);
     }
@@ -56,6 +44,17 @@ export default function PickupVerificationModal({ order, onClose, onSuccess }) {
   const handleScanError = () => {
     // Ignore scan errors (no QR code in frame)
   };
+
+  useEffect(() => {
+    if (scanning && !html5QrCodeRef.current) {
+      (async () => { await startScanner(); })();
+    }
+    return () => {
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(() => {});
+      }
+    };
+  }, [scanning]);
 
   const verifyToken = async (token) => {
     if (!token || !token.trim()) {

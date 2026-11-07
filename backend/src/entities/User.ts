@@ -33,7 +33,10 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  // Never selected by default: a plain find()/relation join must not be able to
+  // ship the password hash to an API response. Queries that need it (login,
+  // refresh, change-password) opt in with .addSelect("user.password").
+  @Column({ select: false })
   password: string;
 
   @Column({ nullable: true })
@@ -57,7 +60,7 @@ role: UserRole;
   @Column({ default: false })
   isEmailVerified: boolean;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   refreshToken: string;
 
   @OneToMany(() => Order, (order) => order.user)

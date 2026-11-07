@@ -2,14 +2,19 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Clock } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
-import { useAuthStore } from '../../store/authStore';
-import { useAuthModalStore } from '../../store/authModalStore';
 import { formatPrice } from '../../utils/formatters';
 import { cartToasts } from '../../utils/toastConfig.jsx';
 
-export default function ProductCard({ product, compact = false }) {
+// Deterministic pseudo-random like-count fallback (stable across renders, unlike Math.random)
+const stableLikes = (id) => {
+  const s = String(id ?? '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h) % 80 + 20;
+};
+
+export default function ProductCard({ product }) {
   const { addToCart } = useCart();
-  const { isAuthenticated } = useAuthStore();
   const price = Number(product.discountPrice) || Number(product.price);
   const originalPrice = Number(product.price);
   const hasDiscount = product.discountPrice && Number(product.discountPrice) > 0 && Number(product.discountPrice) < originalPrice;
@@ -148,7 +153,7 @@ export default function ProductCard({ product, compact = false }) {
             {/* Rating */}
             <div className="flex items-center gap-1">
               <Heart size={12} className="text-primary" />
-              <span className="font-medium">{product.likes || Math.floor(Math.random() * 100 + 20)}</span>
+              <span className="font-medium">{product.likes || stableLikes(product.id)}</span>
             </div>
             
             {/* Time */}

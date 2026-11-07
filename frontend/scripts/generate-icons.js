@@ -25,7 +25,7 @@ let createCanvas;
 try {
   const Canvas = await import('canvas');
   createCanvas = Canvas.createCanvas;
-} catch (error) {
+} catch {
   console.error('\n❌ Error: canvas package not installed\n');
   console.log('To generate icons, install canvas:');
   console.log('  npm install canvas\n');

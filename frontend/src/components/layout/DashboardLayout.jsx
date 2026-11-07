@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  LayoutDashboard, Package, ShoppingBag, Settings,
-  LogOut, Menu, ChefHat, Users, BarChart3,
-  Store, TrendingUp, PlusSquare, Home, MessageSquare, Mail
-} from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ChefHat, Users, BarChart3, Store, TrendingUp, Home, MessageSquare, Mail } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
 import NotificationDropdown from '../common/NotificationDropdown';
@@ -30,16 +26,8 @@ const adminLinks = [
   { to: '/admin/messages', icon: Mail, label: 'Messages' },
 ];
 
-export default function DashboardLayout({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuthStore();
-  const { logout } = useAuth();
-  const location = useLocation();
-
-  const links = user?.role === 'admin' ? adminLinks : vendorLinks;
-  const title = user?.role === 'admin' ? 'Admin Panel' : 'Vendor Panel';
-
-  const SidebarContent = () => (
+function SidebarContent({ title, links, location, setSidebarOpen, user, logout }) {
+  return (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-5 border-b border-orange-100">
@@ -87,8 +75,8 @@ export default function DashboardLayout({ children }) {
         </div>
 
         {/* Back to Website */}
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           onClick={() => setSidebarOpen(false)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-brand-dark hover:bg-brand-bg transition-colors"
         >
@@ -103,6 +91,16 @@ export default function DashboardLayout({ children }) {
       </div>
     </div>
   );
+}
+
+export default function DashboardLayout({ children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuthStore();
+  const { logout } = useAuth();
+  const location = useLocation();
+
+  const links = user?.role === 'admin' ? adminLinks : vendorLinks;
+  const title = user?.role === 'admin' ? 'Admin Panel' : 'Vendor Panel';
 
   const currentLabel = links.find((l) =>
     location.pathname === l.to ||
@@ -113,7 +111,7 @@ export default function DashboardLayout({ children }) {
     <div className="min-h-screen bg-brand-bg flex">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-60 bg-white shadow-card flex-shrink-0 fixed inset-y-0 left-0 z-30">
-        <SidebarContent />
+        <SidebarContent title={title} links={links} location={location} setSidebarOpen={setSidebarOpen} user={user} logout={logout} />
       </aside>
 
       {/* Mobile Sidebar Backdrop */}
@@ -129,7 +127,7 @@ export default function DashboardLayout({ children }) {
               initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               className="fixed left-0 top-0 bottom-0 w-64 bg-white shadow-card-hover z-50 lg:hidden">
-              <SidebarContent />
+              <SidebarContent title={title} links={links} location={location} setSidebarOpen={setSidebarOpen} user={user} logout={logout} />
             </motion.aside>
           </>
         )}

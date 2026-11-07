@@ -30,10 +30,18 @@ export default function HomeHero() {
 
   const [query,       setQuery]       = useState('');
   const [focused,     setFocused]     = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsRaw, setSuggestionsRaw] = useState({ key: '', items: [] });
   const [location,    setLocation]    = useState(LOCATIONS[0]);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
-  const [recentSearches, setRecentSearches] = useState([]);
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('sk-recent-searches') || '[]');
+      return Array.isArray(saved) ? saved.slice(0, 5) : [];
+    } catch { return []; } // corrupted storage — start fresh
+  });
+  // Derived: blank while a new query's suggestions are still loading
+  const suggestionsKey = query.trim().length >= 2 ? query : '';
+  const suggestions = suggestionsKey && suggestionsRaw.key === suggestionsKey ? suggestionsRaw.items : [];
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -41,13 +49,6 @@ export default function HomeHero() {
       setPlaceholderIdx((prev) => (prev + 1) % SEARCH_PLACEHOLDERS.length);
     }, 2600);
     return () => window.clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('sk-recent-searches') || '[]');
-      if (Array.isArray(saved)) setRecentSearches(saved.slice(0, 5));
-    } catch {}
   }, []);
 
   // Keyboard shortcut: /  → focus search
@@ -64,10 +65,10 @@ export default function HomeHero() {
 
   // Live suggestions
   useEffect(() => {
-    if (!query.trim() || query.length < 2) { setSuggestions([]); return; }
+    if (!query.trim() || query.length < 2) return;
     const t = setTimeout(() => {
       productService.getAll({ search: query, limit: 4 })
-        .then(({ data }) => setSuggestions(data.data || []))
+        .then(({ data }) => setSuggestionsRaw({ key: query, items: data.data || [] }))
         .catch(() => {});
     }, 280);
     return () => clearTimeout(t);
@@ -81,7 +82,7 @@ export default function HomeHero() {
       const next = [normalized, ...recentSearches.filter((s) => s.toLowerCase() !== normalized.toLowerCase())].slice(0, 5);
       setRecentSearches(next);
       localStorage.setItem('sk-recent-searches', JSON.stringify(next));
-    } catch {}
+    } catch { /* storage full or blocked — non-fatal */ }
     navigate(`/products?search=${encodeURIComponent(normalized)}`);
     setFocused(false);
   };

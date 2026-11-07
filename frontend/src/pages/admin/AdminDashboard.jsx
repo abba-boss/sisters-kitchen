@@ -5,7 +5,7 @@ import { Users, Store, Package, ShoppingBag, TrendingUp, Wifi, ArrowUpRight } fr
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useSocketEvent } from '../../hooks/useSocket';
-import { formatPrice, formatDate, getOrderStatusColor, getOrderStatusLabel } from '../../utils/formatters';
+import { formatPrice, getOrderStatusColor, getOrderStatusLabel } from '../../utils/formatters';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -13,14 +13,14 @@ export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchData(); }, []);
-
   const fetchData = () => {
     api.get('/analytics/admin')
       .then(({ data: res }) => setData(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => { fetchData(); }, []);
 
   // Live updates
   useSocketEvent('order:new', ({ order }) => {

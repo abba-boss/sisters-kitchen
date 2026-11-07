@@ -2,7 +2,7 @@ import { testDataSource } from '../../setup';
 import { Product } from '../../../src/entities/Product';
 import { Order, OrderStatus, FulfillmentType } from '../../../src/entities/Order';
 import { User, UserRole } from '../../../src/entities/User';
-import { Vendor } from '../../../src/entities/Vendor';
+import { Vendor, VendorStatus } from '../../../src/entities/Vendor';
 import { Category } from '../../../src/entities/Category';
 import bcrypt from 'bcryptjs';
 
@@ -40,8 +40,8 @@ describe('Stock Management', () => {
       vendorRepo.create({
         user: vendorUser,
         businessName: 'Test Kitchen',
-        businessAddress: '123 Test St',
-        status: 'approved',
+        address: '123 Test St',
+        status: VendorStatus.APPROVED,
       })
     );
 

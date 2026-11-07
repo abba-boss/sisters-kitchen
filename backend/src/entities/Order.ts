@@ -87,6 +87,19 @@ pickupVerifiedAt: Date | null;
   @Column({ nullable: true })
   estimatedDeliveryTime: string;
 
+  // ─── ETA and timeout tracking ───────────────────────────────────────────────
+  @Column({ type: "datetime", nullable: true })
+  estimatedReadyTime: Date | null;
+
+  @Column({ type: "datetime", nullable: true })
+  estimatedDeliveryDateTime: Date | null;
+
+  @Column({ type: "int", default: 30 })
+  preparationMinutes: number;
+
+  @Column({ type: "datetime", nullable: true })
+  vendorReminderSentAt: Date | null;
+
   @Column({ nullable: true })
   rejectionReason: string;
 

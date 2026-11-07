@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, Store, Search, Eye } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -25,7 +25,6 @@ export default function AdminVendors() {
   const [updating, setUpdating] = useState(null);
 
   const fetchVendors = () => {
-    setLoading(true);
     api.get('/admin/vendors', { params: { status: statusFilter, page, limit: 20 } })
       .then(({ data }) => { setVendors(data.data || []); setMeta(data.meta || {}); })
       .catch(() => {})

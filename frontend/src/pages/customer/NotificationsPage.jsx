@@ -22,7 +22,7 @@ export default function NotificationsPage() {
     notificationService.getAll()
       .then(({ data }) => setNotifications(data.data || []))
       .catch(() => {});
-  }, []);
+  }, [setNotifications]);
 
   const handleMarkRead = async (id) => {
     markAsRead(id);

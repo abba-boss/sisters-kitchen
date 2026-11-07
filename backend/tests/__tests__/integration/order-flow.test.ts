@@ -2,7 +2,7 @@ import request from 'supertest';
 import express from 'express';
 import { testDataSource } from '../../setup';
 import { User, UserRole } from '../../../src/entities/User';
-import { Vendor } from '../../../src/entities/Vendor';
+import { Vendor, VendorStatus } from '../../../src/entities/Vendor';
 import { Product } from '../../../src/entities/Product';
 import { Category } from '../../../src/entities/Category';
 import bcrypt from 'bcryptjs';
@@ -42,8 +42,8 @@ describe('Order Flow Integration', () => {
       vendorRepo.create({
         user: vendorUser,
         businessName: 'Integration Test Kitchen',
-        businessAddress: '123 Test St',
-        status: 'approved',
+        address: '123 Test St',
+        status: VendorStatus.APPROVED,
         pickupLatitude: 6.5244,
         pickupLongitude: 3.3792,
       })
@@ -198,8 +198,8 @@ describe('Order Flow Integration', () => {
     });
 
     it('should reject invalid pickup tokens', async () => {
-      const pickupToken = 'invalid_token';
-      const validToken = 'test_pickup_token_123456';
+      const pickupToken: string = 'invalid_token';
+      const validToken: string = 'test_pickup_token_123456';
 
       const isValid = pickupToken === validToken;
       expect(isValid).toBe(false);

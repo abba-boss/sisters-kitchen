@@ -43,7 +43,7 @@ export default function NotificationDropdown() {
     notificationService.getAll()
       .then(({ data }) => setNotifications(data.data || []))
       .catch(() => {});
-  }, [isAuthenticated]);
+  }, [isAuthenticated, setNotifications]);
 
   // Close on outside click
   useEffect(() => {

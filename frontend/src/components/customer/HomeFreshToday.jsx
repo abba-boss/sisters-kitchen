@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, Flame, Clock, Star, Plus, Timer } from 'lucide-react';
+import { ChevronRight, Flame, Star, Plus, Timer } from 'lucide-react';
 import { productService } from '../../services/productService';
 import { useCart } from '../../hooks/useCart';
 import { formatPrice } from '../../utils/formatters';

@@ -1,35 +1,18 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Star,
-  MapPin,
-  Phone,
-  Clock,
-  MessageSquare,
-  ShoppingBag,
-  Share2,
-  Store,
-  Users,
-  ShieldCheck,
-  Heart,
-  Grid3x3,
-  PlayCircle,
-  BookOpen,
-  Info,
-} from 'lucide-react';
+import { Star, MapPin, Phone, Clock, MessageSquare, ShoppingBag, Share2, Users, ShieldCheck, Heart, Grid3x3, PlayCircle, BookOpen, Info } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import ProductCard from '../../components/common/ProductCard';
 import StarRating from '../../components/common/StarRating';
 import EmptyState from '../../components/common/EmptyState';
 import BackButton from '../../components/common/BackButton';
 import FollowButton from '../../components/social/FollowButton';
-import PostCard from '../../components/social/PostCard';
 import { vendorService } from '../../services/vendorService';
 import { reviewService } from '../../services/reviewService';
 import { postService } from '../../services/postService';
 import { followerService } from '../../services/followerService';
-import { formatDate, formatPrice } from '../../utils/formatters';
+import { formatDate } from '../../utils/formatters';
 import { useAuthStore } from '../../store/authStore';
 import { PageLoader } from '../../components/common/LoadingSkeleton';
 import toast from 'react-hot-toast';
@@ -47,13 +30,12 @@ export default function VendorProfilePageModern() {
   const [followersCount, setFollowersCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('products');
-  const [reviewFilter, setReviewFilter] = useState(0);
+  const [reviewFilter] = useState(0);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [submitting, setSubmitting] = useState(false);
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    setLoading(true);
     Promise.all([
       vendorService.getById(id),
       reviewService.getVendorReviews(id),
@@ -103,12 +85,6 @@ export default function VendorProfilePageModern() {
       </MainLayout>
     );
   }
-
-  const cover = vendor.coverImage || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1400';
-  const ratingDist = [5, 4, 3, 2, 1].map((r) => ({
-    r,
-    count: reviews.filter((rv) => rv.rating === r).length,
-  }));
 
   const tabs = [
     { key: 'products', label: 'Products', icon: Grid3x3, count: availableProducts.length },

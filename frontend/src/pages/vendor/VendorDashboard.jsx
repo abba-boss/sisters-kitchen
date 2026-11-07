@@ -1,18 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Package, ShoppingBag, TrendingUp, Star, Plus,
-  ToggleLeft, ToggleRight, Wifi, ArrowUpRight, Clock,
-  AlertTriangle, X, Calendar, CheckCircle2, Timer
-} from 'lucide-react';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend
-} from 'recharts';
+import { motion } from 'framer-motion';
+import { Package, ShoppingBag, TrendingUp, Star, Plus, ToggleLeft, ToggleRight, Wifi, Clock, X, Calendar, CheckCircle2, Timer } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { StatsCardSkeleton } from '../../components/common/SkeletonLoader';
-import { EmptyAnalytics } from '../../components/common/EmptyState';
 import { vendorService } from '../../services/vendorService';
 import { orderService } from '../../services/orderService';
 import { useSocketEvent } from '../../hooks/useSocket';
@@ -81,12 +73,7 @@ export default function VendorDashboard() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
-  useEffect(() => {
-    loadDashboardData();
-  }, [dateRange, customStartDate, customEndDate]);
-
   const loadDashboardData = () => {
-    setLoading(true);
     
     // Build query params for date filtering
     const params = {};
@@ -121,6 +108,10 @@ export default function VendorDashboard() {
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [dateRange, customStartDate, customEndDate]);
 
   // Live new order counter
   useSocketEvent('order:new', ({ order }) => {

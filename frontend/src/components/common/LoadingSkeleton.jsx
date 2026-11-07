@@ -78,8 +78,8 @@ export function ContentLoader({ rows = 3 }) {
     <div className="space-y-3 py-2">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="space-y-2">
-          <div className="skeleton h-4 rounded-full" style={{ width: `${70 + Math.random() * 30}%` }} />
-          <div className="skeleton h-3 rounded-full" style={{ width: `${40 + Math.random() * 40}%` }} />
+          <div className="skeleton h-4 rounded-full" style={{ width: `${70 + ((i * 17) % 30)}%` }} />
+          <div className="skeleton h-3 rounded-full" style={{ width: `${40 + ((i * 23) % 40)}%` }} />
         </div>
       ))}
     </div>

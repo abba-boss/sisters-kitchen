@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Store, TrendingUp } from 'lucide-react';
+import { ChevronRight, Store } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { vendorService } from '../../services/vendorService';
 

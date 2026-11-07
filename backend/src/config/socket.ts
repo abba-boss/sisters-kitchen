@@ -9,14 +9,20 @@ let io: SocketIOServer;
 // Map userId → Set of socketIds (user may have multiple tabs)
 const userSocketMap = new Map<string, Set<string>>();
 
+/**
+ * Must accept the same origins as the HTTP CORS config in index.ts, otherwise
+ * phones/tablets testing over the LAN load the app but never get live updates.
+ */
+const isAllowedOrigin = (origin: string): boolean =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+  /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin) ||
+  origin === process.env.FRONTEND_URL;
+
 export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
   io = new SocketIOServer(httpServer, {
     cors: {
       origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-          return callback(null, true);
-        }
+        if (!origin || isAllowedOrigin(origin)) return callback(null, true);
         callback(new Error(`Socket CORS blocked: ${origin}`));
       },
       credentials: true,

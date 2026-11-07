@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Send, MessageSquare, Clock, CheckCheck, Loader2,
-  AlertCircle, Shield
-} from 'lucide-react';
+import { Send, MessageSquare, Clock, CheckCheck, Loader2, Shield } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { messageService } from '../../services/messageService';
 import { useSocketEvent } from '../../hooks/useSocket';
 import { useAuthStore } from '../../store/authStore';
-import { formatDate, formatDateTime } from '../../utils/formatters';
+import { formatDate } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 
 export default function VendorMessages() {
@@ -23,26 +20,11 @@ export default function VendorMessages() {
   const messagesEndRef = useRef(null);
   const messageInputRef = useRef(null);
 
-  useEffect(() => {
-    loadConversations();
-  }, []);
-
-  useEffect(() => {
-    if (selectedConversation) {
-      loadMessages(selectedConversation.adminId);
-    }
-  }, [selectedConversation]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const loadConversations = async () => {
-    setLoading(true);
     try {
       const { data } = await messageService.getConversations();
       setConversations(data.data || []);
@@ -80,6 +62,20 @@ export default function VendorMessages() {
     }
   };
 
+  useEffect(() => {
+    (async () => { await loadConversations(); })();
+  }, []);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      (async () => { await loadMessages(selectedConversation.adminId); })();
+    }
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     
@@ -105,7 +101,7 @@ export default function VendorMessages() {
       );
       
       messageInputRef.current?.focus();
-    } catch (error) {
+    } catch {
       toast.error('Failed to send message');
     } finally {
       setSending(false);

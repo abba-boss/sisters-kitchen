@@ -9,6 +9,16 @@ export const generateOrderNumber = (): string => {
 };
 
 /**
+ * Absolute URL for a file served from the API's own /uploads folder.
+ * A relative "/uploads/x.jpg" resolves against the frontend origin in the
+ * browser, so the host has to be part of the stored value.
+ */
+export const localUploadUrl = (filename: string): string => {
+  const base = (process.env.API_PUBLIC_URL || `http://localhost:${process.env.PORT || 5000}`).replace(/\/+$/, "");
+  return `${base}/uploads/${filename}`;
+};
+
+/**
  * Upload a local file to Cloudinary.
  * Falls back to serving locally if Cloudinary is not properly configured.
  */
@@ -28,8 +38,7 @@ export const uploadToCloudinary = async (
 
   if (!hasCloudinary) {
     // Serve the file locally via /uploads route
-    const filename = path.basename(filePath);
-    return `/uploads/${filename}`;
+    return localUploadUrl(path.basename(filePath));
   }
 
   try {
@@ -49,13 +58,12 @@ export const uploadToCloudinary = async (
   } catch (error: any) {
     console.error("Cloudinary upload error:", error?.message || error);
     // On failure, serve locally instead of crashing
-    const filename = path.basename(filePath);
-    return `/uploads/${filename}`;
+    return localUploadUrl(path.basename(filePath));
   }
 };
 
 export const deleteFromCloudinary = async (imageUrl: string): Promise<void> => {
-  if (!imageUrl || imageUrl.startsWith("/uploads/")) return; // local file
+  if (!imageUrl || imageUrl.includes("/uploads/")) return; // local file
 
   try {
     // Extract public_id from URL: .../<folder>/<filename>.<ext>

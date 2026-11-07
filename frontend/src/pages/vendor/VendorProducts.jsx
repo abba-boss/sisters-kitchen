@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Edit, Trash2, Eye, EyeOff, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { EmptyProducts } from '../../components/common/EmptyState';
 import { ProductCardSkeleton } from '../../components/common/SkeletonLoader';
@@ -16,15 +16,14 @@ export default function VendorProducts() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => { fetchProducts(); }, []);
-
   const fetchProducts = () => {
-    setLoading(true);
     productService.getMyProducts()
       .then(({ data }) => setProducts(data.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => { fetchProducts(); }, []);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;

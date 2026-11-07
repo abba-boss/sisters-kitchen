@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/database";
 import { Product } from "../entities/Product";
-import { Vendor } from "../entities/Vendor";
+import { Vendor, VendorStatus } from "../entities/Vendor";
 import { Category } from "../entities/Category";
+import { publicUser } from "../utils/serializers";
 import { AuthRequest } from "../middleware/auth";
-import { uploadToCloudinary } from "../utils/helpers";
+import { uploadToCloudinary, localUploadUrl } from "../utils/helpers";
 
 // ─── List / Search ─────────────────────────────────────────────
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
@@ -47,31 +48,46 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
       where: { id: req.params.id as string },
       relations: ["vendor", "category", "reviews", "reviews.user"],
     });
-    if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
-    res.json({ success: true, data: product });
+    // Products from vendors that are not approved yet are not public.
+    if (!product || product.vendor?.status !== VendorStatus.APPROVED) {
+      res.status(404).json({ success: false, message: "Product not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      data: { ...product, reviews: (product.reviews ?? []).map((r) => ({ ...r, user: publicUser(r.user) })) },
+    });
   } catch (e: any) { res.status(500).json({ success: false, message: e.message }); }
 };
 
 export const getFeaturedProducts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const products = await AppDataSource.getRepository(Product).find({
-      where: { isFeatured: true, isAvailable: true },
-      relations: ["vendor", "category"],
-      take: 8,
-      order: { createdAt: "DESC" },
-    });
+    const products = await AppDataSource.getRepository(Product)
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.vendor", "vendor")
+      .leftJoinAndSelect("product.category", "category")
+      .where("product.isFeatured = :yes", { yes: true })
+      .andWhere("product.isAvailable = :yes", { yes: true })
+      .andWhere("vendor.status = :approved", { approved: VendorStatus.APPROVED })
+      .orderBy("product.createdAt", "DESC")
+      .take(8)
+      .getMany();
     res.json({ success: true, data: products });
   } catch (e: any) { res.status(500).json({ success: false, message: e.message }); }
 };
 
 export const getFreshTodayProducts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const products = await AppDataSource.getRepository(Product).find({
-      where: { isFreshToday: true, isAvailable: true },
-      relations: ["vendor", "category"],
-      take: 8,
-      order: { updatedAt: "DESC" },
-    });
+    const products = await AppDataSource.getRepository(Product)
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.vendor", "vendor")
+      .leftJoinAndSelect("product.category", "category")
+      .where("product.isFreshToday = :yes", { yes: true })
+      .andWhere("product.isAvailable = :yes", { yes: true })
+      .andWhere("vendor.status = :approved", { approved: VendorStatus.APPROVED })
+      .orderBy("product.updatedAt", "DESC")
+      .take(8)
+      .getMany();
     res.json({ success: true, data: products });
   } catch (e: any) { res.status(500).json({ success: false, message: e.message }); }
 };
@@ -108,8 +124,9 @@ async function collectImages(req: AuthRequest, existingUrls: string[] = []): Pro
         urls.push(url);
       } catch (err) {
         console.error("Image upload failed for file:", file.originalname, err);
-        // push local fallback path
-        urls.push(`/uploads/${file.filename}`);
+        // Fall back to the local /uploads folder (absolute so it resolves
+        // against the API host, not the frontend host).
+        urls.push(localUploadUrl(file.filename));
       }
     }
   }
@@ -124,11 +141,29 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<vo
     const vendor = await AppDataSource.getRepository(Vendor).findOne({ where: { user: { id: req.user!.id } } });
     if (!vendor) { res.status(404).json({ success: false, message: "Vendor profile not found" }); return; }
 
+    if (vendor.status !== VendorStatus.APPROVED) {
+      res.status(403).json({
+        success: false,
+        message: "Your kitchen is still awaiting approval — you can add products once an admin approves it",
+      });
+      return;
+    }
+
     const {
       name, description, price, discountPrice, categoryId,
       isAvailable, isFeatured, isFreshToday, stock, preparationTime, tags,
       existingImageUrls,
     } = req.body;
+
+    // Required columns — reply with a readable 400 instead of a database error.
+    const missing: string[] = [];
+    if (!name?.trim()) missing.push("name");
+    if (!description?.trim()) missing.push("description");
+    if (price === undefined || price === null || price === "" || Number.isNaN(Number(price))) missing.push("price");
+    if (missing.length > 0) {
+      res.status(400).json({ success: false, message: `Missing required fields: ${missing.join(", ")}` });
+      return;
+    }
 
     // Existing URLs pre-uploaded by browser
     let preUploaded: string[] = [];
@@ -178,6 +213,11 @@ export const updateProduct = async (req: AuthRequest, res: Response): Promise<vo
       res.status(403).json({ success: false, message: "Not authorized" }); return;
     }
 
+    if (req.user!.role !== "admin" && product.vendor.status !== VendorStatus.APPROVED) {
+      res.status(403).json({ success: false, message: "Your kitchen is awaiting approval" });
+      return;
+    }
+
     const {
       name, description, price, discountPrice, categoryId,
       isAvailable, isFeatured, isFreshToday, stock, preparationTime, tags,
@@ -198,16 +238,22 @@ export const updateProduct = async (req: AuthRequest, res: Response): Promise<vo
       if (cat) product.category = cat;
     }
 
+    const hasValue = (value: unknown) => value !== undefined && value !== null && value !== "";
+
     Object.assign(product, {
       name:           name          || product.name,
       description:    description   || product.description,
-      price:          price         ? Number(price)         : product.price,
-      discountPrice:  discountPrice ? Number(discountPrice) : product.discountPrice,
+      price:          hasValue(price) ? Number(price) : product.price,
+      // Empty string clears the discount; an absent field keeps the current one.
+      discountPrice:  discountPrice === "" || discountPrice === null
+                        ? null
+                        : hasValue(discountPrice) ? Number(discountPrice) : product.discountPrice,
       images:         finalImages,
       isAvailable:    isAvailable  !== undefined ? isAvailable  === "true" : product.isAvailable,
       isFeatured:     isFeatured   !== undefined ? isFeatured   === "true" : product.isFeatured,
       isFreshToday:   isFreshToday !== undefined ? isFreshToday === "true" : product.isFreshToday,
-      stock:          stock         ? Number(stock) : product.stock,
+      // 0 is a valid stock level (sold out) — do not treat it as "not provided".
+      stock:          hasValue(stock) && !Number.isNaN(Number(stock)) ? Number(stock) : product.stock,
       preparationTime: preparationTime ?? product.preparationTime,
       tags:           (() => { try { return tags ? JSON.parse(tags) : product.tags; } catch { return product.tags; } })(),
     });
